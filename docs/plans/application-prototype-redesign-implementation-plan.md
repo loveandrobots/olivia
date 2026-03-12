@@ -22,6 +22,7 @@ Planning readiness is satisfied for this work:
 
 ## Source Artifacts
 - `docs/vision/olivia-prototype.html`
+- `docs/vision/home-screen-reference-state.md`
 - `docs/vision/design-foundations.md`
 - `docs/vision/design-components.md`
 - `docs/vision/design-screens.md`
@@ -51,6 +52,7 @@ Durable guidance this plan carries forward:
 - D-007: the canonical surface remains an installable mobile-first PWA
 - D-009: the inbox workflow remains the approved product slice; the redesign must not silently change its product scope
 - the design docs define the visual source of truth for navigation, layout, component behavior, and motion
+- `docs/vision/home-screen-reference-state.md` resolves the no-screenshot Home target, supporting-route scope, and runtime status-bar expectation
 
 ## Current-State Snapshot
 The current application is functionally aligned with the inbox workflow but visually and structurally diverges from the documented Olivia interface direction:
@@ -113,7 +115,89 @@ Use this matrix during implementation so the redesign stays tied to the reposito
 - Accessibility
 - Reduced-motion compliance
 
+## Route Visual Acceptance Matrix
+This matrix removes route-by-route ambiguity for implementers who do not have the stakeholder screenshot.
+
+### `/` — Home
+- Must reach prototype-fidelity sign-off.
+- Binding visual source:
+  - `docs/vision/home-screen-reference-state.md`
+  - `docs/vision/olivia-prototype.html`
+  - relevant Home sections of the design docs and checklist
+- Must support a seeded demo state that reproduces the exact Home reference content from `home-screen-reference-state.md`.
+- Runtime app does not require a fake status-bar row if spacing and safe-area handling match the Home reference clarification.
+
+### `/tasks` — Tasks
+- Must reach prototype-fidelity sign-off.
+- Binding visual source:
+  - `docs/vision/design-screens.md`
+  - `docs/vision/design-components.md`
+  - `docs/vision/design-checklist.md`
+- Required visible outcome:
+  - Fraunces header and subtitle
+  - filter tabs
+  - add-task affordance
+  - open task cards
+  - completed section
+  - fixed bottom nav
+- The route should not preserve the current review-dashboard metrics layout once redesign is complete.
+
+### `/olivia` — Olivia
+- Must reach prototype-fidelity sign-off.
+- Binding visual source:
+  - `docs/vision/design-screens.md`
+  - `docs/vision/design-components.md`
+  - `docs/vision/design-motion-voice.md`
+  - `docs/vision/design-checklist.md`
+- Required visible outcome:
+  - Olivia orb header
+  - chat area
+  - quick chips
+  - sticky input
+  - action-card styling for advisory previews
+
+### `/memory` — Memory
+- Must reach prototype-fidelity sign-off.
+- Binding visual source:
+  - `docs/vision/design-screens.md`
+  - `docs/vision/design-components.md`
+  - `docs/vision/design-checklist.md`
+- Required visible outcome:
+  - Fraunces header and subtitle
+  - search bar
+  - category labels
+  - memory cards with icon blocks and age indicators
+  - fixed bottom nav
+
+### Supporting routes
+- `/items/$itemId`
+- `/settings`
+- `/re-entry`
+
+Supporting-route decision for this redesign:
+- these routes must be token-compliant and usable if retained
+- these routes must be hidden from primary navigation
+- these routes do not block prototype-fidelity sign-off for the redesign
+- these routes should not introduce a second competing information architecture
+
 ## Implementation Steps
+### Step 0: Establish durable visual references before UI migration
+**Outcome:** Implementers can execute the redesign from repository docs even if the stakeholder screenshot is unavailable.
+
+**Work items**
+- Treat `docs/vision/home-screen-reference-state.md` as the no-screenshot binding reference for the Home route.
+- Add a durable screenshot asset at `docs/vision/home-screen-light-reference.png` or `docs/vision/home-screen-light-reference.webp` if the stakeholder-provided image can be recovered during implementation.
+- If the stakeholder-provided image cannot be recovered, proceed against:
+  - `docs/vision/home-screen-reference-state.md`
+  - `docs/vision/olivia-prototype.html`
+  - the design docs and checklist
+- Seed a reproducible demo dataset that can render the exact Home reference content listed in `home-screen-reference-state.md`.
+- Treat the runtime status-bar decision in `home-screen-reference-state.md` as settled for this redesign unless product docs are explicitly revised.
+
+**Notes**
+- This step exists to eliminate hidden dependence on chat attachments.
+- The seeded demo state is required for visual QA even if normal development data differs.
+
 ### Step 1: Lock the redesign route map and preserve behavior boundaries
 **Outcome:** The current PWA route structure is translated into the design-doc screen model without losing inbox functionality.
 
@@ -126,10 +210,10 @@ Use this matrix during implementation so the redesign stays tied to the reposito
 - Produce a one-to-one migration table from current routes and components to target surfaces:
   - `review-page.tsx` -> split into `Home` summary content plus `Tasks` full-list content
   - `add-page.tsx` -> fold capture affordances into `Tasks` and `Olivia`
-  - `item-detail-page.tsx` -> retain only if needed as a temporary supporting seam; do not leave it as primary IA without an explicit follow-up decision
-  - `settings-page.tsx` -> remove from primary navigation because `design-screens.md` places Settings outside MVP
+  - `item-detail-page.tsx` -> retain only as a supporting route if still needed during migration
+  - `settings-page.tsx` -> retain only as a supporting route if still needed during migration
   - `re-entry-page.tsx` -> redirect into the relevant tab surface rather than standing alone visually
-- Document which current routes remain temporary implementation seams during the redesign and which are removed from the user-facing nav.
+- Document that only the four tab routes require prototype-fidelity sign-off in this redesign.
 - Explicitly preserve approval-gated writes, spouse read-only behavior, and offline-aware sync while remapping screens.
 
 **Notes**
@@ -186,8 +270,9 @@ Use this matrix during implementation so the redesign stays tied to the reposito
   - fixed bottom nav
 - Match the target light-mode hierarchy for spacing, type scale, card radius, badge treatment, accent stripes, and lavender-violet palette.
 - Use live or derived app data so the home view is a real briefing surface rather than static mock markup.
+- Provide a seeded visual QA state that exactly reproduces the content listed in `docs/vision/home-screen-reference-state.md`.
 - Update visible example names and avatar initials so the primary operator reads as `Lexi` and the spouse reads as `Alexander`.
-- Treat the current attached screenshot as the acceptance target for the finished `/` route and the updated `olivia-prototype.html` as the durable repo reference.
+- Treat `docs/vision/home-screen-reference-state.md` and the updated `olivia-prototype.html` as the durable acceptance reference when the screenshot is unavailable.
 
 **Notes**
 - This is the highest-priority visual step because the user explicitly defined the index page target.
@@ -241,20 +326,20 @@ Use this matrix during implementation so the redesign stays tied to the reposito
 - The goal is calm browseability and recall, not a dense admin index.
 
 ### Step 8: Reconcile supporting routes and prototype-only utilities with the final IA
-**Outcome:** The redesigned app does not leak implementation scaffolding into the primary experience.
+**Outcome:** The redesigned app does not leak implementation scaffolding into the primary experience, and supporting-route scope is no longer an open visual question.
 
 **Work items**
 - Move notification re-entry into the relevant destination tab or stateful deep link rather than a standalone user-facing page.
-- Decide whether task detail and settings remain:
-  - hidden/internal during prototype validation
-  - folded into tab-local interactions
-  - or explicitly deferred pending a follow-up design decision
+- Keep `item detail`, `settings`, and `re-entry` out of primary navigation.
+- If those routes remain during the redesign, style them with the shared token system and keep them usable, but do not treat them as prototype-fidelity blockers.
+- If those routes can be removed or folded into tab-local interactions without product regression, prefer that simpler outcome.
 - Remove any user-facing surface that contradicts the four-tab MVP IA unless the docs are updated first.
 - Keep developer diagnostics available in a way that does not distort the end-user prototype.
 
 **Notes**
 - This step is where the redesign resolves the current mismatch between implementation seams and the design-doc screen model.
 - Do not quietly keep conflicting routes in the main experience just because they already exist.
+- The visual fate of supporting routes is now bounded: token-compliant and hidden from main nav, but not required for screenshot-level fidelity.
 
 ### Step 9: Run a dedicated naming and copy pass
 **Outcome:** User-facing prototype copy matches the requested household names and Olivia voice.
@@ -270,6 +355,7 @@ Use this matrix during implementation so the redesign stays tied to the reposito
 
 ## Verification
 ### Step 1 verification
+- Confirm `docs/vision/home-screen-reference-state.md` is sufficient to execute the Home redesign without the screenshot.
 - Confirm the final route map exposes the four-tab shell as the only primary navigation model.
 - Verify that write-gating, read-only spouse behavior, and re-entry behavior still have explicit homes after the route migration.
 
@@ -281,8 +367,9 @@ Use this matrix during implementation so the redesign stays tied to the reposito
 - Manually verify the bottom nav is always visible, always synced, and visually matches the component spec in both modes.
 
 ### Step 4 verification
-- Compare the rendered `/` route at mobile width against the screenshot target and `olivia-prototype.html`.
+- Compare the rendered `/` route at mobile width against `docs/vision/home-screen-reference-state.md`, `olivia-prototype.html`, and the screenshot asset if it exists.
 - Verify the Home screen passes the applicable checklist sections for universal checks, animation, nudge card, task cards, event tiles, and bottom nav.
+- Verify the seeded demo state can reproduce the exact Home reference content from `home-screen-reference-state.md`.
 
 ### Step 5 verification
 - Run targeted interaction tests for task filtering, add-item capture, read-only spouse mode, and completed/open grouping.
@@ -299,6 +386,7 @@ Use this matrix during implementation so the redesign stays tied to the reposito
 ### Step 8 verification
 - Confirm old prototype/debug routes are not exposed in the main user-facing nav.
 - Confirm deep links and notification re-entry land in the correct redesigned surface.
+- Confirm supporting routes, if retained, are clearly secondary and do not block sign-off for the four primary tabs.
 
 ### Step 9 verification
 - Manually review user-facing copy for `Lexi` / `Alexander` consistency.
@@ -309,6 +397,7 @@ Use this matrix during implementation so the redesign stays tied to the reposito
 - A demo video showing all four tabs in the redesigned shell
 - A screenshot of the final light-mode `/` route at mobile width matching the target home screen
 - At least one dark-mode screenshot proving token-driven theming works after the redesign
+- A committed durable visual reference asset at `docs/vision/home-screen-light-reference.png` or `docs/vision/home-screen-light-reference.webp` if recoverable from the stakeholder-provided screenshot
 
 ### Behavior-preservation evidence
 - Passing targeted automated tests for task review, add-item preview/confirm, spouse read-only access, and key Olivia interactions
@@ -317,24 +406,22 @@ Use this matrix during implementation so the redesign stays tied to the reposito
 ### Design-compliance evidence
 - A completed checklist pass record noting which sections of `design-checklist.md` were applied to each screen
 - Before/after screenshots or short notes for any intentional deviations from the prototype, with rationale
+- A seeded demo-state note confirming that `/` can reproduce the exact Home reference content from `docs/vision/home-screen-reference-state.md`
 
 ### Copy and naming evidence
 - Final screenshots showing `Lexi` and `Alexander` in the redesigned prototype content
 
 ## Risks / Open Questions
-### 1. The current implementation IA conflicts with the design-screen IA
-`design-screens.md` defines a flat four-tab MVP and explicitly places Settings and Task Detail outside MVP, while the current app ships `settings-page.tsx` and `item-detail-page.tsx` as first-class routes. The redesign should not hide this conflict. It should either demote those routes to supporting seams or trigger a docs follow-up if they must remain first-class.
-
-### 2. Screenshot fidelity can drift if the target remains only in chat
-The attached rendered screenshot is currently transient conversation input. The updated prototype HTML and design docs reduce this risk, but if implementation needs pixel-level fidelity checks later, the team should add a durable screenshot asset under `docs/vision/`.
-
-### 3. User-facing naming could be confused with role semantics
+### 1. User-facing naming could be confused with role semantics
 Renaming visible personas to `Lexi` and `Alexander` should not accidentally blur the difference between presentation copy and internal access-control semantics. The redesign should keep that distinction explicit in code and tests.
 
-### 4. A pure restyle will not be enough
+### 2. The runtime-versus-prototype status-bar distinction must remain explicit
+The design docs intentionally separate prototype mock chrome from real PWA runtime behavior. Implementation should preserve the intended visual spacing without accidentally treating a fake status bar as a mandatory production feature.
+
+### 3. A pure restyle will not be enough
 Because the current app's route map and shell differ materially from the documented prototype, the work is larger than a CSS refresh. Implementation should treat this as a navigation and screen-architecture migration with regression testing, not a token-only restyle.
 
 ## Deferred Follow-Ups
 - Decide whether task detail should return later as a documented MVP-plus surface once the prototype-aligned shell is stable.
 - Decide whether Settings should become a first-class route only after the current four-tab design direction has been implemented and validated.
-- Add a durable screenshot asset to `docs/vision/` if future implementation work needs image-based visual diffing rather than prototype HTML alone.
+- Add additional durable screenshot assets for `Tasks`, `Olivia`, and `Memory` if future implementation work needs image-based visual diffing beyond the Home route.
