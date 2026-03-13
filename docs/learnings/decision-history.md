@@ -55,7 +55,7 @@ Use this structure for future entries:
 - Rationale: keeping reminders as item properties reduces the data model complexity for the first spec and avoids locking in a reminder architecture before inbox usage patterns are understood. A dedicated reminder spec can be written once real use reveals what reminders need to do.
 - Alternatives considered: modeling reminders as first-class objects from the start with links to inbox items.
 - Trade-offs: simpler initial data model and narrower spec scope, but may require a data migration or model expansion later if reminders turn out to need richer behavior.
-- Status: active
+- Status: superseded
 - Related docs: `docs/specs/shared-household-inbox.md`
 
 ### D-006: The inbox spec is channel-agnostic and does not prescribe an interface surface
@@ -117,3 +117,33 @@ Use this structure for future entries:
 - Trade-offs: gains momentum and a clearer handoff into implementation planning, but shifts remaining execution ambiguity into explicit planning work rather than allowing further open-ended product refinement first.
 - Status: active
 - Related docs: `docs/specs/shared-household-inbox.md`, `docs/roadmap/milestones.md`, `docs/strategy/system-architecture.md`
+
+### D-011: Horizon 2 is complete enough to move Olivia into Horizon 3
+- Date: 2026-03-13
+- Area: roadmap progression
+- Decision: Treat Horizon 2 and the associated MVP milestones as complete, and move Olivia into Horizon 3 planning and documentation.
+- Rationale: Olivia now has a working shared household inbox implementation and a clear enough product baseline to expand into the next product horizon without reopening the original MVP wedge.
+- Alternatives considered: waiting for a longer household-validation period before broadening the roadmap; continuing to treat the project as an MVP-only effort.
+- Trade-offs: gains product momentum and clearer post-MVP planning, but accepts that some Horizon 2 validation remains implementation-shaped rather than usage-shaped.
+- Status: active
+- Related docs: `docs/roadmap/roadmap.md`, `docs/roadmap/milestones.md`
+
+### D-012: Horizon 3 priorities are reminders, shared lists, recurring routines, and later meal planning
+- Date: 2026-03-13
+- Area: product strategy
+- Decision: Horizon 3 should focus first on first-class reminders, then shared lists, then recurring household routines, with meal planning explicitly positioned as a later Horizon 3 workflow. The first new feature-spec target should therefore be `first-class reminders`.
+- Rationale: these priorities extend Olivia's household coordination model directly from the MVP while staying close to the stakeholder's highest-priority household pain points.
+- Alternatives considered: broadening Horizon 3 evenly across all possible coordination features; prioritizing spouse collaboration or memory-first workflows before reminders and lists.
+- Trade-offs: improves focus and sequencing, but intentionally defers some attractive adjacent workflows until shared coordination primitives are clearer.
+- Status: active
+- Related docs: `docs/roadmap/roadmap.md`, `docs/vision/product-vision.md`
+
+### D-013: Reminders will be reconsidered as a first-class Horizon 3 capability
+- Date: 2026-03-13
+- Area: feature scope
+- Decision: Horizon 3 should explicitly revisit the MVP choice to model reminders only as inbox item properties and should treat first-class reminders as an active product-scoping area.
+- Rationale: the MVP simplification served the inbox workflow well, but Horizon 3 expands into recurring routines and planning support where reminder behavior likely deserves its own product model.
+- Alternatives considered: keeping reminders embedded in inbox items indefinitely; immediately defining the final reminder architecture during roadmap refresh.
+- Trade-offs: creates some product and modeling work in Horizon 3, but avoids forcing future coordination workflows into an MVP-specific simplification.
+- Status: active
+- Related docs: `docs/roadmap/roadmap.md`, `docs/learnings/assumptions-log.md`, `docs/specs/shared-household-inbox.md`

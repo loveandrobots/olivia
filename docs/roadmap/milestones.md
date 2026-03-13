@@ -1,7 +1,7 @@
 # Olivia Milestones
 
 ## Purpose
-These milestones define the evidence required for Olivia to move from concept to implementation. They are intended to prevent premature building and to give future agents clear readiness gates.
+These milestones define the evidence required for Olivia to move from concept through MVP and into post-MVP product expansion. They are intended to give future agents clear readiness gates without forcing them to re-derive what phase the project is in.
 
 Unlike `docs/roadmap/roadmap.md`, this document is not a product horizon map. It is an execution-readiness system: what must be true before the project should advance.
 
@@ -14,6 +14,8 @@ Each milestone should be considered complete only when:
 
 ## M0: Project Foundation
 Objective: establish shared understanding of what Olivia is and how the project should be documented.
+
+Status: complete
 
 Required artifacts:
 - `docs/vision/product-vision.md`
@@ -30,8 +32,13 @@ Exit criteria:
 Evidence of completion:
 - a new agent can explain Olivia's purpose, boundaries, and guiding principles from the docs alone
 
+Completion note:
+- Olivia has durable vision, ethos, and agentic development guidance in place.
+
 ## M1: Product Definition
 Objective: define the first meaningful product slice and the user problems it addresses.
+
+Status: complete
 
 Required artifacts:
 - `docs/roadmap/roadmap.md`
@@ -49,8 +56,13 @@ Exit criteria:
 Evidence of completion:
 - a future agent can identify what Olivia should try to do first and what it should deliberately not try to do yet
 
+Completion note:
+- The shared household state and follow-through wedge was chosen and documented.
+
 ## M2: Delivery Planning
 Objective: make the project execution-ready for feature-level planning.
+
+Status: complete
 
 Required artifacts:
 - `docs/specs/spec-template.md`
@@ -67,8 +79,13 @@ Exit criteria:
 Evidence of completion:
 - a future agent can draft a high-quality feature spec without inventing the documentation structure from scratch
 
+Completion note:
+- Olivia now has durable memory docs, a reusable spec template, and stable planning conventions.
+
 ## M3: Build Readiness
 Objective: prepare the first implementation-ready feature spec or set of specs.
+
+Status: complete
 
 Required artifacts:
 - at least one completed feature spec
@@ -84,22 +101,87 @@ Exit criteria:
 Evidence of completion:
 - an implementation plan can be generated directly from the feature spec without needing to rediscover basic product intent
 
+Completion note:
+- The shared household inbox spec was approved for implementation planning and translated into a concrete build plan.
+
 ## M4: MVP In Use
 Objective: deliver and evaluate the first genuinely useful household workflow.
+
+Status: complete
 
 Required artifacts:
 - implementation-ready plan
 - built MVP slice
-- validation notes from actual use
-- updated learnings and decisions based on usage
+- validation notes from actual use, or an explicit stakeholder decision to advance based on implementation completeness
+- updated learnings and decisions based on usage or implementation outcomes
 
 Exit criteria:
-- Olivia is used for at least one meaningful household coordination workflow
-- the workflow produces visible value for the stakeholder
-- product learnings from real usage are captured durably
+- Olivia has a working household coordination workflow with a credible product baseline
+- the stakeholder can judge the MVP complete enough to expand the product surface
+- product learnings from usage or implementation are captured durably enough to guide the next horizon
 
 Evidence of completion:
-- the project can show a specific household problem that Olivia now helps solve better than the prior ad hoc process
+- the project can point to a built workflow, a concrete implementation center of gravity, and a documented reason the next horizon can begin
+
+Completion note:
+- The stakeholder chose to advance based on implementation completeness and product-shape confidence rather than waiting for a longer household validation cycle.
+
+## M5: Horizon 3 Scoping
+Objective: define the product shape of the household coordination layer well enough that future planning compounds on the MVP rather than drifting away from it.
+
+Status: in progress
+
+Required artifacts:
+- updated `docs/roadmap/roadmap.md` with concrete Horizon 3 scope
+- updated `docs/roadmap/milestones.md`
+- updated glossary and learnings reflecting the post-MVP product state
+- an explicitly named first Horizon 3 feature-spec target, currently `first-class reminders`
+
+Exit criteria:
+- Horizon 3 product direction is concrete enough that implementation agents do not need to guess what comes after the inbox
+- the relationship between the inbox, reminders, recurring routines, and shared lists is described at a product level
+- the next workflow area is specific enough to enter feature-spec work without ambiguity about which spec comes first
+
+Evidence of completion:
+- a new agent can identify what Olivia should build next, why it matters, and what should remain deferred
+
+## M6: Coordination Layer Build Readiness
+Objective: prepare the first Horizon 3 workflow or set of workflows for implementation planning.
+
+Status: not started
+
+Required artifacts:
+- implementation-ready feature specs for the next Horizon 3 workflow area
+- architectural notes for any shared infrastructure introduced by Horizon 3, such as recurrence or cross-workflow notifications
+- implementation plan for at least the first Horizon 3 workflow
+- updated assumptions, decisions, and open questions tied to the new workflow area
+
+Exit criteria:
+- each planned workflow has acceptance criteria, scope boundaries, and trust-model implications documented
+- shared infrastructure decisions are bounded enough that engineering plans do not have to resolve product ambiguity
+- implementation agents can plan the next build phase directly from the docs
+
+Evidence of completion:
+- an implementation plan can be generated for the next Horizon 3 workflow without rediscovering the product model
+
+## M7: Coordination Layer In Use
+Objective: deliver and evaluate household coordination workflows beyond the original inbox so Olivia becomes a broader coordination surface.
+
+Status: not started
+
+Required artifacts:
+- built Horizon 3 workflows
+- validation notes from actual use
+- updated learnings and decision history based on post-MVP household use
+- evidence of how the new workflows integrate with the inbox and broader coordination model
+
+Exit criteria:
+- the household uses capabilities beyond the original inbox for routine coordination
+- the coordination layer reduces friction for recurring work, shared lists, or adjacent planning tasks
+- follow-on product priorities are informed by actual use rather than only roadmap intent
+
+Evidence of completion:
+- the project can show specific household coordination problems Olivia now supports beyond the original inbox workflow
 
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:
@@ -108,11 +190,14 @@ Before moving to the next milestone, ask:
 - Are remaining unknowns explicitly visible?
 - Is the next phase narrow enough to execute well?
 - Is there evidence, not optimism, that the project is ready to advance?
+- Does the next capability extend the existing product model coherently rather than becoming a disconnected tool?
+- Is any shared infrastructure reusable across workflow types, or are we hiding product ambiguity inside engineering work?
 
 ## Decisions
 - Milestones are defined by readiness and evidence, not by volume of output.
 - The project should not move into implementation until feature-level ambiguity is low enough for agent execution.
+- Post-MVP milestones should make product expansion legible, not only initial build readiness.
 
 ## Open Questions
-- What level of household validation should be required before broadening scope?
+- What level of household validation should be required before broadening scope after a working MVP exists?
 - Should milestone reviews later become a recurring template or checklist?

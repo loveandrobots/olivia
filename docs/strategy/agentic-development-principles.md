@@ -18,7 +18,25 @@ When multiple artifacts touch the same topic, future agents should prefer:
 3. learnings and decision-history docs for durable context
 4. feature specs for scope and acceptance criteria
 5. implementation plans for execution details
-6. transient conversations only when a durable artifact does not exist yet
+6. working code and tests for current system behavior
+7. transient conversations only when a durable artifact does not exist yet
+
+## Context-Efficient Orientation
+Olivia should preserve durable product context without forcing every agent to read every strategic document on every task.
+
+The orientation principle is:
+- read the minimum durable context needed to do the current task well
+- prefer task-relevant docs over ritualized full-project rereads
+- use the codebase itself as an orientation artifact once implementation exists
+- reserve full-project orientation for major planning, context recovery, or ambiguous sessions
+
+In practice, future agents should use a tiered approach:
+- `Tier 0`: use always-loaded rules and agent guidance for baseline guardrails
+- `Tier 1`: read `docs/roadmap/milestones.md` plus the specific artifact directly relevant to the task
+- `Tier 2`: read the small set of docs that fit the work type, such as vision plus roadmap for PM work, or the relevant spec and implementation plan for coding work
+- `Tier 3`: read the full core orientation set only when recovering broad project context or starting a major planning session
+
+The goal is not less documentation discipline. The goal is to protect token budget and context window while keeping work anchored to durable sources of truth.
 
 ## Documentation Rules
 
@@ -59,6 +77,17 @@ In practice, the default PM workflow is:
 3. recommend a direction and explain why
 4. record the outcome in durable project docs
 5. preserve unresolved issues as open questions rather than burying them in prose
+
+## Working With An Existing Codebase
+Once Olivia has working implementation, future agents should orient to both docs and code rather than treating documentation as the only useful context.
+
+That means:
+- use the repo structure as a fast orientation aid
+- inspect the relevant spec and implementation plan before proposing behavior changes
+- read `packages/domain` before changing product rules or workflow semantics
+- read `packages/contracts` before changing API shape or client-server expectations
+- treat existing tests as a meaningful statement of intended current behavior
+- update docs when implementation changes invalidate an assumption, decision, or planning artifact
 
 ## Feature Spec Standard
 Every future feature spec should aim to include:
@@ -124,6 +153,7 @@ A good artifact for Olivia:
 ## Facts
 - Olivia is intended to be developed agentically with minimal exceptions.
 - Future agents may begin with very little session context.
+- Olivia now has a working codebase alongside its strategic documentation system.
 - Durable documentation is therefore part of the product delivery system, not an afterthought.
 
 ## Decisions
@@ -131,6 +161,7 @@ A good artifact for Olivia:
 - Durable learnings should be curated into dedicated docs rather than left in raw conversation history.
 - Strategic documentation should guide implementation agents before stack-level details are finalized.
 - The PM operating model should live in the durable docs, not only in planning-session artifacts.
+- Orientation guidance should be proportional to the task rather than forcing a full-doc reread for every session.
 
 ## Open Questions
 - Should the project adopt a formal document metadata standard later, such as status, owner, and last-reviewed fields?

@@ -5,6 +5,7 @@ alwaysApply: true
 
 # Olivia Product Guardrails
 
+- Olivia is an agentic household product with a working codebase and durable documentation system.
 - Olivia is a household command center, not a general-purpose assistant.
 - Favor shared household state and follow-through over broader assistant ambitions.
 - Preserve local-first handling of sensitive household data and durable records.

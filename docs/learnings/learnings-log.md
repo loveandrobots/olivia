@@ -61,3 +61,21 @@ Use this structure for future entries:
 - Implication: Olivia should use TanStack heavily where it clearly fits the client problem, but remain selective about adopting broader ecosystem pieces when they would also define core data or AI boundaries prematurely.
 - Source: architecture recommendation and follow-up stack evaluation
 - Related docs: `docs/strategy/system-architecture.md`
+
+### L-006: Once implementation exists, code and tests become meaningful orientation artifacts
+- Date: 2026-03-13
+- Area: agent workflow
+- Learning: Olivia's docs remain the source of truth for product intent, but once the MVP exists, the codebase structure, shared contracts, domain rules, and tests become essential context for understanding current system behavior.
+- Why it matters: future agents should not spend their token budget re-reading every strategic doc for routine implementation work when task-relevant code and tests provide more precise context.
+- Implication: orientation guidance should be tiered by task, and implementation work should read the relevant spec or plan plus the corresponding code paths rather than defaulting to a full strategic reread.
+- Source: Horizon 3 documentation refresh
+- Related docs: `docs/strategy/agentic-development-principles.md`, `AGENTS.md`
+
+### L-007: The inbox reminder deferral becomes a limiting constraint once Horizon 3 expands into routines and planning
+- Date: 2026-03-13
+- Area: product scope evolution
+- Learning: Treating reminders only as inbox item properties was a useful MVP simplification, but it becomes a constraint once Olivia expands into first-class reminders, recurring routines, and broader planning support.
+- Why it matters: Horizon 3 should build on the inbox without forcing every future workflow into the inbox's original data model.
+- Implication: reminder and recurrence concepts should be reconsidered explicitly during Horizon 3 scoping rather than inherited unchanged from the MVP.
+- Source: Horizon 3 roadmap and milestone update
+- Related docs: `docs/roadmap/roadmap.md`, `docs/learnings/decision-history.md`

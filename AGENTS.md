@@ -2,21 +2,43 @@
 
 This file is a derivative convenience layer for agentic tools such as Cursor. The `docs/` directory remains the source of truth. If any instruction here, in `.cursor/rules/`, or in `skills/` conflicts with `docs/`, follow `docs/` and update the derivative files later.
 
-## Required Orientation
+## Context Orientation
 
-Before substantial work, read these docs in order:
+Do not reread the full project packet for every task. Orient proportionally to the work:
 
-1. `docs/vision/product-vision.md`
-2. `docs/vision/product-ethos.md`
-3. `docs/strategy/agentic-development-principles.md`
-4. `docs/glossary.md`
-5. `docs/roadmap/roadmap.md`
-6. `docs/roadmap/milestones.md`
-7. `docs/learnings/decision-history.md`
-8. `docs/learnings/assumptions-log.md`
-9. `docs/learnings/learnings-log.md`
+### Tier 0: Always-loaded guidance
 
-Then read the relevant feature spec, planning artifact, or learnings doc for the task at hand.
+Use the context already injected into the session first:
+- `.cursor/rules/` for project guardrails and writing standards
+- `AGENTS.md` for repo posture and orientation guidance
+
+### Tier 1: Minimal orientation
+
+For most tasks, read:
+1. `docs/roadmap/milestones.md`
+2. the single most relevant artifact for the task at hand
+
+Examples:
+- coding task: relevant spec or implementation plan
+- learnings update: the triggering doc plus the relevant learnings log
+- doc cleanup: the doc being edited plus any directly upstream source
+
+### Tier 2: Workflow-specific orientation
+
+Use a slightly broader read when the work affects product direction or system behavior:
+- PM and roadmap work: `docs/vision/product-vision.md`, `docs/vision/product-ethos.md`, `docs/roadmap/roadmap.md`, `docs/roadmap/milestones.md`, `docs/learnings/decision-history.md`
+- feature-spec work: vision, ethos, relevant existing specs, `docs/specs/spec-template.md`, `docs/glossary.md`
+- implementation work: relevant spec, relevant implementation plan, `docs/strategy/system-architecture.md`, then the corresponding code in `packages/domain` and `packages/contracts`
+- doc review: the target artifact, `docs/vision/product-ethos.md`, `docs/glossary.md`, `docs/strategy/agentic-development-principles.md`, and `docs/learnings/decision-history.md`
+- learnings updates: `docs/learnings/decision-history.md`, `docs/learnings/assumptions-log.md`, `docs/learnings/learnings-log.md`, plus the doc that triggered the update
+
+### Tier 3: Full orientation
+
+Use `skills/olivia-orient.md` when:
+- starting a major planning session
+- recovering after a long context gap
+- unsure which milestone or horizon is active
+- needing a broad project-state summary before deciding what to do next
 
 ## Source-Of-Truth Hierarchy
 
@@ -27,14 +49,25 @@ When multiple artifacts touch the same topic, prefer:
 3. learnings and decision-history docs for durable context
 4. feature specs for workflow scope and acceptance criteria
 5. implementation plans for execution details
-6. transient chat history only when no durable artifact exists yet
+6. working code and tests for current system behavior
+7. transient chat history only when no durable artifact exists yet
 
 ## Repo Posture
 
-- Olivia is a documentation-first, agentic project.
+- Olivia is an agentic project with a working codebase and a durable documentation system.
 - Durable docs are part of the delivery system, not project overhead.
 - Product-definition work should follow the PM operating model: gather focused input, recommend a direction, record rationale, and leave execution-ready artifacts.
 - Avoid reopening settled decisions without naming the conflict and the reason to revisit it.
+
+## Codebase Orientation
+
+When implementation exists, use the codebase as part of orientation:
+- `apps/pwa`: installable mobile-first client and route-level UX
+- `apps/api`: HTTP API, jobs, AI adapters, and persistence-facing application logic
+- `packages/domain`: workflow rules, item logic, flags, and suggestion behavior
+- `packages/contracts`: shared schemas and typed client-server boundaries
+
+Read `packages/domain` before proposing behavior changes. Read `packages/contracts` before changing API or sync shape.
 
 ## Product Guardrails
 
@@ -56,7 +89,7 @@ When multiple artifacts touch the same topic, prefer:
 ## Specs, Plans, And Milestones
 
 - Check `docs/roadmap/milestones.md` before claiming readiness or starting major implementation work.
-- Do not begin implementation unless the project is at M3 (Build Readiness) or the user explicitly asks to work earlier.
+- Do not begin major implementation for a new workflow area unless the relevant readiness milestone is satisfied or the user explicitly asks to work earlier.
 - Use `docs/specs/spec-template.md` for new feature or workflow specs.
 - Implementation plans should reference the source docs they derive from, define verification evidence, and avoid resolving product ambiguity inside engineering tasks.
 
@@ -77,7 +110,7 @@ Use the correct log:
 
 ## Available Skills
 
-- `skills/olivia-orient.md`: use at the start of a session to orient, assess milestones, and recommend the next action.
+- `skills/olivia-orient.md`: use for full-project orientation, milestone assessment, and context recovery when Tier 3 orientation is warranted.
 - `skills/olivia-feature-spec.md`: use when drafting or revising a feature spec.
 - `skills/olivia-doc-review.md`: use when reviewing a strategic doc, spec, or plan for compliance and clarity.
 - `skills/olivia-learnings-update.md`: use when adding or updating assumptions, learnings, or decisions.
