@@ -47,6 +47,9 @@ Durable takeaways from planning, implementation, or usage that should shape futu
 ### Local-First
 A design principle where sensitive logic and data are stored and controlled locally wherever practical, with external services used selectively rather than as the authoritative core of the system.
 
+### Meal Plan
+A structured plan for household meals over a defined time period, potentially linked to shared lists, preparation tasks, and recurring planning rituals.
+
 ### Milestone
 A readiness gate that indicates the project can move to the next phase based on documented evidence, not just effort expended.
 
@@ -58,6 +61,18 @@ An unresolved issue that should remain visible until answered by evidence or sta
 
 ### PM Operating Model
 The documented decision-making posture for product-management work on Olivia: gather focused input, recommend a direction, document rationale, and leave behind execution-ready artifacts.
+
+### Reminder
+A first-class household follow-through object that represents something Olivia should surface or prompt about at a meaningful time, potentially linked to an inbox item, a recurring routine, or a future planning workflow.
+
+### Recurrence Rule
+The schedule definition for a recurring reminder, routine, or task, such as daily, weekly, monthly, or a custom interval pattern.
+
+### Recurring Routine
+A household task or obligation that repeats on a defined schedule, such as cleaning, maintenance, bills, or other ongoing coordination work.
+
+### Shared List
+A collaborative list for a specific household purpose, such as grocery shopping, packing, or other lightweight collection-based coordination.
 
 ### Shared Household State
 The subset of household state that should be visible or understandable across household members for coordination purposes.

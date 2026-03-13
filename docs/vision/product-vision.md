@@ -44,6 +44,10 @@ That wedge is broad enough to create value across tasks, reminders, planning, an
 - What should we remember?
 - What needs a nudge or decision?
 
+That first wedge has now been implemented through the shared household inbox workflow. The next product step is not to replace that wedge, but to expand it into adjacent coordination capabilities such as first-class reminders, recurring routines, and shared household lists.
+
+The next feature-spec target should be `first-class reminders`, using only the minimum recurrence model needed to support reminder-driven follow-through before broader recurring-routine design is specified.
+
 ## What Olivia Is
 - A local-first household coordination system with AI-assisted support where useful.
 - A durable source of household context, reminders, plans, and follow-through.
@@ -64,24 +68,25 @@ Early product success should look like:
 - reduced dependence on one person's memory as the default operating system
 
 ## Facts
-- The project is greenfield.
 - The product is intended to help manage the household lives of the stakeholder and spouse.
+- Olivia has a working MVP implementing the shared household inbox workflow across the PWA, API, domain layer, and shared contracts.
 - Logic and sensitive information should be stored locally.
 - External AI providers may be used where helpful, but are not the system of record.
 - The current trust model direction is advisory-only.
 - The recommended MVP surface is an installable mobile-first PWA.
-- The next product-definition step is to turn the shared household inbox workflow and chosen interface direction into an implementation-ready plan.
+- The next product-definition step is to define the Horizon 3 coordination layer that expands the inbox into first-class reminders, recurring routines, and adjacent household workflows.
 
 ## Assumptions
 - A household command center is a stronger first product shape than a general assistant.
 - The project owner will be the most active early user and evaluator.
-- Shared household state is a better first wedge than a single narrow utility such as reminders alone.
+- Shared household state was the right first wedge and should remain the foundation for adjacent coordination workflows.
 - Text interaction is sufficient for early value, even if richer interfaces arrive later.
 
 ## Open Questions
-- What is the minimum notification set that creates useful signal without creating noise?
+- What is the minimum first-class reminder model that creates useful signal without creating overlap or noise?
+- How should shared lists and recurring routines relate to the existing inbox model?
 - What evidence would justify moving beyond the PWA to a native shell or shared-display mode?
-- What level of spouse visibility or lightweight interaction is most useful in the earliest version without requiring full collaboration parity?
+- What level of spouse visibility or lightweight interaction is most useful in the next coordination-layer workflows without requiring full collaboration parity?
 
 ## Deferred Decisions
 - Whether native clients or a dedicated shared-display surface are warranted beyond the PWA.

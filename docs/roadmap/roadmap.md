@@ -25,6 +25,8 @@ flowchart TD
 ```
 
 ## Horizon 1: Foundation And Definition
+Status: complete
+
 Focus: define the product clearly enough that future work compounds rather than drifts.
 
 This horizon is about establishing:
@@ -33,9 +35,16 @@ This horizon is about establishing:
 - durable project memory
 - the first clear product wedge
 
+Delivered foundation:
+- durable product docs that define Olivia's purpose, trust model, and PM operating model
+- a learnings system for assumptions, decisions, and reusable takeaways
+- a roadmap and milestone model future agents can use to orient quickly
+
 Success at this horizon means Olivia has a strong product center of gravity before substantial implementation begins.
 
 ## Horizon 2: Useful MVP
+Status: complete
+
 Focus: deliver one narrow but genuinely valuable workflow around shared household state and follow-through.
 
 Recommended product shape:
@@ -46,16 +55,39 @@ Recommended product shape:
 - explicit ownership, status, reminders, and next-step visibility
 - a primary-operator model for the stakeholder, with spouse visibility or lightweight participation allowed but full collaboration deferred
 
+Delivered MVP shape:
+- a working shared household inbox workflow across the PWA, API, domain layer, and shared contracts
+- approval-aware writes, local-first persistence, and a mobile-first review surface
+- a concrete product and architecture center of gravity future work can extend rather than re-invent
+
 The goal is not a complete assistant. The goal is a workflow the household would actually miss if it disappeared.
 
 ## Horizon 3: Household Coordination Layer
+Status: active
+
 Focus: expand from one useful workflow into a coherent coordination surface for routine household operations.
 
-Likely capabilities:
-- stronger shared task and obligation tracking
-- reminder and planning support tied to household context
-- more complete visibility into who owns what and what is approaching
-- better support for spouse participation and shared household use
+Product direction:
+- turn reminders into a first-class capability rather than only an inbox item property
+- add recurring routines for chores, maintenance, bills, and other repeated household obligations
+- introduce shared lists for grocery, shopping, packing, and other lightweight collaborative list workflows
+- extend the inbox into a broader coordination layer with clearer ownership, due-state visibility, and planning views
+- reserve meal planning as a later Horizon 3 expansion once recurring and list primitives are clear
+
+Near-term workflow priorities:
+1. first-class reminders
+2. shared lists
+3. recurring routines
+4. meal planning
+
+First Horizon 3 spec target:
+- write a first-class reminder spec next, including the minimum recurrence model needed for reminder-driven follow-through without yet solving every recurring-routine use case
+
+How Horizon 3 builds on the MVP:
+- the inbox remains the capture and follow-through foundation for open household work
+- reminders and recurring routines should reuse the same trust model, ownership model, and history expectations where possible
+- shared lists should feel adjacent to the inbox, but not be forced into the inbox model if list behavior is materially different
+- meal planning should connect cleanly to shared lists and routine planning rather than becoming a standalone kitchen app
 
 This is where Olivia starts to feel less like a single tool and more like a household coordination layer.
 
@@ -82,8 +114,10 @@ This is intentionally later. Olivia should earn the right to act by first provin
 
 ## Near-Term Product Bets
 - The first enduring value will come from reducing coordination overhead, not from maximizing AI novelty.
-- Shared state and follow-through will likely unlock adjacent value in reminders, planning, and memory.
-- Household usefulness should be proven in real life before broadening the interface or autonomy model.
+- The inbox implementation gives Olivia a stable product center; Horizon 3 should compound on that rather than reopening the MVP wedge.
+- Shared state and follow-through should now expand into reminders, recurring routines, and shared lists before broader assistant behaviors.
+- Meal planning is promising, but should follow only after recurring and list primitives prove they fit the household coordination model.
+- Household usefulness should continue to shape expansion, but the next horizon can now be scoped from a real product baseline rather than a greenfield concept.
 
 ## Expansion Areas To Revisit Later
 - broader multi-user roles and permissions
@@ -105,15 +139,21 @@ This is intentionally later. Olivia should earn the right to act by first provin
 
 ## Assumptions
 - A narrow MVP will create more durable value than attempting broad assistant capabilities early.
-- The best early validation will come from real household use by the stakeholder and spouse.
+- Shared list workflows are distinct enough from inbox items that they may deserve their own product model.
+- Recurring schedule infrastructure can support reminders, routines, and future planning workflows without each feature inventing its own scheduling logic.
 - Long-term interface decisions can remain flexible beyond the chosen PWA MVP surface until product usage reveals whether native clients or other surfaces deserve to become primary.
 
 ## Open Questions
-- What is the minimum notification set that supports the PWA MVP without creating noise?
+- What is the minimum first-class reminder model that improves on the inbox without creating a second overlapping workflow?
+- How much recurrence should be defined inside the first reminder spec versus deferred to a later recurring-routines spec?
+- Which behaviors should be shared across inbox items, reminders, recurring routines, and lists, and which deserve separate workflow rules?
+- How should grocery and shopping lists relate to meal planning without forcing both into the same feature too early?
 - What evidence should justify moving beyond the PWA to native clients or a shared-display mode?
 - When should spouse-specific collaborative flows become first-class rather than secondary?
 
 ## Deferred Decisions
 - Detailed multi-user roles and permissions.
+- Detailed cross-workflow recurrence architecture.
 - Voice and proactive automation strategy.
+- Exact meal-planning product shape.
 - Final architecture and deployment model.

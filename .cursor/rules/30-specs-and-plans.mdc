@@ -6,7 +6,7 @@ alwaysApply: true
 # Olivia Spec And Plan Standards
 
 - Check `docs/roadmap/milestones.md` before claiming readiness or moving into a new phase.
-- Do not begin major implementation work unless the project is at M3 (Build Readiness) or the user explicitly asks to work earlier.
+- Do not begin major implementation work for a new workflow area unless the relevant readiness milestone is satisfied or the user explicitly asks to work earlier.
 - Use `docs/specs/spec-template.md` for any new feature or workflow spec.
 - Feature specs should be concrete enough that an implementation agent can execute without re-deriving product intent.
 - Feature specs should cover, when relevant:

@@ -320,28 +320,28 @@ No advisory exceptions apply to this spec.
 ## Facts, Assumptions, And Decisions
 
 **Facts:**
-- The project is greenfield with no existing data model or persistence layer.
+- This spec was written during the greenfield phase; Olivia now has an implemented inbox workflow and supporting data model.
 - Household data is sensitive and must be stored locally per the product ethos.
 - The stakeholder is the primary evaluator for this workflow.
 - The trust model is advisory-only in the first major phase (D-002).
 - The recommended MVP surface for implementation planning is an installable mobile-first PWA (D-007).
 
 **Assumptions:**
-- A-001: Shared household state is the best first wedge — this spec is the primary test of that assumption.
+- A-001: Shared household state was the right first wedge. This spec is now the implemented MVP foundation for later coordination workflows rather than the initial validation artifact.
 - A-004: A 14-day staleness threshold will surface genuinely stale items without creating excessive noise. Low confidence — requires real household usage to validate. See `docs/learnings/assumptions-log.md`.
 
 **Decisions:**
 - D-002: Advisory-only trust model applies throughout this spec without exception.
-- D-004: Spouse is read-only in this first spec; full collaborative participation is deferred.
+- D-004: Spouse is read-only in this first spec; broader collaborative participation is deferred to later product decisions rather than defined here.
 - D-007: Implementation planning for this workflow should target an installable mobile-first PWA rather than Slack or a native-first client strategy.
-- D-005: Reminders are not a first-class object in this spec — they are represented as item properties (due date, timeframe) rather than a separate entity type. See `docs/learnings/decision-history.md` for rationale and trade-offs.
+- D-005: Within this inbox spec, reminders are represented as item properties (due date, timeframe) rather than a separate entity type. This MVP-scoped decision has since been superseded for Horizon 3 planning; see `docs/learnings/decision-history.md` for the original rationale and the later reconsideration.
 
 ---
 
 ## Deferred Decisions
 
 - **Post-PWA client strategy**: Whether native clients or a dedicated shared-display mode are warranted beyond the installable PWA.
-- **Reminder model**: Whether reminders become a first-class object in a future spec or remain a property of inbox items. Revisit after the inbox workflow has been used and patterns around reminder needs become clear.
+- **Reminder model**: Horizon 3 now explicitly revisits whether reminders should become a first-class object in a future spec. This inbox spec does not attempt to resolve that broader model.
 - **Spouse lightweight participation**: Whether the spouse should be able to add items, mark items done, or leave notes on items. Deferred until primary-operator model is validated through real use. D-004 applies.
 - **Item archiving policy**: How long done or deferred items are retained before they are archived or removed from active views. No retention policy is defined in this spec.
 - **Notification delivery for spouse**: If items are assigned to the spouse, what mechanism informs them. Not addressed here; depends on interface surface and trust model expansion.

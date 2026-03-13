@@ -25,9 +25,9 @@ Use this structure for future entries:
 - Statement: Olivia will create the most early value by focusing first on shared household state and follow-through rather than on a single narrow utility or a general assistant experience.
 - Confidence: high
 - Why it matters: this assumption shapes roadmap sequencing, feature prioritization, and MVP scope.
-- Evidence so far: stakeholder goals emphasize reducing mental load across tasks, reminders, planning, and memory; a shared-state wedge best unifies those needs.
-- Validation path: draft early feature specs and test whether one narrow shared-state workflow can plausibly deliver value in real household use.
-- Status: active
+- Evidence so far: stakeholder goals emphasized reducing mental load across tasks, reminders, planning, and memory; the shared household inbox was then implemented as the product's MVP and is now the foundation for Horizon 3 expansion.
+- Validation path: completed for the MVP wedge. Future validation should focus on whether adjacent workflows still compound on shared household state rather than drifting into disconnected tools.
+- Status: validated
 - Related docs: `docs/vision/product-vision.md`, `docs/roadmap/roadmap.md`
 
 ### A-002: Advisory-only behavior is the right trust model for early phases
@@ -84,3 +84,36 @@ Use this structure for future entries:
 - Validation path: observe real usage once spouse participation or multi-device use increases. If conflicting edits or offline merge failures become common, revisit the sync model and evaluate stronger conflict-resolution infrastructure.
 - Status: active
 - Related docs: `docs/strategy/system-architecture.md`, `docs/specs/shared-household-inbox.md`, `docs/learnings/decision-history.md` (D-008)
+
+### A-007: Shared lists deserve a distinct workflow model from the inbox
+- Date: 2026-03-13
+- Area: product strategy
+- Statement: Grocery, shopping, packing, and similar shared lists are distinct enough from inbox items that they should be treated as a separate workflow type rather than only a status or category within the inbox.
+- Confidence: medium
+- Why it matters: this assumption shapes Horizon 3 product boundaries and determines whether Olivia extends the inbox model or introduces a sibling workflow.
+- Evidence so far: the stakeholder explicitly prioritized shared lists as a next-horizon workflow and described them as a separate household pain point.
+- Validation path: write the first shared-list spec and test whether list behavior, collaboration, and completion semantics differ enough from the inbox to justify a separate model.
+- Status: active
+- Related docs: `docs/roadmap/roadmap.md`, `docs/glossary.md`
+
+### A-008: Recurring schedule infrastructure can be shared across multiple Horizon 3 workflows
+- Date: 2026-03-13
+- Area: product architecture
+- Statement: A shared recurrence model can support reminders, recurring routines, and later planning workflows without each workflow inventing separate scheduling primitives.
+- Confidence: medium
+- Why it matters: this assumption affects how much shared infrastructure Horizon 3 should plan for before individual specs are written.
+- Evidence so far: the stakeholder prioritized reminders and recurring routines together, and both appear to need schedule-driven behavior.
+- Validation path: compare the first reminders and recurring-routines specs. If they share recurrence, notification, and ownership needs cleanly, treat recurrence as shared infrastructure; otherwise narrow it per workflow.
+- Status: active
+- Related docs: `docs/roadmap/roadmap.md`, `docs/strategy/system-architecture.md`
+
+### A-009: Meal planning should remain a later Horizon 3 workflow
+- Date: 2026-03-13
+- Area: roadmap sequencing
+- Statement: Meal planning is promising, but should follow reminders, shared lists, and recurring routines rather than being one of the first Horizon 3 implementation targets.
+- Confidence: medium
+- Why it matters: this assumption protects Horizon 3 from trying to solve too many household workflow shapes at once.
+- Evidence so far: the stakeholder prioritized meal planning behind reminders and new workflow primitives such as lists and routines.
+- Validation path: revisit after the first shared-list and recurring-workflow specs exist. If meal planning depends heavily on them, keep it later; if it reveals a more urgent pain point, reorder Horizon 3 priorities.
+- Status: active
+- Related docs: `docs/roadmap/roadmap.md`, `docs/learnings/decision-history.md`

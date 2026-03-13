@@ -2,7 +2,13 @@
 
 ## When To Use
 
-Use this at the start of a new session or before major work so you can recover project context from durable docs instead of chat history.
+Use this when a session needs full-project orientation rather than the lighter task-based orientation described in `AGENTS.md`.
+
+Typical cases:
+- starting a major planning session
+- recovering after a long context gap
+- unsure which milestone or horizon is active
+- needing a broad project-state summary before deciding the next action
 
 ## Goal
 
@@ -26,7 +32,7 @@ Read each file completely:
 
 ### 2. Assess milestone status
 
-- Compare the required artifacts for M0 through M4 in `docs/roadmap/milestones.md` against the current repo state.
+- Compare the required artifacts for M0 through the current active milestone in `docs/roadmap/milestones.md` against the current repo state.
 - Identify which milestone is currently active.
 - Check whether the exit criteria for the active milestone appear satisfied from the docs alone.
 
@@ -41,7 +47,7 @@ Use this structure:
 - State the active milestone, its objective, and which required artifacts are present versus missing.
 
 #### Milestone Gate Status
-- For each milestone M0 through M4, mark `Complete`, `In Progress`, or `Not Started` with a one-line reason.
+- For each milestone from M0 through the current horizon's active milestone, mark `Complete`, `In Progress`, or `Not Started` with a one-line reason.
 
 #### Active Assumptions
 - List all assumptions from `docs/learnings/assumptions-log.md` with their confidence.
@@ -65,5 +71,5 @@ Use this structure:
 
 - Use glossary terms from `docs/glossary.md`.
 - Do not propose work that contradicts an active decision without naming the conflict.
-- Do not start implementing features unless the project is at M3 or the user explicitly asks to work earlier.
+- Do not start implementing features unless the relevant readiness milestone is satisfied or the user explicitly asks to work earlier.
 - Treat `docs/` as the source of truth if another instruction layer conflicts.
