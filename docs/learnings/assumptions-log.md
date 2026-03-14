@@ -117,3 +117,14 @@ Use this structure for future entries:
 - Validation path: revisit after the first shared-list and recurring-workflow specs exist. If meal planning depends heavily on them, keep it later; if it reveals a more urgent pain point, reorder Horizon 3 priorities.
 - Status: active
 - Related docs: `docs/roadmap/roadmap.md`, `docs/learnings/decision-history.md`
+
+### A-010: Lightweight standalone reminders will reduce pressure to misuse the inbox
+- Date: 2026-03-13
+- Area: feature behavior
+- Statement: Allowing lightweight standalone reminders alongside linked reminders will reduce the need to represent pure "surface this later" prompts as inbox work, without creating a second full task-management workflow.
+- Confidence: medium
+- Why it matters: this assumption shapes the reminder spec boundary, the relationship between reminders and inbox items, and whether Olivia can support reminder-only use cases without product drift.
+- Evidence so far: the implemented inbox already handles active work and due-state well enough to remain the foundation, while stakeholder input favored a hybrid reminder model rather than an inbox-only or standalone-only approach.
+- Validation path: observe reminder usage after implementation. If standalone reminders remain narrow and reduce inbox misuse, keep the hybrid model. If they become duplicative or confusing, narrow the workflow or push more reminder cases back toward linked reminders.
+- Status: active
+- Related docs: `docs/specs/first-class-reminders.md`, `docs/learnings/decision-history.md`

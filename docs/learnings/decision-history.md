@@ -147,3 +147,23 @@ Use this structure for future entries:
 - Trade-offs: creates some product and modeling work in Horizon 3, but avoids forcing future coordination workflows into an MVP-specific simplification.
 - Status: active
 - Related docs: `docs/roadmap/roadmap.md`, `docs/learnings/assumptions-log.md`, `docs/specs/shared-household-inbox.md`
+
+### D-014: First-class reminders will use a hybrid standalone-or-linked model
+- Date: 2026-03-13
+- Area: feature scope
+- Decision: The first Horizon 3 reminder spec should treat reminders as first-class objects that may either stand alone or link to an existing inbox item, while keeping the inbox as Olivia's capture and action foundation.
+- Rationale: this model preserves the MVP inbox as the center of household follow-through while making room for legitimate reminder-only use cases that do not belong as active inbox work.
+- Alternatives considered: requiring every reminder to belong to an inbox item; treating reminders as a primarily separate standalone workflow with optional inbox links later.
+- Trade-offs: introduces more product-model complexity than keeping reminders as due fields alone, but avoids forcing reminder-only use cases into the inbox and avoids creating a disconnected second workflow.
+- Status: active
+- Related docs: `docs/specs/first-class-reminders.md`, `docs/specs/shared-household-inbox.md`, `docs/roadmap/roadmap.md`
+
+### D-015: The first reminder implementation slice will stay narrowly bounded
+- Date: 2026-03-13
+- Area: feature scope
+- Decision: The first implementation slice for first-class reminders should defer direct reminder-to-inbox conversion, use a minimal reminder notification settings model consisting of overall enable or disable plus per-type controls for `due reminders` and `daily summary`, and preserve missed recurring reminder history only in the reminder timeline rather than as a separate workflow or state.
+- Rationale: these choices keep the first reminder implementation concrete and useful without reopening adjacent product areas such as inbox conversion flows, rich notification policy, or recurring-routine complexity.
+- Alternatives considered: allowing reminder-to-inbox conversion in the first slice; using only a single notification toggle; introducing quiet hours or richer notification controls; creating explicit missed-occurrence state.
+- Trade-offs: keeps the first implementation focused and easier to execute, but intentionally defers some convenience behaviors and richer control that may later prove valuable in real household use.
+- Status: active
+- Related docs: `docs/specs/first-class-reminders.md`, `docs/specs/shared-household-inbox.md`
