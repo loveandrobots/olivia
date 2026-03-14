@@ -1,10 +1,26 @@
-import { useState } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Owner, UpdateChange } from '@olivia/contracts';
+import type { Owner, UpdateChange, DraftReminder, Reminder, ReminderUpdateChange } from '@olivia/contracts';
 import { useRole } from '../lib/role';
-import { confirmUpdateCommand, loadItemDetail } from '../lib/sync';
+import {
+  confirmUpdateCommand,
+  loadItemDetail,
+  loadReminderView,
+  confirmCreateReminderCommand,
+  completeReminderCommand,
+  snoozeReminderCommand,
+  cancelReminderCommand,
+  confirmUpdateReminderCommand,
+} from '../lib/sync';
 import { BottomNav } from '../components/bottom-nav';
+import { ReminderBlock } from '../components/reminders/ReminderBlock';
+import { AddReminderButton } from '../components/reminders/AddReminderButton';
+import { CreateReminderSheet } from '../components/reminders/CreateReminderSheet';
+import { EditReminderSheet } from '../components/reminders/EditReminderSheet';
+import { SnoozeSheet } from '../components/reminders/SnoozeSheet';
+import { CancelConfirmSheet } from '../components/reminders/CancelConfirmSheet';
+import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
 
 export function ItemDetailPage() {
   const params = useParams({ from: '/items/$itemId' });
@@ -18,7 +34,42 @@ export function ItemDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const itemQuery = useQuery({ queryKey: ['item-detail', role, params.itemId], queryFn: () => loadItemDetail(role, params.itemId) });
+  const [showCreateReminder, setShowCreateReminder] = useState(false);
+  const [editReminder, setEditReminder] = useState<Reminder | null>(null);
+  const [snoozeReminder, setSnoozeReminder] = useState<Reminder | null>(null);
+  const [cancelReminder, setCancelReminder] = useState<Reminder | null>(null);
+  const [banner, setBanner] = useState<{ message: string; variant: 'mint' | 'sky' } | null>(null);
+
+  const itemQuery = useQuery({
+    queryKey: ['item-detail', role, params.itemId],
+    queryFn: () => loadItemDetail(role, params.itemId),
+  });
+
+  const reminderQuery = useQuery({
+    queryKey: ['reminder-view', role],
+    queryFn: () => loadReminderView(role),
+  });
+
+  const linkedReminders = useMemo(() => {
+    if (!reminderQuery.data) return [];
+    const byState = reminderQuery.data.remindersByState;
+    const all: Reminder[] = [
+      ...byState.overdue,
+      ...byState.due,
+      ...byState.upcoming,
+      ...byState.snoozed,
+    ];
+    return all.filter((r) => r.linkedInboxItemId === params.itemId);
+  }, [reminderQuery.data, params.itemId]);
+
+  const showBanner = useCallback((message: string, variant: 'mint' | 'sky') => {
+    setBanner({ message, variant });
+    setTimeout(() => setBanner(null), 5000);
+  }, []);
+
+  const invalidateReminders = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
+  }, [queryClient]);
 
   const applyChange = async (proposedChange: UpdateChange) => {
     if (!itemQuery.data) return;
@@ -37,11 +88,49 @@ export function ItemDetailPage() {
     }
   };
 
+  const handleCreateReminderSave = useCallback(async (draft: DraftReminder) => {
+    setShowCreateReminder(false);
+    await confirmCreateReminderCommand(role, draft);
+    await invalidateReminders();
+    showBanner('✓ Reminder created', 'mint');
+  }, [role, invalidateReminders, showBanner]);
+
+  const handleCompleteReminder = useCallback(async (reminder: Reminder) => {
+    await completeReminderCommand(role, reminder.id, reminder.version);
+    await invalidateReminders();
+    showBanner('✓ Done', 'mint');
+  }, [role, invalidateReminders, showBanner]);
+
+  const handleSnoozeSelect = useCallback(async (isoString: string) => {
+    if (!snoozeReminder) return;
+    const target = snoozeReminder;
+    setSnoozeReminder(null);
+    await snoozeReminderCommand(role, target.id, target.version, isoString);
+    await invalidateReminders();
+    showBanner(`😴 Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, 'sky');
+  }, [snoozeReminder, role, invalidateReminders, showBanner]);
+
+  const handleCancelReminder = useCallback(async () => {
+    if (!cancelReminder) return;
+    const target = cancelReminder;
+    setCancelReminder(null);
+    await cancelReminderCommand(role, target.id, target.version);
+    await invalidateReminders();
+  }, [cancelReminder, role, invalidateReminders]);
+
+  const handleEditReminderSave = useCallback(async (change: ReminderUpdateChange) => {
+    if (!editReminder) return;
+    const target = editReminder;
+    setEditReminder(null);
+    await confirmUpdateReminderCommand(role, target.id, target.version, change);
+    await invalidateReminders();
+    showBanner('✓ Updated', 'mint');
+  }, [editReminder, role, invalidateReminders, showBanner]);
+
   return (
     <div className="screen">
       <div className="screen-scroll">
         <div className="support-page">
-          {/* Back button */}
           <button
             type="button"
             onClick={() => void navigate({ to: '/tasks' })}
@@ -80,7 +169,7 @@ export function ItemDetailPage() {
                       <span className="eyebrow">Item detail</span>
                       <h2 className="card-title">{item.title}</h2>
                       <p className="muted">
-                        Owner: {item.owner === 'spouse' ? 'Alexander' : item.owner === 'stakeholder' ? 'Lexi' : 'Unassigned'} · Status: {item.status.replace('_', ' ')}
+                        Owner: {item.owner === 'spouse' ? 'Christian' : item.owner === 'stakeholder' ? 'Lexi' : 'Unassigned'} · Status: {item.status.replace('_', ' ')}
                       </p>
                     </div>
                     {item.pendingSync ? <span className="chip info">Pending sync</span> : null}
@@ -94,6 +183,36 @@ export function ItemDetailPage() {
                   </div>
                   <p className="muted" style={{ fontSize: 12 }}>Due: {item.dueText ?? 'No due date'} · v{item.version}</p>
                 </div>
+
+                {/* Linked reminders */}
+                {linkedReminders.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {linkedReminders.map((rem) => (
+                      <ReminderBlock
+                        key={rem.id}
+                        reminder={rem}
+                        onDone={() => void handleCompleteReminder(rem)}
+                        onSnooze={() => setSnoozeReminder(rem)}
+                        onEdit={() => setEditReminder(rem)}
+                        onRemove={() => setCancelReminder(rem)}
+                        onNavigate={() => void navigate({ to: '/reminders/$reminderId', params: { reminderId: rem.id } })}
+                      />
+                    ))}
+                    <AddReminderButton
+                      label="Add another reminder"
+                      icon="＋"
+                      onClick={() => setShowCreateReminder(true)}
+                    />
+                  </div>
+                )}
+                {linkedReminders.length === 0 && (
+                  <AddReminderButton
+                    label="Add a reminder to this task"
+                    icon="⚠️"
+                    prominent
+                    onClick={() => setShowCreateReminder(true)}
+                  />
+                )}
 
                 {role === 'stakeholder' ? (
                   <div className="card stack-md">
@@ -121,7 +240,7 @@ export function ItemDetailPage() {
                         <span className="field-label">Owner</span>
                         <select value={ownerValue} onChange={(e) => setOwnerValue(e.target.value as Owner)}>
                           <option value="stakeholder">Lexi (stakeholder)</option>
-                          <option value="spouse">Alexander (spouse)</option>
+                          <option value="spouse">Christian (spouse)</option>
                           <option value="unassigned">unassigned</option>
                         </select>
                         <button type="button" className="secondary-button" disabled={busy} onClick={() => void applyChange({ owner: ownerValue })}>
@@ -147,7 +266,7 @@ export function ItemDetailPage() {
                   </div>
                 ) : (
                   <div className="card">
-                    <p className="muted">You're viewing as Alexander. Updates are made by Lexi.</p>
+                    <p className="muted">You're viewing as Christian. Updates are made by Lexi.</p>
                   </div>
                 )}
 
@@ -174,6 +293,42 @@ export function ItemDetailPage() {
           })()}
         </div>
       </div>
+
+      {banner && <ConfirmBanner message={banner.message} variant={banner.variant} />}
+
+      <CreateReminderSheet
+        open={showCreateReminder}
+        onClose={() => setShowCreateReminder(false)}
+        onSave={handleCreateReminderSave}
+        linkedItemId={params.itemId}
+      />
+
+      {editReminder && (
+        <EditReminderSheet
+          open={!!editReminder}
+          onClose={() => setEditReminder(null)}
+          reminder={editReminder}
+          onSave={handleEditReminderSave}
+        />
+      )}
+
+      <SnoozeSheet
+        open={!!snoozeReminder}
+        onClose={() => setSnoozeReminder(null)}
+        onSelectTime={handleSnoozeSelect}
+      />
+
+      {cancelReminder && (
+        <CancelConfirmSheet
+          open={!!cancelReminder}
+          onClose={() => setCancelReminder(null)}
+          reminderTitle={cancelReminder.title}
+          isRecurring={cancelReminder.recurrenceCadence !== 'none'}
+          onCancelSingle={handleCancelReminder}
+          onCancelSeries={handleCancelReminder}
+        />
+      )}
+
       <BottomNav activeTab="tasks" />
     </div>
   );

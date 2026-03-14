@@ -1740,6 +1740,984 @@ textarea:focus, input:focus, select:focus {
   }
 }
 
+/* ── REMINDER INLINE ROW ───────────────────────────── */
+
+.rem-row {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: var(--shadow-sm);
+  border: 1.5px solid var(--ink-4);
+  border-left: 3px solid var(--ink-3);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  animation: taskIn 0.35s cubic-bezier(0.22,1,0.36,1) forwards;
+  opacity: 0;
+}
+
+.rem-row:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--lavender-mid);
+  border-left-width: 3px;
+}
+
+.rem-row:active { transform: scale(0.98); }
+
+.rem-row:nth-child(1) { animation-delay: 0.03s; }
+.rem-row:nth-child(2) { animation-delay: 0.07s; }
+.rem-row:nth-child(3) { animation-delay: 0.11s; }
+.rem-row:nth-child(4) { animation-delay: 0.15s; }
+.rem-row:nth-child(5) { animation-delay: 0.19s; }
+
+.rem-row.border-rose    { border-left-color: var(--rose); }
+.rem-row.border-violet  { border-left-color: var(--violet); }
+.rem-row.border-peach   { border-left-color: var(--peach); }
+.rem-row.border-neutral { border-left-color: var(--ink-3); }
+.rem-row.border-sky     { border-left-color: var(--sky); }
+.rem-row.border-mint    { border-left-color: var(--mint); }
+
+.rem-row.opacity-snoozed { opacity: 0.65; }
+.rem-row.opacity-done    { opacity: 0.65; }
+
+.rem-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--ink-3);
+}
+
+.rem-dot.dot-rose    { background: var(--rose); }
+.rem-dot.dot-violet  { background: var(--violet); }
+.rem-dot.dot-peach   { background: var(--peach); }
+.rem-dot.dot-neutral { background: var(--ink-3); }
+.rem-dot.dot-sky     { background: var(--sky); }
+.rem-dot.dot-mint    { background: var(--mint); }
+
+.rem-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.rem-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+
+.rem-title.done {
+  text-decoration: line-through;
+  color: var(--ink-3);
+}
+
+.rem-meta {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-2);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.rem-pill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.rem-pill-linked {
+  background: var(--mint-soft);
+  color: var(--mint);
+}
+
+.rem-pill-recurrence {
+  background: var(--lavender-soft);
+  color: var(--violet-2);
+}
+
+/* ── REMINDER BADGE ────────────────────────────────── */
+
+.rem-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  flex-shrink: 0;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.rem-badge-rose    { background: var(--rose-soft);     color: var(--rose); }
+.rem-badge-violet  { background: var(--violet-dim);    color: var(--violet); }
+.rem-badge-peach   { background: var(--peach-soft);    color: var(--peach); }
+.rem-badge-neutral { background: var(--surface-2);     color: var(--ink-2); }
+.rem-badge-sky     { background: var(--sky-soft);      color: var(--sky); }
+.rem-badge-mint    { background: var(--mint-soft);     color: var(--mint); }
+.rem-badge-lavender{ background: var(--lavender-soft); color: var(--violet-2); }
+
+/* ── ADD REMINDER BUTTON ───────────────────────────── */
+
+.add-rem-btn {
+  border: 1.5px dashed var(--lavender-mid);
+  border-radius: 18px;
+  background: transparent;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.add-rem-btn:hover {
+  background: var(--violet-dim);
+  border-color: var(--violet);
+}
+
+.add-rem-btn:active { transform: scale(0.98); }
+
+.add-rem-btn .add-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--violet-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--violet);
+  flex-shrink: 0;
+}
+
+.add-rem-btn .add-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--violet);
+}
+
+.add-rem-btn-prominent {
+  border-style: solid;
+  border-color: var(--violet);
+  background: var(--violet-dim);
+}
+
+/* ── BOTTOM SHEET ──────────────────────────────────── */
+
+@keyframes sheetUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes sheetFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  animation: sheetFadeIn 0.2s ease;
+}
+
+.sheet-backdrop-blur {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.sheet-container {
+  position: relative;
+  width: 100%;
+  max-width: 430px;
+  max-height: 92vh;
+  background: var(--surface);
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -8px 40px rgba(26,16,51,0.12);
+  z-index: 51;
+  display: flex;
+  flex-direction: column;
+  animation: sheetUp 0.3s cubic-bezier(0.22,1,0.36,1);
+}
+
+[data-theme="dark"] .sheet-container {
+  box-shadow: 0 -8px 40px rgba(0,0,0,0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .sheet-container {
+    box-shadow: 0 -8px 40px rgba(0,0,0,0.5);
+  }
+}
+
+.sheet-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ink-4);
+  margin: 12px auto 18px;
+  flex-shrink: 0;
+}
+
+.sheet-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 0 20px 100px;
+}
+
+.sheet-scroll::-webkit-scrollbar { display: none; }
+
+.sheet-title {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 20px;
+}
+
+/* ── OLIVIA MESSAGE BLOCK ──────────────────────────── */
+
+.omsg {
+  background: var(--surface-2);
+  border-radius: 18px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.omsg-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--violet);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.omsg-text {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+/* ── REMINDER BLOCK (inside Task Detail) ───────────── */
+
+.rem-block {
+  background: var(--violet-dim);
+  border: 1.5px solid var(--violet-glow);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.rem-block-subdued {
+  background: var(--surface-2);
+  border-color: var(--lavender-mid);
+}
+
+.rem-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.rem-block-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.3px;
+  color: var(--violet);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.rem-block-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.rem-block-meta {
+  font-size: 12px;
+  color: var(--ink-2);
+  margin-bottom: 12px;
+}
+
+.rem-block-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── DETAIL CARD (Reminder Detail page) ────────────── */
+
+.rem-detail-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--violet);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px 0;
+  margin-bottom: 18px;
+}
+
+.rem-detail-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.3px;
+  color: var(--violet);
+  margin-bottom: 8px;
+}
+
+.rem-detail-title {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 10px;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rem-detail-title.done {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.rem-detail-card {
+  background: var(--surface);
+  border-radius: 18px;
+  border: 1.5px solid var(--ink-4);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.rem-detail-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ink-4);
+}
+
+.rem-detail-field:last-child {
+  border-bottom: none;
+}
+
+.rem-detail-field-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--ink-3);
+}
+
+.rem-detail-field-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: right;
+}
+
+/* ── LINKED TASK CONTEXT CARD ──────────────────────── */
+
+.linked-task-card {
+  background: var(--mint-soft);
+  border: 1.5px solid var(--mint);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.linked-task-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.linked-task-card-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--mint);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.linked-task-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+
+.linked-task-card-meta {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+/* ── CONFIRM BANNER ────────────────────────────────── */
+
+@keyframes bannerSlide {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+.confirm-banner {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 430px;
+  width: 100%;
+  z-index: 100;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  animation: bannerSlide 0.3s cubic-bezier(0.22,1,0.36,1);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.confirm-banner-mint {
+  background: var(--mint);
+  color: white;
+}
+
+.confirm-banner-sky {
+  background: var(--sky);
+  color: white;
+}
+
+.confirm-banner .banner-undo {
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+  background: rgba(255,255,255,0.2);
+  border: none;
+  border-radius: 12px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.confirm-banner .banner-undo:hover {
+  background: rgba(255,255,255,0.35);
+}
+
+/* ── REMINDER HISTORY TIMELINE ─────────────────────── */
+
+.rem-timeline {
+  padding-left: 16px;
+  border-left: 2px solid var(--ink-4);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rem-timeline-item {
+  position: relative;
+  padding-left: 18px;
+}
+
+.rem-timeline-dot {
+  position: absolute;
+  left: -25px;
+  top: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--lavender-mid);
+}
+
+.rem-timeline-dot.active {
+  background: var(--violet);
+}
+
+.rem-timeline-text {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.rem-timeline-text strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ── CREATE / EDIT FORM (inside sheet) ─────────────── */
+
+.rem-form-group {
+  margin-bottom: 14px;
+}
+
+.rem-form-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--ink-3);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.rem-form-input {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1.5px solid var(--lavender-mid);
+  border-radius: 14px;
+  padding: 11px 14px;
+  color: var(--ink);
+  font-size: 13px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.rem-form-input:focus {
+  outline: none;
+  border-color: var(--violet);
+  box-shadow: 0 0 0 4px var(--violet-glow);
+}
+
+.rem-form-input::placeholder {
+  color: var(--ink-3);
+  font-style: italic;
+}
+
+.rem-form-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rem-chip {
+  flex-shrink: 0;
+  padding: 9px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid var(--ink-4);
+  background: var(--surface);
+  color: var(--ink-2);
+  transition: all 0.15s ease;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  min-height: 34px;
+}
+
+.rem-chip:hover { border-color: var(--violet); color: var(--violet); }
+
+.rem-chip.active {
+  background: var(--violet);
+  color: white;
+  border-color: var(--violet);
+  box-shadow: 0 3px 10px var(--violet-dim);
+}
+
+/* ── TOGGLE ROW ────────────────────────────────────── */
+
+.rem-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  gap: 12px;
+}
+
+.rem-toggle-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.rem-toggle-sub {
+  font-size: 11px;
+  color: var(--ink-2);
+}
+
+.rem-toggle {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--ink-4);
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.rem-toggle.on {
+  background: var(--violet);
+}
+
+.rem-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+.rem-toggle.on::after {
+  transform: translateX(20px);
+}
+
+.rem-toggle:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── CADENCE PICKER ────────────────────────────────── */
+
+.cadence-picker {
+  display: flex;
+  gap: 0;
+  background: var(--surface-2);
+  border-radius: 14px;
+  padding: 4px;
+  border: 1.5px solid var(--ink-4);
+}
+
+.cadence-option {
+  flex: 1;
+  padding: 9px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--ink-2);
+  transition: all 0.15s;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.cadence-option.active {
+  background: var(--violet);
+  color: white;
+  box-shadow: 0 2px 8px var(--violet-dim);
+}
+
+.cadence-option:hover:not(.active) {
+  color: var(--violet);
+}
+
+/* ── ACTION BUTTONS (reminder-specific) ────────────── */
+
+.rem-btn {
+  padding: 10px 16px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.rem-btn-primary {
+  background: var(--violet);
+  color: white;
+  box-shadow: 0 3px 10px var(--violet-dim);
+}
+
+.rem-btn-primary:hover { background: #5B4DD6; }
+
+.rem-btn-done {
+  background: var(--mint);
+  color: white;
+  box-shadow: 0 3px 10px var(--mint-dim);
+}
+
+.rem-btn-done:hover { background: #00b396; }
+
+.rem-btn-secondary {
+  background: var(--lavender-soft);
+  color: var(--violet);
+  border: 1.5px solid var(--lavender-mid);
+}
+
+.rem-btn-secondary:hover { background: var(--lavender-mid); }
+
+.rem-btn-ghost {
+  background: transparent;
+  color: var(--ink-2);
+}
+
+.rem-btn-ghost:hover { background: var(--surface-2); color: var(--ink); }
+
+.rem-btn-danger {
+  background: var(--rose-soft);
+  color: var(--rose);
+}
+
+.rem-btn-danger:hover { background: var(--rose-dim); }
+
+.rem-btn-danger-text {
+  background: transparent;
+  color: var(--rose);
+}
+
+.rem-btn-danger-text:hover { background: var(--rose-soft); }
+
+.rem-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.rem-actions-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── STATUS BANNER (snoozed/completed) ─────────────── */
+
+.rem-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.rem-status-banner-sky {
+  background: var(--sky-soft);
+  color: var(--sky);
+}
+
+.rem-status-banner-mint {
+  background: var(--mint-soft);
+  color: var(--mint);
+}
+
+/* ── SNOOZE SHEET OPTIONS ──────────────────────────── */
+
+.snooze-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.snooze-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--ink-4);
+  cursor: pointer;
+  background: transparent;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--ink);
+  width: 100%;
+  transition: background 0.15s;
+}
+
+.snooze-option:last-child { border-bottom: none; }
+
+.snooze-option:hover { background: var(--surface-2); }
+
+.snooze-option-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.snooze-option-time {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+/* ── CANCEL CONFIRM SHEET ──────────────────────────── */
+
+.cancel-body {
+  font-size: 14px;
+  color: var(--ink-2);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.cancel-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── NOTIFICATION SETTINGS ─────────────────────────── */
+
+.notif-card {
+  background: var(--surface);
+  border-radius: 18px;
+  border: 1.5px solid var(--ink-4);
+  box-shadow: var(--shadow-sm);
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.notif-type-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--surface);
+  border-radius: 14px;
+  border: 1.5px solid var(--ink-4);
+  margin-bottom: 8px;
+  transition: opacity 0.2s;
+}
+
+.notif-type-row.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.notif-type-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.notif-type-sub {
+  font-size: 11px;
+  color: var(--ink-2);
+  margin-top: 2px;
+}
+
+/* ── REMINDER GROUP HEADERS ────────────────────────── */
+
+.rem-group-header {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: var(--ink-3);
+  margin: 18px 0 10px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* ── REMINDER FILTER CHIPS ─────────────────────────── */
+
+.rem-filters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-bottom: 20px;
+  padding-bottom: 2px;
+}
+
+.rem-filters::-webkit-scrollbar { display: none; }
+
+/* ── REMINDER EMPTY STATE ──────────────────────────── */
+
+.rem-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 22px;
+  text-align: center;
+}
+
+.rem-empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.rem-empty-title {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.rem-empty-sub {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin-bottom: 20px;
+}
+
+/* ── REMINDER LIST CONTAINER ───────────────────────── */
+
+.rem-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── HOME SECTION REMINDERS ────────────────────────── */
+
+.home-reminders {
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
 /* ── REDUCED MOTION ─────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {

@@ -182,7 +182,7 @@ export function TasksView({
       {/* Spouse notice */}
       {role === 'spouse' && (
         <div style={{ padding: '4px 16px 12px', fontSize: 12, color: 'var(--ink-3)' }}>
-          You're viewing as Alexander. Tasks are read-only.
+          You're viewing as Christian. Tasks are read-only.
         </div>
       )}
 
