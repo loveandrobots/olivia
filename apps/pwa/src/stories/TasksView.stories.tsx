@@ -58,7 +58,7 @@ type Story = StoryObj<typeof meta>;
 /** Full task list with open and completed tasks — stakeholder (Lexi) view. */
 export const StakeholderView: Story = {};
 
-/** Spouse (Alexander) view — read-only, no add button. */
+/** Spouse (Christian) view — read-only, no add button. */
 export const SpouseView: Story = {
   args: { role: 'spouse' },
 };

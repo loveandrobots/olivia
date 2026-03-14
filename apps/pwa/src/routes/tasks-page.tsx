@@ -22,7 +22,7 @@ function toFullTask(item: InboxItem): FullTask {
     : null;
   const assignee: FullTask['assignee'] =
     item.owner === 'stakeholder' ? { initial: 'L', name: 'Lexi', cls: '' }
-    : item.owner === 'spouse'    ? { initial: 'A', name: 'Alexander', cls: 'rose-av' }
+    : item.owner === 'spouse'    ? { initial: 'C', name: 'Christian', cls: 'rose-av' }
     : null;
   return { id: item.id, title: item.title, dueText: item.dueText, accent, badge, assignee, pendingSync: item.pendingSync };
 }

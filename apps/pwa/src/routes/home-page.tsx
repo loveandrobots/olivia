@@ -205,8 +205,8 @@ export function HomePage() {
           <div className="home-header-row">
             <div className="wordmark">olivia</div>
             <div className="avatar-stack" aria-label="Household members">
-              <div className="av av-l" title="Jamie">J</div>
-              <div className="av av-a" title="Alex">A</div>
+              <div className="av av-l" title="Lexi">L</div>
+              <div className="av av-a" title="Christian">C</div>
             </div>
           </div>
           <div className="greeting">

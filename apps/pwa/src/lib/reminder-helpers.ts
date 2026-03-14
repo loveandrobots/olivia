@@ -132,8 +132,8 @@ export function formatRecurrenceLabel(cadence: RecurrenceCadence): string {
 }
 
 export function ownerLabel(owner: string): string {
-  if (owner === 'stakeholder') return 'Jamie';
-  if (owner === 'spouse') return 'Alex';
+  if (owner === 'stakeholder') return 'Lexi';
+  if (owner === 'spouse') return 'Christian';
   return 'Unassigned';
 }
 

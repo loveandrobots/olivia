@@ -123,11 +123,11 @@ export function SettingsPage() {
                   style={{ flex: 1 }}
                   onClick={() => setRole(r)}
                 >
-                  {r === 'stakeholder' ? 'Jamie' : 'Alex'}
+                  {r === 'stakeholder' ? 'Lexi' : 'Christian'}
                 </button>
               ))}
             </div>
-            <p className="muted" style={{ fontSize: 12 }}>Current: {role === 'stakeholder' ? 'Jamie (stakeholder)' : 'Alex (spouse)'}</p>
+            <p className="muted" style={{ fontSize: 12 }}>Current: {role === 'stakeholder' ? 'Lexi (stakeholder)' : 'Christian (spouse)'}</p>
           </div>
 
           {/* Notification Settings */}

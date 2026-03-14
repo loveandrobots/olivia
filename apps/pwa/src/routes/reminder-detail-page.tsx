@@ -341,7 +341,7 @@ export function ReminderDetailPage() {
                           <strong>{formatEventType(entry.eventType)}</strong>
                           {' · '}
                           {format(new Date(entry.createdAt), 'MMM d')}
-                          {entry.actorRole === 'stakeholder' && ' · by Jamie'}
+                          {entry.actorRole === 'stakeholder' && ' · by Lexi'}
                         </div>
                       </div>
                     ))}

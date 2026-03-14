@@ -169,7 +169,7 @@ export function ItemDetailPage() {
                       <span className="eyebrow">Item detail</span>
                       <h2 className="card-title">{item.title}</h2>
                       <p className="muted">
-                        Owner: {item.owner === 'spouse' ? 'Alex' : item.owner === 'stakeholder' ? 'Jamie' : 'Unassigned'} · Status: {item.status.replace('_', ' ')}
+                        Owner: {item.owner === 'spouse' ? 'Christian' : item.owner === 'stakeholder' ? 'Lexi' : 'Unassigned'} · Status: {item.status.replace('_', ' ')}
                       </p>
                     </div>
                     {item.pendingSync ? <span className="chip info">Pending sync</span> : null}
@@ -239,8 +239,8 @@ export function ItemDetailPage() {
                       <div className="stack-sm">
                         <span className="field-label">Owner</span>
                         <select value={ownerValue} onChange={(e) => setOwnerValue(e.target.value as Owner)}>
-                          <option value="stakeholder">Jamie (stakeholder)</option>
-                          <option value="spouse">Alex (spouse)</option>
+                          <option value="stakeholder">Lexi (stakeholder)</option>
+                          <option value="spouse">Christian (spouse)</option>
                           <option value="unassigned">unassigned</option>
                         </select>
                         <button type="button" className="secondary-button" disabled={busy} onClick={() => void applyChange({ owner: ownerValue })}>
@@ -266,7 +266,7 @@ export function ItemDetailPage() {
                   </div>
                 ) : (
                   <div className="card">
-                    <p className="muted">You're viewing as Alex. Updates are made by Jamie.</p>
+                    <p className="muted">You're viewing as Christian. Updates are made by Lexi.</p>
                   </div>
                 )}
 

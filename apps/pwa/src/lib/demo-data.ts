@@ -63,7 +63,7 @@ export const DEMO_TASKS: DemoTask[] = [
   {
     id: 'demo-task-3',
     title: 'Renew car registration',
-    meta: 'Mar 31 · Alexander',
+    meta: 'Mar 31 · Christian',
     badge: 'Shared',
     accent: 'mint',
     badgeClass: 'badge-violet',
@@ -168,8 +168,8 @@ export const DEMO_FULL_TASKS = [
     id: 'demo-full-3',
     title: 'Renew car registration — expires end of month',
     meta: 'Due Mar 31',
-    assignee: 'Alexander',
-    assigneeInitial: 'A',
+    assignee: 'Christian',
+    assigneeInitial: 'C',
     assigneeClass: 'rose-av',
     badge: 'Shared' as const,
     badgeClass: 'badge-violet',
@@ -190,8 +190,8 @@ export const DEMO_FULL_TASKS = [
     id: 'demo-full-5',
     title: 'Replace furnace filter',
     meta: 'Due ~Apr 4 · last changed Feb 4',
-    assignee: 'Alexander',
-    assigneeInitial: 'A',
+    assignee: 'Christian',
+    assigneeInitial: 'C',
     assigneeClass: 'rose-av',
     badge: null,
     badgeClass: null,
@@ -221,23 +221,23 @@ export const OLIVIA_REPLIES = [
 export const QUICK_CHIPS = [
   '📅 What\'s this week?',
   '🛠️ Home maintenance due',
-  '👤 What\'s Alexander working on?',
+  '👤 What\'s Christian working on?',
   '💡 What should I remember?',
 ];
 
 /** Map internal role to display name. */
 export function getDisplayName(role: 'stakeholder' | 'spouse' | string): string {
-  return role === 'spouse' ? 'Alex' : 'Jamie';
+  return role === 'spouse' ? 'Christian' : 'Lexi';
 }
 
 /** Map internal role to avatar initial. */
 export function getAvatarInitial(role: 'stakeholder' | 'spouse' | string): string {
-  return role === 'spouse' ? 'A' : 'J';
+  return role === 'spouse' ? 'C' : 'L';
 }
 
 /** Map owner enum to display name. */
 export function ownerToDisplay(owner: string): string {
-  if (owner === 'spouse') return 'Alex';
-  if (owner === 'stakeholder') return 'Jamie';
+  if (owner === 'spouse') return 'Christian';
+  if (owner === 'stakeholder') return 'Lexi';
   return 'Unassigned';
 }
