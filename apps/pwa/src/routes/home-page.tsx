@@ -221,9 +221,22 @@ export function HomePage() {
         <div className="home-header">
           <div className="home-header-row">
             <div className="wordmark">olivia</div>
-            <div className="avatar-stack" aria-label="Household members">
-              <div className="av av-l" title="Lexi">L</div>
-              <div className="av av-a" title="Christian">C</div>
+            <div className="home-header-actions">
+              <div className="avatar-stack" aria-label="Household members">
+                <div className="av av-l" title="Lexi">L</div>
+                <div className="av av-a" title="Christian">C</div>
+              </div>
+              <button
+                type="button"
+                className="settings-btn"
+                aria-label="Settings"
+                onClick={() => void navigate({ to: '/settings' })}
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M10 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M17.2 10c0-.4 0-.8-.1-1.2l1.7-1.3a.4.4 0 0 0 .1-.5l-1.6-2.8a.4.4 0 0 0-.5-.2l-2 .8a6 6 0 0 0-1-.6L13.5 2a.4.4 0 0 0-.4-.3h-3.2a.4.4 0 0 0-.4.3l-.3 2.2a6 6 0 0 0-1 .6l-2-.8a.4.4 0 0 0-.5.2L4.1 6.9a.4.4 0 0 0 .1.5l1.7 1.3A6.4 6.4 0 0 0 5.8 10c0 .4 0 .8.1 1.2L4.2 12.5a.4.4 0 0 0-.1.5l1.6 2.8c.1.2.3.2.5.2l2-.8c.3.2.6.4 1 .6l.3 2.2c.1.2.2.3.4.3h3.2c.2 0 .4-.1.4-.3l.3-2.2c.4-.2.7-.4 1-.6l2 .8c.2.1.4 0 .5-.2l1.6-2.8a.4.4 0 0 0-.1-.5l-1.7-1.3c.1-.4.1-.8.1-1.2Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
             </div>
           </div>
           <div className="greeting">

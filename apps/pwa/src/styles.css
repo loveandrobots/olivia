@@ -438,6 +438,43 @@ p { margin: 0; }
   margin-bottom: 18px;
 }
 
+.home-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  color: var(--ink-2);
+  transition: color 0.15s ease, background 0.15s ease;
+  padding: 0;
+}
+
+.settings-btn:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+.settings-btn:active {
+  color: var(--ink);
+  background: var(--surface-3);
+}
+
+.settings-btn:focus-visible {
+  color: var(--ink);
+  outline: 2px solid var(--violet);
+  outline-offset: 4px;
+}
+
 .wordmark {
   font-family: 'Fraunces', serif;
   font-style: italic;

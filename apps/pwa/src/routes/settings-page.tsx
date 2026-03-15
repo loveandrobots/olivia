@@ -1,10 +1,10 @@
+import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState, useCallback } from 'react';
 import { clientDb } from '../lib/client-db';
 import { useRole } from '../lib/role';
 import { loadNotificationState, saveDemoNotificationSubscription, loadReminderSettings, saveReminderSettingsCommand } from '../lib/sync';
-import { BottomNav } from '../components/bottom-nav';
 import { OliviaMessage } from '../components/reminders/OliviaMessage';
 import type { ActorRole, ReminderNotificationPreferencesInput } from '@olivia/contracts';
 
@@ -27,6 +27,7 @@ function readSavedTheme(): ThemeMode {
 }
 
 export function SettingsPage() {
+  const navigate = useNavigate();
   const { role, setRole } = useRole();
   const queryClient = useQueryClient();
   const [activeTheme, setActiveTheme] = useState<ThemeMode>(readSavedTheme);
@@ -84,6 +85,14 @@ export function SettingsPage() {
     <div className="screen">
       <div className="screen-scroll">
         <div className="support-page">
+          <button
+            type="button"
+            className="rem-detail-back"
+            onClick={() => void navigate({ to: '/' })}
+            aria-label="Back to Home"
+          >
+            ← Home
+          </button>
           <div className="screen-header" style={{ paddingBottom: 8 }}>
             <div className="screen-title">Settings</div>
             <div className="screen-sub">App preferences and diagnostics</div>
@@ -221,7 +230,6 @@ export function SettingsPage() {
           </div>
         </div>
       </div>
-      <BottomNav activeTab="home" />
     </div>
   );
 }
