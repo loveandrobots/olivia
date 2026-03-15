@@ -1,7 +1,7 @@
 # Feature Spec: Recurring Routines
 
 ## Status
-- Draft — pending CEO approval
+- Approved — 2026-03-15
 
 ## Summary
 - Olivia already supports first-class reminders for time-based follow-through and shared lists for lightweight checklist coordination, but neither model fits the repeating household work that defines daily life: cleaning, maintenance, bills, and other obligations that recur on a schedule. This spec defines Recurring Routines as a focused Horizon 3 workflow for household tasks that repeat on a defined cadence. A routine is a titled household task with a recurrence rule, an owner, and a completion state that resets each cycle. If this workflow works well, the household gains a reliable way to stay aligned on recurring obligations without anyone having to keep that schedule in their head or recreate the same inbox item week after week.
