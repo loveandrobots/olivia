@@ -124,7 +124,7 @@ Use this structure for future entries:
 - Statement: Allowing lightweight standalone reminders alongside linked reminders will reduce the need to represent pure "surface this later" prompts as inbox work, without creating a second full task-management workflow.
 - Confidence: medium
 - Why it matters: this assumption shapes the reminder spec boundary, the relationship between reminders and inbox items, and whether Olivia can support reminder-only use cases without product drift.
-- Evidence so far: the implemented inbox already handles active work and due-state well enough to remain the foundation, while stakeholder input favored a hybrid reminder model rather than an inbox-only or standalone-only approach.
-- Validation path: observe reminder usage after implementation. If standalone reminders remain narrow and reduce inbox misuse, keep the hybrid model. If they become duplicative or confusing, narrow the workflow or push more reminder cases back toward linked reminders.
+- Evidence so far: first-class reminders are now built and available in the PWA. The hybrid model (standalone + linked) was implemented as designed. Validation of actual household impact requires real usage observations — not yet collected as of 2026-03-15.
+- Validation path: observe reminder usage after M7. If standalone reminders remain narrow and reduce inbox misuse, mark validated. If they become duplicative or confusing, narrow the workflow or push more reminder cases back toward linked reminders.
 - Status: active
 - Related docs: `docs/specs/first-class-reminders.md`, `docs/learnings/decision-history.md`

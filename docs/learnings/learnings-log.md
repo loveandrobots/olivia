@@ -106,3 +106,21 @@ Use this structure for future entries:
 - Implication: the Recurring Routines cycle should follow the same pattern. Implementation tasks should not be created until the spec has CEO approval and the visual spec is complete.
 - Source: Shared Lists cycle review (OLI-17)
 - Related docs: `docs/roadmap/milestones.md`, `docs/learnings/decision-history.md`
+
+### L-011: All four Horizon 3 workflows share a coherent coordination-layer model that emerged from building rather than design
+- Date: 2026-03-15
+- Area: product architecture
+- Learning: Reminders, Shared Lists, Recurring Routines, and Meal Planning each introduce distinct workflow types, but all share the same underlying household-coordination model: named entities that can be viewed, actioned, and shared in a household context. This coherence was not designed in advance — it emerged from building all four workflows in sequence.
+- Why it matters: the coordination layer is more unified than might have been expected. Future workflows can follow this same pattern without needing to re-justify each new surface.
+- Implication: post-M7 planning should explicitly build on this model (reminders, lists, routines, meal plans as first-class household entities) rather than introducing disconnected tool surfaces. Adjacent problems — shopping-list integration with meal plans, household calendar, chore rotation — are natural extensions of this model.
+- Source: completion of all four Horizon 3 workflows (OLI-34 and predecessors, 2026-03-15)
+- Related docs: `docs/roadmap/roadmap.md`, `docs/specs/`
+
+### L-012: Meal planning confirms the household command center thesis extends credibly into proactive planning
+- Date: 2026-03-15
+- Area: product validation
+- Learning: Meal planning's recipe catalog plus weekly scheduling model goes beyond task and reminder management into proactive household planning. Its successful implementation confirms that the "household command center" framing can encompass planning workflows without losing coherence or overreaching into disconnected territory.
+- Why it matters: this is the strongest structural evidence to date that Olivia's scope (shared state, reminders, routines, and planning) holds together as a coordination platform rather than a loosely related feature collection.
+- Implication: the household command center is now validated as a product frame across four distinct workflow types. Post-M7 prioritization should identify adjacent planning and coordination problems that compound on these primitives — not new categories that would fragment the platform model.
+- Source: meal planning spec (OLI-28), visual spec (OLI-32), implementation plan (OLI-33), full implementation (OLI-34)
+- Related docs: `docs/specs/meal-planning.md`, `docs/plans/meal-planning-visual-implementation-spec.md`
