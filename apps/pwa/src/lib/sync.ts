@@ -1,21 +1,33 @@
 import {
+  addListItem,
   applyUpdate,
+  archiveList as archiveListDomain,
   cancelReminder,
+  checkItem,
   completeReminderOccurrence,
   createDraft,
   createInboxItem,
   createReminder,
   createReminderDraft,
+  createSharedList,
+  restoreList as restoreListDomain,
   snoozeReminder,
+  uncheckItem,
+  updateItemBody,
+  updateListTitle as updateListTitleDomain,
   updateReminder
 } from '@olivia/domain';
 import type {
+  ActiveListIndexResponse,
   ActorRole,
+  ArchivedListIndexResponse,
   DraftItem,
   DraftReminder,
   InboxItem,
   InboxViewResponse,
   ItemDetailResponse,
+  ListDetailResponse,
+  ListItem,
   OutboxCommand,
   PreviewCreateReminderResponse,
   PreviewCreateResponse,
@@ -27,6 +39,7 @@ import type {
   ReminderSettingsResponse,
   ReminderUpdateChange,
   ReminderViewResponse,
+  SharedList,
   StructuredInput,
   StructuredReminderInput,
   UpdateChange
@@ -38,32 +51,49 @@ import {
   cacheInboxView,
   cacheItem,
   cacheItemDetail,
+  cacheListDetail,
+  cacheListIndex,
+  cacheListItem,
   cacheReminder,
   cacheReminderDetail,
   cacheReminderSettings,
   cacheReminderView,
+  cacheSharedList,
   clientDb,
   enqueueCommand,
+  getCachedActiveListIndex,
+  getCachedArchivedListIndex,
   getCachedItemDetail,
+  getCachedListDetail,
   getCachedReminder,
   getCachedReminderDetail,
   getCachedReminderSettings,
   getCachedReminderTimeline,
   listOutbox,
   markOutboxConflict,
+  removeListFromCache,
+  removeListItemFromCache,
   removeOutboxCommand,
   setMeta
 } from './client-db';
 import {
   ApiError,
+  addListItem as addListItemApi,
+  archiveList as archiveListApi,
   cancelReminder as cancelReminderApi,
+  checkListItem as checkListItemApi,
   completeReminder as completeReminderApi,
   confirmCreate,
   confirmCreateReminder,
   confirmUpdate,
   confirmUpdateReminder,
+  createList as createListApi,
+  deleteList as deleteListApi,
+  fetchActiveListIndex,
+  fetchArchivedListIndex,
   fetchInboxView,
   fetchItemDetail,
+  fetchListDetail,
   fetchReminderDetail,
   fetchReminderSettings,
   fetchReminderView,
@@ -72,9 +102,14 @@ import {
   previewCreateReminder,
   previewUpdate,
   previewUpdateReminder,
+  removeListItem as removeListItemApi,
+  restoreList as restoreListApi,
   saveNotificationSubscription,
   saveReminderSettings,
-  snoozeReminder as snoozeReminderApi
+  snoozeReminder as snoozeReminderApi,
+  uncheckListItem as uncheckListItemApi,
+  updateListItemBody as updateListItemBodyApi,
+  updateListTitle as updateListTitleApi
 } from './api';
 
 const isOffline = () => !window.navigator.onLine;
@@ -458,6 +493,36 @@ async function flushOutboxOnce() {
       } else if (command.kind === 'reminder_cancel') {
         const response = await cancelReminderApi(command.actorRole, command.reminderId, command.expectedVersion);
         await cacheReminderMutation(response.savedReminder, response.timelineEntry);
+      } else if (command.kind === 'list_create') {
+        const response = await createListApi(command.actorRole, command.title);
+        await cacheSharedList({ ...response.savedList, pendingSync: false });
+      } else if (command.kind === 'list_title_update') {
+        const updateResponse = await updateListTitleApi(command.actorRole, command.listId, command.expectedVersion, command.title);
+        await cacheSharedList({ ...updateResponse.savedList, pendingSync: false });
+      } else if (command.kind === 'list_archive') {
+        const response = await archiveListApi(command.actorRole, command.listId, command.expectedVersion);
+        await cacheSharedList({ ...response.savedList, pendingSync: false });
+      } else if (command.kind === 'list_restore') {
+        const response = await restoreListApi(command.actorRole, command.listId, command.expectedVersion);
+        await cacheSharedList({ ...response.savedList, pendingSync: false });
+      } else if (command.kind === 'list_delete') {
+        await deleteListApi(command.actorRole, command.listId);
+        await removeListFromCache(command.listId);
+      } else if (command.kind === 'item_add') {
+        const response = await addListItemApi(command.actorRole, command.listId, command.body);
+        await cacheListItem({ ...response.savedItem, pendingSync: false });
+      } else if (command.kind === 'item_body_update') {
+        const response = await updateListItemBodyApi(command.actorRole, command.listId, command.itemId, command.expectedVersion, command.body);
+        await cacheListItem({ ...response.savedItem, pendingSync: false });
+      } else if (command.kind === 'item_check') {
+        const response = await checkListItemApi(command.actorRole, command.listId, command.itemId, command.expectedVersion);
+        await cacheListItem({ ...response.savedItem, pendingSync: false });
+      } else if (command.kind === 'item_uncheck') {
+        const response = await uncheckListItemApi(command.actorRole, command.listId, command.itemId, command.expectedVersion);
+        await cacheListItem({ ...response.savedItem, pendingSync: false });
+      } else if (command.kind === 'item_remove') {
+        await removeListItemApi(command.actorRole, command.listId, command.itemId);
+        await removeListItemFromCache(command.itemId);
       } else {
         throw new Error('Unsupported outbox command kind.');
       }
@@ -465,7 +530,7 @@ async function flushOutboxOnce() {
       await setMeta('last-sync-at', new Date().toISOString());
     } catch (error) {
       if (error instanceof ApiError && error.statusCode === 409) {
-        const entityName = command.kind.startsWith('reminder_') ? 'reminder' : 'item';
+        const entityName = command.kind.startsWith('reminder_') ? 'reminder' : command.kind.startsWith('list_') || command.kind.startsWith('item_') ? 'list' : 'item';
         await markOutboxConflict(command.commandId, `Version conflict: refresh this ${entityName} and retry.`);
       }
       throw error;
@@ -521,4 +586,201 @@ export async function saveReminderSettingsCommand(
   const response = await saveReminderSettings(role, preferences);
   await cacheReminderSettings(response);
   return response;
+}
+
+// ─── Shared List sync commands ────────────────────────────────────────────────
+
+export async function loadActiveListIndex(role: ActorRole): Promise<ActiveListIndexResponse> {
+  if (!isOffline()) {
+    try {
+      await flushOutbox();
+      const response = await fetchActiveListIndex(role);
+      await cacheListIndex(response);
+      return response;
+    } catch {
+      return getCachedActiveListIndex();
+    }
+  }
+  return getCachedActiveListIndex();
+}
+
+export async function loadArchivedListIndex(role: ActorRole): Promise<ArchivedListIndexResponse> {
+  if (!isOffline()) {
+    try {
+      await flushOutbox();
+      const response = await fetchArchivedListIndex(role);
+      await cacheListIndex(response);
+      return response;
+    } catch {
+      return getCachedArchivedListIndex();
+    }
+  }
+  return getCachedArchivedListIndex();
+}
+
+export async function loadListDetail(role: ActorRole, listId: string): Promise<ListDetailResponse> {
+  if (!isOffline()) {
+    try {
+      await flushOutbox();
+      const detail = await fetchListDetail(role, listId);
+      await cacheListDetail(detail);
+      return detail;
+    } catch {
+      const cached = await getCachedListDetail(listId);
+      if (cached) return cached;
+      throw new Error('List not available offline yet.');
+    }
+  }
+  const cached = await getCachedListDetail(listId);
+  if (cached) return cached;
+  throw new Error('List not available offline yet.');
+}
+
+export async function createListCommand(role: ActorRole, title: string): Promise<SharedList> {
+  if (!isOffline()) {
+    const response = await createListApi(role, title);
+    await cacheSharedList({ ...response.savedList, pendingSync: false });
+    return response.savedList;
+  }
+  const list = createSharedList(title, role);
+  const pendingList = { ...list, pendingSync: true };
+  const command: OutboxCommand = { kind: 'list_create', commandId: crypto.randomUUID(), actorRole: role, title };
+  await cacheSharedList(pendingList);
+  await enqueueCommand(command);
+  return pendingList;
+}
+
+export async function updateListTitleCommand(role: ActorRole, listId: string, expectedVersion: number, title: string): Promise<SharedList> {
+  if (!isOffline()) {
+    const response = await updateListTitleApi(role, listId, expectedVersion, title);
+    await cacheSharedList({ ...response.savedList, pendingSync: false });
+    return response.savedList;
+  }
+  const cached = await clientDb.sharedLists.get(listId);
+  if (!cached) throw new Error('List not available offline.');
+  const updated = updateListTitleDomain(cached, title);
+  const pendingList = { ...updated, pendingSync: true };
+  const command: OutboxCommand = { kind: 'list_title_update', commandId: crypto.randomUUID(), actorRole: role, listId, expectedVersion, title };
+  await cacheSharedList(pendingList);
+  await enqueueCommand(command);
+  return pendingList;
+}
+
+export async function archiveListCommand(role: ActorRole, listId: string, expectedVersion: number): Promise<SharedList> {
+  if (!isOffline()) {
+    const response = await archiveListApi(role, listId, expectedVersion);
+    await cacheSharedList({ ...response.savedList, pendingSync: false });
+    return response.savedList;
+  }
+  const cached = await clientDb.sharedLists.get(listId);
+  if (!cached) throw new Error('List not available offline.');
+  const archived = archiveListDomain(cached);
+  const pendingList = { ...archived, pendingSync: true };
+  const command: OutboxCommand = { kind: 'list_archive', commandId: crypto.randomUUID(), actorRole: role, listId, expectedVersion, confirmed: true };
+  await cacheSharedList(pendingList);
+  await enqueueCommand(command);
+  return pendingList;
+}
+
+export async function restoreListCommand(role: ActorRole, listId: string, expectedVersion: number): Promise<SharedList> {
+  if (!isOffline()) {
+    const response = await restoreListApi(role, listId, expectedVersion);
+    await cacheSharedList({ ...response.savedList, pendingSync: false });
+    return response.savedList;
+  }
+  const cached = await clientDb.sharedLists.get(listId);
+  if (!cached) throw new Error('List not available offline.');
+  const restored = restoreListDomain(cached);
+  const pendingList = { ...restored, pendingSync: true };
+  const command: OutboxCommand = { kind: 'list_restore', commandId: crypto.randomUUID(), actorRole: role, listId, expectedVersion };
+  await cacheSharedList(pendingList);
+  await enqueueCommand(command);
+  return pendingList;
+}
+
+export async function deleteListCommand(role: ActorRole, listId: string): Promise<void> {
+  if (!isOffline()) {
+    await deleteListApi(role, listId);
+    await removeListFromCache(listId);
+    return;
+  }
+  const command: OutboxCommand = { kind: 'list_delete', commandId: crypto.randomUUID(), actorRole: role, listId, confirmed: true };
+  await enqueueCommand(command);
+  await removeListFromCache(listId);
+}
+
+export async function addListItemCommand(role: ActorRole, listId: string, body: string): Promise<ListItem> {
+  if (!isOffline()) {
+    const response = await addListItemApi(role, listId, body);
+    await cacheListItem({ ...response.savedItem, pendingSync: false });
+    return response.savedItem;
+  }
+  const existing = await clientDb.listItems.where('listId').equals(listId).toArray();
+  const nextPosition = existing.length > 0 ? Math.max(...existing.map((i) => i.position)) + 1 : 1;
+  const itemId = crypto.randomUUID();
+  const item = addListItem(listId, body, nextPosition);
+  const pendingItem = { ...item, id: itemId, pendingSync: true };
+  const command: OutboxCommand = { kind: 'item_add', commandId: crypto.randomUUID(), actorRole: role, listId, itemId, body };
+  await cacheListItem(pendingItem);
+  await enqueueCommand(command);
+  return pendingItem;
+}
+
+export async function updateListItemBodyCommand(role: ActorRole, listId: string, itemId: string, expectedVersion: number, body: string): Promise<ListItem> {
+  if (!isOffline()) {
+    const response = await updateListItemBodyApi(role, listId, itemId, expectedVersion, body);
+    await cacheListItem({ ...response.savedItem, pendingSync: false });
+    return response.savedItem;
+  }
+  const cached = await clientDb.listItems.get(itemId);
+  if (!cached) throw new Error('Item not available offline.');
+  const updated = updateItemBody(cached, body);
+  const pendingItem = { ...updated, pendingSync: true };
+  const command: OutboxCommand = { kind: 'item_body_update', commandId: crypto.randomUUID(), actorRole: role, listId, itemId, expectedVersion, body };
+  await cacheListItem(pendingItem);
+  await enqueueCommand(command);
+  return pendingItem;
+}
+
+export async function checkListItemCommand(role: ActorRole, listId: string, itemId: string, expectedVersion: number): Promise<ListItem> {
+  if (!isOffline()) {
+    const response = await checkListItemApi(role, listId, itemId, expectedVersion);
+    await cacheListItem({ ...response.savedItem, pendingSync: false });
+    return response.savedItem;
+  }
+  const cached = await clientDb.listItems.get(itemId);
+  if (!cached) throw new Error('Item not available offline.');
+  const updated = checkItem(cached);
+  const pendingItem = { ...updated, pendingSync: true };
+  const command: OutboxCommand = { kind: 'item_check', commandId: crypto.randomUUID(), actorRole: role, listId, itemId, expectedVersion };
+  await cacheListItem(pendingItem);
+  await enqueueCommand(command);
+  return pendingItem;
+}
+
+export async function uncheckListItemCommand(role: ActorRole, listId: string, itemId: string, expectedVersion: number): Promise<ListItem> {
+  if (!isOffline()) {
+    const response = await uncheckListItemApi(role, listId, itemId, expectedVersion);
+    await cacheListItem({ ...response.savedItem, pendingSync: false });
+    return response.savedItem;
+  }
+  const cached = await clientDb.listItems.get(itemId);
+  if (!cached) throw new Error('Item not available offline.');
+  const updated = uncheckItem(cached);
+  const pendingItem = { ...updated, pendingSync: true };
+  const command: OutboxCommand = { kind: 'item_uncheck', commandId: crypto.randomUUID(), actorRole: role, listId, itemId, expectedVersion };
+  await cacheListItem(pendingItem);
+  await enqueueCommand(command);
+  return pendingItem;
+}
+
+export async function removeListItemCommand(role: ActorRole, listId: string, itemId: string): Promise<void> {
+  if (!isOffline()) {
+    await removeListItemApi(role, listId, itemId);
+    await removeListItemFromCache(itemId);
+    return;
+  }
+  const command: OutboxCommand = { kind: 'item_remove', commandId: crypto.randomUUID(), actorRole: role, listId, itemId, confirmed: true };
+  await enqueueCommand(command);
+  await removeListItemFromCache(itemId);
 }

@@ -1,18 +1,23 @@
 import Dexie, { type Table } from 'dexie';
 import { buildSuggestions, groupItems, groupReminders } from '@olivia/domain';
 import type {
+  ActiveListIndexResponse,
   ActorRole,
+  ArchivedListIndexResponse,
   HistoryEntry,
   InboxItem,
   InboxViewResponse,
   ItemDetailResponse,
+  ListDetailResponse,
+  ListItem,
   OutboxCommand,
   Reminder,
   ReminderDetailResponse,
   ReminderNotificationPreferences,
   ReminderSettingsResponse,
   ReminderTimelineEntry,
-  ReminderViewResponse
+  ReminderViewResponse,
+  SharedList
 } from '@olivia/contracts';
 
 type MetaRecord = { key: string; value: string };
@@ -29,6 +34,8 @@ class OliviaClientDb extends Dexie {
   reminders!: Table<Reminder, string>;
   reminderTimelineCache!: Table<{ reminderId: string; timeline: ReminderTimelineEntry[] }, string>;
   reminderSettingsCache!: Table<{ actorRole: ActorRole; preferences: ReminderNotificationPreferences }, ActorRole>;
+  sharedLists!: Table<SharedList, string>;
+  listItems!: Table<ListItem, string>;
   outbox!: Table<StoredOutboxCommand, string>;
   meta!: Table<MetaRecord, string>;
 
@@ -46,6 +53,17 @@ class OliviaClientDb extends Dexie {
       reminders: 'id, state, owner, scheduledAt, updatedAt, pendingSync',
       reminderTimelineCache: 'reminderId',
       reminderSettingsCache: 'actorRole',
+      outbox: 'commandId, kind, state, createdAt',
+      meta: 'key'
+    });
+    this.version(3).stores({
+      items: 'id, status, owner, updatedAt, pendingSync',
+      historyCache: 'itemId',
+      reminders: 'id, state, owner, scheduledAt, updatedAt, pendingSync',
+      reminderTimelineCache: 'reminderId',
+      reminderSettingsCache: 'actorRole',
+      sharedLists: 'id, status, updatedAt, pendingSync',
+      listItems: 'id, listId, position, pendingSync',
       outbox: 'commandId, kind, state, createdAt',
       meta: 'key'
     });
@@ -215,4 +233,55 @@ export async function markOutboxConflict(commandId: string, errorMessage: string
     return;
   }
   await clientDb.outbox.put({ ...existing, state: 'conflict', lastError: errorMessage });
+}
+
+// ─── Shared List cache helpers ────────────────────────────────────────────────
+
+export async function cacheListIndex(response: ActiveListIndexResponse | ArchivedListIndexResponse) {
+  await clientDb.sharedLists.bulkPut(response.lists);
+}
+
+export async function cacheListDetail(response: ListDetailResponse) {
+  await clientDb.transaction('rw', clientDb.sharedLists, clientDb.listItems, async () => {
+    await clientDb.sharedLists.put(response.list);
+    await clientDb.listItems.bulkPut(response.items);
+  });
+}
+
+export async function getCachedActiveListIndex(): Promise<ActiveListIndexResponse> {
+  const lists = await clientDb.sharedLists.where('status').equals('active').sortBy('updatedAt');
+  return { lists: lists.reverse(), source: 'cache' };
+}
+
+export async function getCachedArchivedListIndex(): Promise<ArchivedListIndexResponse> {
+  const lists = await clientDb.sharedLists.where('status').equals('archived').sortBy('updatedAt');
+  return { lists: lists.reverse(), source: 'cache' };
+}
+
+export async function getCachedListDetail(listId: string): Promise<ListDetailResponse | null> {
+  const list = await clientDb.sharedLists.get(listId);
+  if (!list) {
+    return null;
+  }
+  const items = await clientDb.listItems.where('listId').equals(listId).sortBy('position');
+  return { list, items, source: 'cache' };
+}
+
+export async function cacheListItem(item: ListItem) {
+  await clientDb.listItems.put(item);
+}
+
+export async function cacheSharedList(list: SharedList) {
+  await clientDb.sharedLists.put(list);
+}
+
+export async function removeListFromCache(listId: string) {
+  await clientDb.transaction('rw', clientDb.sharedLists, clientDb.listItems, async () => {
+    await clientDb.sharedLists.delete(listId);
+    await clientDb.listItems.where('listId').equals(listId).delete();
+  });
+}
+
+export async function removeListItemFromCache(itemId: string) {
+  await clientDb.listItems.delete(itemId);
 }

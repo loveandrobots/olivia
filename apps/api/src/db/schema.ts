@@ -88,3 +88,37 @@ export const schemaMigrationsTable = sqliteTable('schema_migrations', {
   filename: text('filename').primaryKey(),
   appliedAt: text('applied_at').notNull()
 });
+
+export const sharedListsTable = sqliteTable('shared_lists', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  owner: text('owner').notNull(),
+  status: text('status').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  archivedAt: text('archived_at'),
+  version: integer('version').notNull()
+});
+
+export const listItemsTable = sqliteTable('list_items', {
+  id: text('id').primaryKey(),
+  listId: text('list_id').notNull(),
+  body: text('body').notNull(),
+  checked: integer('checked', { mode: 'boolean' }).notNull(),
+  checkedAt: text('checked_at'),
+  position: integer('position').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  version: integer('version').notNull()
+});
+
+export const listItemHistoryTable = sqliteTable('list_item_history', {
+  id: text('id').primaryKey(),
+  listId: text('list_id').notNull(),
+  itemId: text('item_id'),
+  actorRole: text('actor_role').notNull(),
+  eventType: text('event_type').notNull(),
+  fromValue: text('from_value'),
+  toValue: text('to_value'),
+  createdAt: text('created_at').notNull()
+});

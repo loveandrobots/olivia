@@ -1,9 +1,14 @@
 import {
+  activeListIndexResponseSchema,
+  archivedListIndexResponseSchema,
   cancelReminderResponseSchema,
   completeReminderResponseSchema,
   confirmCreateReminderResponseSchema,
   itemDetailResponseSchema,
   inboxViewResponseSchema,
+  listDetailResponseSchema,
+  listItemMutationResponseSchema,
+  listMutationResponseSchema,
   previewCreateResponseSchema,
   previewCreateReminderResponseSchema,
   previewUpdateResponseSchema,
@@ -13,7 +18,9 @@ import {
   reminderViewResponseSchema,
   saveReminderNotificationPreferencesResponseSchema,
   snoozeReminderResponseSchema,
+  type ActiveListIndexResponse,
   type ActorRole,
+  type ArchivedListIndexResponse,
   type CancelReminderResponse,
   type CompleteReminderResponse,
   type ConfirmCreateResponse,
@@ -24,6 +31,9 @@ import {
   type DraftReminder,
   type ItemDetailResponse,
   type InboxViewResponse,
+  type ListDetailResponse,
+  type ListItemMutationResponse,
+  type ListMutationResponse,
   type PreviewCreateResponse,
   type PreviewCreateReminderResponse,
   type PreviewUpdateResponse,
@@ -261,4 +271,104 @@ export async function saveReminderSettings(
       body: JSON.stringify({ actorRole: role, preferences })
     })
   );
+}
+
+// ─── Shared List API clients ──────────────────────────────────────────────────
+
+export async function fetchActiveListIndex(role: ActorRole): Promise<ActiveListIndexResponse> {
+  return activeListIndexResponseSchema.parse(await request<ActiveListIndexResponse>(`/api/lists?actorRole=${role}`));
+}
+
+export async function fetchArchivedListIndex(role: ActorRole): Promise<ArchivedListIndexResponse> {
+  return archivedListIndexResponseSchema.parse(await request<ArchivedListIndexResponse>(`/api/lists/archived?actorRole=${role}`));
+}
+
+export async function fetchListDetail(role: ActorRole, listId: string): Promise<ListDetailResponse> {
+  return listDetailResponseSchema.parse(await request<ListDetailResponse>(`/api/lists/${listId}?actorRole=${role}`));
+}
+
+export async function createList(role: ActorRole, title: string): Promise<ListMutationResponse> {
+  return listMutationResponseSchema.parse(
+    await request<ListMutationResponse>('/api/lists', {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, title })
+    })
+  );
+}
+
+export async function updateListTitle(role: ActorRole, listId: string, expectedVersion: number, title: string): Promise<ListMutationResponse> {
+  return listMutationResponseSchema.parse(
+    await request<ListMutationResponse>(`/api/lists/${listId}/title`, {
+      method: 'PATCH',
+      body: JSON.stringify({ actorRole: role, expectedVersion, title })
+    })
+  );
+}
+
+export async function archiveList(role: ActorRole, listId: string, expectedVersion: number): Promise<ListMutationResponse> {
+  return listMutationResponseSchema.parse(
+    await request<ListMutationResponse>(`/api/lists/${listId}/archive`, {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, expectedVersion, confirmed: true })
+    })
+  );
+}
+
+export async function restoreList(role: ActorRole, listId: string, expectedVersion: number): Promise<ListMutationResponse> {
+  return listMutationResponseSchema.parse(
+    await request<ListMutationResponse>(`/api/lists/${listId}/restore`, {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, expectedVersion })
+    })
+  );
+}
+
+export async function deleteList(role: ActorRole, listId: string): Promise<void> {
+  await request<void>(`/api/lists/${listId}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ actorRole: role, confirmed: true })
+  });
+}
+
+export async function addListItem(role: ActorRole, listId: string, body: string): Promise<ListItemMutationResponse> {
+  return listItemMutationResponseSchema.parse(
+    await request<ListItemMutationResponse>(`/api/lists/${listId}/items`, {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, body })
+    })
+  );
+}
+
+export async function updateListItemBody(role: ActorRole, listId: string, itemId: string, expectedVersion: number, body: string): Promise<ListItemMutationResponse> {
+  return listItemMutationResponseSchema.parse(
+    await request<ListItemMutationResponse>(`/api/lists/${listId}/items/${itemId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ actorRole: role, expectedVersion, body })
+    })
+  );
+}
+
+export async function checkListItem(role: ActorRole, listId: string, itemId: string, expectedVersion: number): Promise<ListItemMutationResponse> {
+  return listItemMutationResponseSchema.parse(
+    await request<ListItemMutationResponse>(`/api/lists/${listId}/items/${itemId}/check`, {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, expectedVersion })
+    })
+  );
+}
+
+export async function uncheckListItem(role: ActorRole, listId: string, itemId: string, expectedVersion: number): Promise<ListItemMutationResponse> {
+  return listItemMutationResponseSchema.parse(
+    await request<ListItemMutationResponse>(`/api/lists/${listId}/items/${itemId}/uncheck`, {
+      method: 'POST',
+      body: JSON.stringify({ actorRole: role, expectedVersion })
+    })
+  );
+}
+
+export async function removeListItem(role: ActorRole, listId: string, itemId: string): Promise<void> {
+  await request<void>(`/api/lists/${listId}/items/${itemId}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ actorRole: role, confirmed: true })
+  });
 }

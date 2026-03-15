@@ -6,15 +6,22 @@ import {
   historyEntrySchema,
   inboxItemSchema,
   itemFlagsSchema,
+  listItemHistoryEntrySchema,
+  listItemSchema,
   reminderSchema,
   reminderTimelineEntrySchema,
   remindersByStateSchema,
+  sharedListSchema,
+  type ActorRole,
   type DraftItem,
   type DraftReminder,
   type HistoryEntry,
   type InboxItem,
   type ItemFlags,
   type ItemsByStatus,
+  type ListEventType,
+  type ListItem,
+  type ListItemHistoryEntry,
   type Owner,
   type ParseConfidence,
   type ParserSource,
@@ -24,6 +31,7 @@ import {
   type ReminderTimelineEntry,
   type ReminderUpdateChange,
   type RemindersByState,
+  type SharedList,
   type Suggestion,
   type UpdateChange
 } from '@olivia/contracts';
@@ -925,4 +933,183 @@ function reminderPriority(state: ReminderState): number {
 
 function removeMatchByIndex(value: string, index: number, length: number): string {
   return `${value.slice(0, index)} ${value.slice(index + length)}`.trim();
+}
+
+// ─── Shared List domain helpers ───────────────────────────────────────────────
+
+export type ListSummary = {
+  activeItemCount: number;
+  checkedItemCount: number;
+  allChecked: boolean;
+};
+
+export function assertStakeholderWrite(actorRole: ActorRole): void {
+  if (actorRole !== 'stakeholder') {
+    const error = new Error('spouse may view lists but may not create, edit, or remove them in this phase');
+    (error as Error & { statusCode?: number; code?: string }).statusCode = 403;
+    (error as Error & { statusCode?: number; code?: string }).code = 'ROLE_READ_ONLY';
+    throw error;
+  }
+}
+
+export function deriveListSummary(items: ListItem[]): ListSummary {
+  const activeItemCount = items.length;
+  const checkedItemCount = items.filter((item) => item.checked).length;
+  const allChecked = activeItemCount > 0 && checkedItemCount === activeItemCount;
+  return { activeItemCount, checkedItemCount, allChecked };
+}
+
+export function createSharedList(title: string, owner: ActorRole, now: Date = new Date()): SharedList {
+  const timestamp = now.toISOString();
+  return sharedListSchema.parse({
+    id: createId(),
+    title: title.trim(),
+    owner,
+    status: 'active',
+    activeItemCount: 0,
+    checkedItemCount: 0,
+    allChecked: false,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    archivedAt: null,
+    version: 1
+  });
+}
+
+export function updateListTitle(list: SharedList, newTitle: string, now: Date = new Date()): SharedList {
+  return sharedListSchema.parse({
+    ...list,
+    title: newTitle.trim(),
+    updatedAt: now.toISOString(),
+    version: list.version + 1
+  });
+}
+
+export function archiveList(list: SharedList, now: Date = new Date()): SharedList {
+  if (list.status === 'archived') {
+    throw new Error('List is already archived.');
+  }
+  const timestamp = now.toISOString();
+  return sharedListSchema.parse({
+    ...list,
+    status: 'archived',
+    archivedAt: timestamp,
+    updatedAt: timestamp,
+    version: list.version + 1
+  });
+}
+
+export function restoreList(list: SharedList, now: Date = new Date()): SharedList {
+  if (list.status !== 'archived') {
+    throw new Error('List is not archived.');
+  }
+  return sharedListSchema.parse({
+    ...list,
+    status: 'active',
+    archivedAt: null,
+    updatedAt: now.toISOString(),
+    version: list.version + 1
+  });
+}
+
+export function addListItem(listId: string, body: string, nextPosition: number, now: Date = new Date()): ListItem {
+  const timestamp = now.toISOString();
+  return listItemSchema.parse({
+    id: createId(),
+    listId,
+    body: body.trim(),
+    checked: false,
+    checkedAt: null,
+    position: nextPosition,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    version: 1
+  });
+}
+
+export function updateItemBody(item: ListItem, newBody: string, now: Date = new Date()): ListItem {
+  return listItemSchema.parse({
+    ...item,
+    body: newBody.trim(),
+    updatedAt: now.toISOString(),
+    version: item.version + 1
+  });
+}
+
+export function checkItem(item: ListItem, now: Date = new Date()): ListItem {
+  const timestamp = now.toISOString();
+  return listItemSchema.parse({
+    ...item,
+    checked: true,
+    checkedAt: timestamp,
+    updatedAt: timestamp,
+    version: item.version + 1
+  });
+}
+
+export function uncheckItem(item: ListItem, now: Date = new Date()): ListItem {
+  return listItemSchema.parse({
+    ...item,
+    checked: false,
+    checkedAt: null,
+    updatedAt: now.toISOString(),
+    version: item.version + 1
+  });
+}
+
+function createListHistoryEntry(
+  listId: string,
+  itemId: string | null,
+  actorRole: ActorRole,
+  eventType: ListEventType,
+  fromValue: unknown,
+  toValue: unknown,
+  createdAt: string
+): ListItemHistoryEntry {
+  return listItemHistoryEntrySchema.parse({
+    id: createId(),
+    listId,
+    itemId,
+    actorRole,
+    eventType,
+    fromValue,
+    toValue,
+    createdAt
+  });
+}
+
+export function createListCreatedHistoryEntry(list: SharedList, actorRole: ActorRole): ListItemHistoryEntry {
+  return createListHistoryEntry(list.id, null, actorRole, 'list_created', null, { title: list.title }, list.createdAt);
+}
+
+export function createListTitleUpdatedHistoryEntry(list: SharedList, oldTitle: string, actorRole: ActorRole): ListItemHistoryEntry {
+  return createListHistoryEntry(list.id, null, actorRole, 'list_title_updated', { title: oldTitle }, { title: list.title }, list.updatedAt);
+}
+
+export function createListArchivedHistoryEntry(list: SharedList, actorRole: ActorRole): ListItemHistoryEntry {
+  return createListHistoryEntry(list.id, null, actorRole, 'list_archived', { status: 'active' }, { status: 'archived' }, list.updatedAt);
+}
+
+export function createListRestoredHistoryEntry(list: SharedList, actorRole: ActorRole): ListItemHistoryEntry {
+  return createListHistoryEntry(list.id, null, actorRole, 'list_restored', { status: 'archived' }, { status: 'active' }, list.updatedAt);
+}
+
+export function createItemAddedHistoryEntry(item: ListItem, actorRole: ActorRole): ListItemHistoryEntry {
+  return createListHistoryEntry(item.listId, item.id, actorRole, 'item_added', null, { body: item.body }, item.createdAt);
+}
+
+export function createItemBodyUpdatedHistoryEntry(item: ListItem, oldBody: string, actorRole: ActorRole): ListItemHistoryEntry {
+  return createListHistoryEntry(item.listId, item.id, actorRole, 'item_body_updated', { body: oldBody }, { body: item.body }, item.updatedAt);
+}
+
+export function createItemCheckedHistoryEntry(item: ListItem, actorRole: ActorRole): ListItemHistoryEntry {
+  return createListHistoryEntry(item.listId, item.id, actorRole, 'item_checked', { checked: false }, { checked: true, checkedAt: item.checkedAt }, item.updatedAt);
+}
+
+export function createItemUncheckedHistoryEntry(item: ListItem, actorRole: ActorRole): ListItemHistoryEntry {
+  return createListHistoryEntry(item.listId, item.id, actorRole, 'item_unchecked', { checked: true }, { checked: false }, item.updatedAt);
+}
+
+export function createItemRemovedHistoryEntry(listId: string, item: ListItem, actorRole: ActorRole, now: Date = new Date()): ListItemHistoryEntry {
+  return createListHistoryEntry(listId, item.id, actorRole, 'item_removed', { body: item.body }, null, now.toISOString());
 }

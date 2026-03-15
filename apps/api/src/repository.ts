@@ -4,17 +4,23 @@ import { computeReminderState } from '@olivia/domain';
 import {
   historyEntrySchema,
   inboxItemSchema,
+  listItemHistoryEntrySchema,
+  listItemSchema,
   notificationSubscriptionSchema,
   reminderNotificationPreferencesSchema,
   reminderSchema,
   reminderTimelineEntrySchema,
+  sharedListSchema,
   type ActorRole,
   type HistoryEntry,
   type InboxItem,
+  type ListItem,
+  type ListItemHistoryEntry,
   type NotificationSubscription,
   type Reminder,
   type ReminderNotificationPreferences,
-  type ReminderTimelineEntry
+  type ReminderTimelineEntry,
+  type SharedList
 } from '@olivia/contracts';
 
 const DEFAULT_REMINDER_PREFERENCES_UPDATED_AT = new Date(0).toISOString();
@@ -125,6 +131,47 @@ const mapReminderPreferencesRow = (
     dueRemindersEnabled: row ? Boolean(row.due_reminders_enabled) : false,
     dailySummaryEnabled: row ? Boolean(row.daily_summary_enabled) : false,
     updatedAt: row?.updated_at ?? DEFAULT_REMINDER_PREFERENCES_UPDATED_AT
+  });
+
+const mapSharedListRow = (row: Record<string, unknown>): SharedList =>
+  sharedListSchema.parse({
+    id: row.id,
+    title: row.title,
+    owner: row.owner,
+    status: row.status,
+    // Summary counts are computed separately and not stored on the row; default to 0
+    activeItemCount: 0,
+    checkedItemCount: 0,
+    allChecked: false,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    archivedAt: row.archived_at ?? null,
+    version: row.version
+  });
+
+const mapListItemRow = (row: Record<string, unknown>): ListItem =>
+  listItemSchema.parse({
+    id: row.id,
+    listId: row.list_id,
+    body: row.body,
+    checked: Boolean(row.checked),
+    checkedAt: row.checked_at ?? null,
+    position: row.position,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    version: row.version
+  });
+
+const mapListItemHistoryRow = (row: Record<string, unknown>): ListItemHistoryEntry =>
+  listItemHistoryEntrySchema.parse({
+    id: row.id,
+    listId: row.list_id,
+    itemId: row.item_id ?? null,
+    actorRole: row.actor_role,
+    eventType: row.event_type,
+    fromValue: parseJsonColumn(row.from_value),
+    toValue: parseJsonColumn(row.to_value),
+    createdAt: row.created_at
   });
 
 export class InboxRepository {
@@ -526,6 +573,177 @@ export class InboxRepository {
       deliveryBucket: String(row.delivery_bucket),
       deliveredAt: String(row.delivered_at)
     }));
+  }
+
+  // ─── Shared List repository ───────────────────────────────────────────────
+
+  listSharedLists(status: 'active' | 'archived' = 'active'): SharedList[] {
+    const rows = this.db
+      .prepare('SELECT * FROM shared_lists WHERE status = ? ORDER BY updated_at DESC')
+      .all(status) as Record<string, unknown>[];
+    return rows.map(mapSharedListRow);
+  }
+
+  getSharedList(listId: string): SharedList | null {
+    const row = this.db
+      .prepare('SELECT * FROM shared_lists WHERE id = ?')
+      .get(listId) as Record<string, unknown> | undefined;
+    return row ? mapSharedListRow(row) : null;
+  }
+
+  getListItems(listId: string): ListItem[] {
+    const rows = this.db
+      .prepare('SELECT * FROM list_items WHERE list_id = ? ORDER BY position ASC, created_at ASC')
+      .all(listId) as Record<string, unknown>[];
+    return rows.map(mapListItemRow);
+  }
+
+  getListItemHistory(listId: string): ListItemHistoryEntry[] {
+    const rows = this.db
+      .prepare('SELECT * FROM list_item_history WHERE list_id = ? ORDER BY created_at DESC')
+      .all(listId) as Record<string, unknown>[];
+    return rows.map(mapListItemHistoryRow);
+  }
+
+  createSharedList(list: SharedList, historyEntry: ListItemHistoryEntry): void {
+    const insertList = this.db.prepare(`
+      INSERT INTO shared_lists (id, title, owner, status, created_at, updated_at, archived_at, version)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertHistory = this.db.prepare(`
+      INSERT INTO list_item_history (id, list_id, item_id, actor_role, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    this.db.transaction(() => {
+      insertList.run(
+        list.id, list.title, list.owner, list.status,
+        list.createdAt, list.updatedAt, list.archivedAt, list.version
+      );
+      insertHistory.run(
+        historyEntry.id, historyEntry.listId, historyEntry.itemId,
+        historyEntry.actorRole, historyEntry.eventType,
+        historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
+        historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
+        historyEntry.createdAt
+      );
+    })();
+  }
+
+  updateSharedList(list: SharedList, historyEntry: ListItemHistoryEntry, expectedVersion: number): boolean {
+    const updateList = this.db.prepare(`
+      UPDATE shared_lists
+      SET title = ?, status = ?, updated_at = ?, archived_at = ?, version = ?
+      WHERE id = ? AND version = ?
+    `);
+    const insertHistory = this.db.prepare(`
+      INSERT INTO list_item_history (id, list_id, item_id, actor_role, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    return this.db.transaction(() => {
+      const result = updateList.run(
+        list.title, list.status, list.updatedAt, list.archivedAt, list.version,
+        list.id, expectedVersion
+      );
+      if (result.changes === 0) {
+        return false;
+      }
+      insertHistory.run(
+        historyEntry.id, historyEntry.listId, historyEntry.itemId,
+        historyEntry.actorRole, historyEntry.eventType,
+        historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
+        historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
+        historyEntry.createdAt
+      );
+      return true;
+    })();
+  }
+
+  deleteSharedList(listId: string): void {
+    // Foreign key cascade deletes list_items and list_item_history
+    this.db.prepare('DELETE FROM shared_lists WHERE id = ?').run(listId);
+  }
+
+  addListItem(item: ListItem, historyEntry: ListItemHistoryEntry): void {
+    const insertItem = this.db.prepare(`
+      INSERT INTO list_items (id, list_id, body, checked, checked_at, position, created_at, updated_at, version)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertHistory = this.db.prepare(`
+      INSERT INTO list_item_history (id, list_id, item_id, actor_role, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    this.db.transaction(() => {
+      insertItem.run(
+        item.id, item.listId, item.body, item.checked ? 1 : 0, item.checkedAt,
+        item.position, item.createdAt, item.updatedAt, item.version
+      );
+      insertHistory.run(
+        historyEntry.id, historyEntry.listId, historyEntry.itemId,
+        historyEntry.actorRole, historyEntry.eventType,
+        historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
+        historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
+        historyEntry.createdAt
+      );
+    })();
+  }
+
+  updateListItem(item: ListItem, historyEntry: ListItemHistoryEntry, expectedVersion: number): boolean {
+    const updateItem = this.db.prepare(`
+      UPDATE list_items
+      SET body = ?, checked = ?, checked_at = ?, updated_at = ?, version = ?
+      WHERE id = ? AND version = ?
+    `);
+    const insertHistory = this.db.prepare(`
+      INSERT INTO list_item_history (id, list_id, item_id, actor_role, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    return this.db.transaction(() => {
+      const result = updateItem.run(
+        item.body, item.checked ? 1 : 0, item.checkedAt, item.updatedAt, item.version,
+        item.id, expectedVersion
+      );
+      if (result.changes === 0) {
+        return false;
+      }
+      insertHistory.run(
+        historyEntry.id, historyEntry.listId, historyEntry.itemId,
+        historyEntry.actorRole, historyEntry.eventType,
+        historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
+        historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
+        historyEntry.createdAt
+      );
+      return true;
+    })();
+  }
+
+  removeListItem(itemId: string, listId: string, historyEntry: ListItemHistoryEntry): void {
+    const deleteItem = this.db.prepare('DELETE FROM list_items WHERE id = ? AND list_id = ?');
+    const insertHistory = this.db.prepare(`
+      INSERT INTO list_item_history (id, list_id, item_id, actor_role, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    this.db.transaction(() => {
+      deleteItem.run(itemId, listId);
+      insertHistory.run(
+        historyEntry.id, historyEntry.listId, historyEntry.itemId,
+        historyEntry.actorRole, historyEntry.eventType,
+        historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
+        historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
+        historyEntry.createdAt
+      );
+    })();
+  }
+
+  getNextListItemPosition(listId: string): number {
+    const row = this.db
+      .prepare('SELECT COALESCE(MAX(position) + 1, 0) AS next_position FROM list_items WHERE list_id = ?')
+      .get(listId) as { next_position: number };
+    return row.next_position;
   }
 
   exportSnapshot(): {

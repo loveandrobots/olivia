@@ -381,6 +381,161 @@ export const saveNotificationSubscriptionResponseSchema = z.object({
   subscription: notificationSubscriptionSchema
 });
 
+// ─── Shared Lists ────────────────────────────────────────────────────────────
+
+export const listStatusSchema = z.enum(['active', 'archived']);
+
+export const listEventTypeSchema = z.enum([
+  'list_created',
+  'list_title_updated',
+  'list_archived',
+  'list_restored',
+  'list_deleted',
+  'item_added',
+  'item_body_updated',
+  'item_checked',
+  'item_unchecked',
+  'item_removed'
+]);
+
+export const sharedListSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string().trim().min(1),
+  owner: actorRoleSchema,
+  status: listStatusSchema,
+  activeItemCount: z.number().int().nonnegative(),
+  checkedItemCount: z.number().int().nonnegative(),
+  allChecked: z.boolean(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  archivedAt: z.string().datetime().nullable(),
+  version: z.number().int().positive(),
+  pendingSync: z.boolean().optional()
+});
+
+export const listItemSchema = z.object({
+  id: z.string().uuid(),
+  listId: z.string().uuid(),
+  body: z.string().trim().min(1),
+  checked: z.boolean(),
+  checkedAt: z.string().datetime().nullable(),
+  position: z.number().int().nonnegative(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  version: z.number().int().positive(),
+  pendingSync: z.boolean().optional()
+});
+
+export const listItemHistoryEntrySchema = z.object({
+  id: z.string().uuid(),
+  listId: z.string().uuid(),
+  itemId: z.string().uuid().nullable(),
+  actorRole: actorRoleSchema,
+  eventType: listEventTypeSchema,
+  fromValue: z.unknown().nullable(),
+  toValue: z.unknown().nullable(),
+  createdAt: z.string().datetime()
+});
+
+// Query response schemas
+export const activeListIndexResponseSchema = z.object({
+  lists: z.array(sharedListSchema),
+  source: querySourceSchema
+});
+
+export const archivedListIndexResponseSchema = z.object({
+  lists: z.array(sharedListSchema),
+  source: querySourceSchema
+});
+
+export const listDetailResponseSchema = z.object({
+  list: sharedListSchema,
+  items: z.array(listItemSchema),
+  source: querySourceSchema
+});
+
+// Command/request schemas
+export const createListRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  title: z.string().trim().min(1)
+});
+
+export const updateListTitleRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  listId: z.string().uuid(),
+  expectedVersion: z.number().int().positive(),
+  title: z.string().trim().min(1)
+});
+
+export const archiveListRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  listId: z.string().uuid(),
+  expectedVersion: z.number().int().positive(),
+  confirmed: z.literal(true)
+});
+
+export const restoreListRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  listId: z.string().uuid(),
+  expectedVersion: z.number().int().positive()
+});
+
+export const deleteListRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  listId: z.string().uuid(),
+  confirmed: z.literal(true)
+});
+
+export const addListItemRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  listId: z.string().uuid(),
+  body: z.string().trim().min(1)
+});
+
+export const updateListItemBodyRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  listId: z.string().uuid(),
+  itemId: z.string().uuid(),
+  expectedVersion: z.number().int().positive(),
+  body: z.string().trim().min(1)
+});
+
+export const checkListItemRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  listId: z.string().uuid(),
+  itemId: z.string().uuid(),
+  expectedVersion: z.number().int().positive()
+});
+
+export const uncheckListItemRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  listId: z.string().uuid(),
+  itemId: z.string().uuid(),
+  expectedVersion: z.number().int().positive()
+});
+
+export const removeListItemRequestSchema = z.object({
+  actorRole: actorRoleSchema,
+  listId: z.string().uuid(),
+  itemId: z.string().uuid(),
+  confirmed: z.literal(true)
+});
+
+// Mutation response schemas
+export const listMutationResponseSchema = z.object({
+  savedList: sharedListSchema,
+  historyEntry: listItemHistoryEntrySchema,
+  newVersion: z.number().int().positive()
+});
+
+export const listItemMutationResponseSchema = z.object({
+  savedItem: listItemSchema,
+  historyEntry: listItemHistoryEntrySchema,
+  newVersion: z.number().int().positive()
+});
+
+// ─── Outbox commands ─────────────────────────────────────────────────────────
+
 export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('create'),
@@ -438,6 +593,83 @@ export const outboxCommandSchema = z.discriminatedUnion('kind', [
     reminderId: z.string().uuid(),
     expectedVersion: z.number().int().positive(),
     approved: z.literal(true)
+  }),
+  z.object({
+    kind: z.literal('list_create'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    title: z.string().trim().min(1)
+  }),
+  z.object({
+    kind: z.literal('list_title_update'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    listId: z.string().uuid(),
+    expectedVersion: z.number().int().positive(),
+    title: z.string().trim().min(1)
+  }),
+  z.object({
+    kind: z.literal('list_archive'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    listId: z.string().uuid(),
+    expectedVersion: z.number().int().positive(),
+    confirmed: z.literal(true)
+  }),
+  z.object({
+    kind: z.literal('list_restore'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    listId: z.string().uuid(),
+    expectedVersion: z.number().int().positive()
+  }),
+  z.object({
+    kind: z.literal('list_delete'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    listId: z.string().uuid(),
+    confirmed: z.literal(true)
+  }),
+  z.object({
+    kind: z.literal('item_add'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    listId: z.string().uuid(),
+    itemId: z.string().uuid(),
+    body: z.string().trim().min(1)
+  }),
+  z.object({
+    kind: z.literal('item_body_update'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    listId: z.string().uuid(),
+    itemId: z.string().uuid(),
+    expectedVersion: z.number().int().positive(),
+    body: z.string().trim().min(1)
+  }),
+  z.object({
+    kind: z.literal('item_check'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    listId: z.string().uuid(),
+    itemId: z.string().uuid(),
+    expectedVersion: z.number().int().positive()
+  }),
+  z.object({
+    kind: z.literal('item_uncheck'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    listId: z.string().uuid(),
+    itemId: z.string().uuid(),
+    expectedVersion: z.number().int().positive()
+  }),
+  z.object({
+    kind: z.literal('item_remove'),
+    commandId: z.string().uuid(),
+    actorRole: actorRoleSchema,
+    listId: z.string().uuid(),
+    itemId: z.string().uuid(),
+    confirmed: z.literal(true)
   })
 ]);
 
@@ -501,3 +733,25 @@ export type NotificationSubscription = z.infer<typeof notificationSubscriptionSc
 export type SaveNotificationSubscriptionRequest = z.infer<typeof saveNotificationSubscriptionRequestSchema>;
 export type SaveNotificationSubscriptionResponse = z.infer<typeof saveNotificationSubscriptionResponseSchema>;
 export type OutboxCommand = z.infer<typeof outboxCommandSchema>;
+
+// Shared Lists types
+export type ListStatus = z.infer<typeof listStatusSchema>;
+export type ListEventType = z.infer<typeof listEventTypeSchema>;
+export type SharedList = z.infer<typeof sharedListSchema>;
+export type ListItem = z.infer<typeof listItemSchema>;
+export type ListItemHistoryEntry = z.infer<typeof listItemHistoryEntrySchema>;
+export type ActiveListIndexResponse = z.infer<typeof activeListIndexResponseSchema>;
+export type ArchivedListIndexResponse = z.infer<typeof archivedListIndexResponseSchema>;
+export type ListDetailResponse = z.infer<typeof listDetailResponseSchema>;
+export type CreateListRequest = z.infer<typeof createListRequestSchema>;
+export type UpdateListTitleRequest = z.infer<typeof updateListTitleRequestSchema>;
+export type ArchiveListRequest = z.infer<typeof archiveListRequestSchema>;
+export type RestoreListRequest = z.infer<typeof restoreListRequestSchema>;
+export type DeleteListRequest = z.infer<typeof deleteListRequestSchema>;
+export type AddListItemRequest = z.infer<typeof addListItemRequestSchema>;
+export type UpdateListItemBodyRequest = z.infer<typeof updateListItemBodyRequestSchema>;
+export type CheckListItemRequest = z.infer<typeof checkListItemRequestSchema>;
+export type UncheckListItemRequest = z.infer<typeof uncheckListItemRequestSchema>;
+export type RemoveListItemRequest = z.infer<typeof removeListItemRequestSchema>;
+export type ListMutationResponse = z.infer<typeof listMutationResponseSchema>;
+export type ListItemMutationResponse = z.infer<typeof listItemMutationResponseSchema>;

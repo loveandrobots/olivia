@@ -289,7 +289,7 @@ describe('reminder migrations and api', () => {
       .all() as Array<{ name: string }>;
 
     expect(repository.listItems()).toHaveLength(1);
-    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql']);
+    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql']);
     expect(reminderTables.map((row) => row.name).sort()).toEqual([
       'notification_delivery_log',
       'reminder_notification_preferences',
@@ -644,6 +644,310 @@ describe('reminder notification jobs', () => {
     expect(repository.listNotificationDeliveries('stakeholder', 'daily_summary')).toHaveLength(1);
 
     db.close();
+    rmSync(directory, { recursive: true, force: true });
+  });
+});
+
+describe('shared list api', () => {
+  it('stakeholder can create a list, add items, check and uncheck items', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'olivia-lists-'));
+    const app = await buildApp({ config: createConfig(join(directory, 'test.sqlite')) });
+
+    // Create list
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/lists',
+      payload: { actorRole: 'stakeholder', title: 'Grocery Run' }
+    });
+    expect(createRes.statusCode).toBe(201);
+    const { savedList } = createRes.json();
+    expect(savedList.title).toBe('Grocery Run');
+    expect(savedList.status).toBe('active');
+    expect(savedList.version).toBe(1);
+
+    // Add item
+    const addRes = await app.inject({
+      method: 'POST',
+      url: `/api/lists/${savedList.id}/items`,
+      payload: { actorRole: 'stakeholder', body: 'Oat milk' }
+    });
+    expect(addRes.statusCode).toBe(201);
+    const { savedItem } = addRes.json();
+    expect(savedItem.body).toBe('Oat milk');
+    expect(savedItem.checked).toBe(false);
+
+    // Check item
+    const checkRes = await app.inject({
+      method: 'POST',
+      url: `/api/lists/${savedList.id}/items/${savedItem.id}/check`,
+      payload: { actorRole: 'stakeholder', expectedVersion: savedItem.version }
+    });
+    expect(checkRes.statusCode).toBe(200);
+    const checkedItem = checkRes.json().savedItem;
+    expect(checkedItem.checked).toBe(true);
+    expect(checkedItem.checkedAt).not.toBeNull();
+
+    // Uncheck item
+    const uncheckRes = await app.inject({
+      method: 'POST',
+      url: `/api/lists/${savedList.id}/items/${savedItem.id}/uncheck`,
+      payload: { actorRole: 'stakeholder', expectedVersion: checkedItem.version }
+    });
+    expect(uncheckRes.statusCode).toBe(200);
+    const uncheckedItem = uncheckRes.json().savedItem;
+    expect(uncheckedItem.checked).toBe(false);
+    expect(uncheckedItem.checkedAt).toBeNull();
+
+    await app.close();
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('stakeholder can archive and restore a list', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'olivia-lists-'));
+    const app = await buildApp({ config: createConfig(join(directory, 'test.sqlite')) });
+
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/lists',
+      payload: { actorRole: 'stakeholder', title: 'Packing List' }
+    });
+    const { savedList } = createRes.json();
+
+    // Archive — requires confirmed: true
+    const archiveRes = await app.inject({
+      method: 'POST',
+      url: `/api/lists/${savedList.id}/archive`,
+      payload: { actorRole: 'stakeholder', expectedVersion: savedList.version, confirmed: true }
+    });
+    expect(archiveRes.statusCode).toBe(200);
+    expect(archiveRes.json().savedList.status).toBe('archived');
+
+    // Active index should not include the archived list
+    const activeRes = await app.inject({
+      method: 'GET',
+      url: '/api/lists?actorRole=stakeholder'
+    });
+    expect(activeRes.json().lists.find((l: { id: string }) => l.id === savedList.id)).toBeUndefined();
+
+    // Archived index should include it
+    const archivedRes = await app.inject({
+      method: 'GET',
+      url: '/api/lists/archived?actorRole=stakeholder'
+    });
+    expect(archivedRes.json().lists.find((l: { id: string }) => l.id === savedList.id)).toBeDefined();
+
+    // Restore
+    const restoreRes = await app.inject({
+      method: 'POST',
+      url: `/api/lists/${savedList.id}/restore`,
+      payload: { actorRole: 'stakeholder', expectedVersion: archiveRes.json().savedList.version }
+    });
+    expect(restoreRes.statusCode).toBe(200);
+    expect(restoreRes.json().savedList.status).toBe('active');
+
+    await app.close();
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('stakeholder can permanently delete a list — requires confirmed: true', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'olivia-lists-'));
+    const app = await buildApp({ config: createConfig(join(directory, 'test.sqlite')) });
+
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/lists',
+      payload: { actorRole: 'stakeholder', title: 'To Delete' }
+    });
+    const { savedList } = createRes.json();
+
+    // Delete without confirmed should fail
+    const badDeleteRes = await app.inject({
+      method: 'DELETE',
+      url: `/api/lists/${savedList.id}`,
+      payload: { actorRole: 'stakeholder' }
+    });
+    expect(badDeleteRes.statusCode).toBe(400);
+
+    // Delete with confirmed: true
+    const deleteRes = await app.inject({
+      method: 'DELETE',
+      url: `/api/lists/${savedList.id}`,
+      payload: { actorRole: 'stakeholder', confirmed: true }
+    });
+    expect(deleteRes.statusCode).toBe(204);
+
+    // List should be gone
+    const getRes = await app.inject({
+      method: 'GET',
+      url: `/api/lists/${savedList.id}?actorRole=stakeholder`
+    });
+    expect(getRes.statusCode).toBe(404);
+
+    await app.close();
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('spouse can read lists and items but cannot write', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'olivia-lists-'));
+    const app = await buildApp({ config: createConfig(join(directory, 'test.sqlite')) });
+
+    // Stakeholder creates a list with an item
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/lists',
+      payload: { actorRole: 'stakeholder', title: 'Shared List' }
+    });
+    const { savedList } = createRes.json();
+    await app.inject({
+      method: 'POST',
+      url: `/api/lists/${savedList.id}/items`,
+      payload: { actorRole: 'stakeholder', body: 'Buy milk' }
+    });
+
+    // Spouse can read list index
+    const indexRes = await app.inject({ method: 'GET', url: '/api/lists?actorRole=spouse' });
+    expect(indexRes.statusCode).toBe(200);
+    expect(indexRes.json().lists).toHaveLength(1);
+
+    // Spouse can read list detail
+    const detailRes = await app.inject({ method: 'GET', url: `/api/lists/${savedList.id}?actorRole=spouse` });
+    expect(detailRes.statusCode).toBe(200);
+    expect(detailRes.json().items).toHaveLength(1);
+
+    // Spouse cannot create a list
+    const spouseCreateRes = await app.inject({
+      method: 'POST',
+      url: '/api/lists',
+      payload: { actorRole: 'spouse', title: 'Spouse List' }
+    });
+    expect(spouseCreateRes.statusCode).toBe(403);
+
+    // Spouse cannot add an item
+    const spouseAddItemRes = await app.inject({
+      method: 'POST',
+      url: `/api/lists/${savedList.id}/items`,
+      payload: { actorRole: 'spouse', body: 'Eggs' }
+    });
+    expect(spouseAddItemRes.statusCode).toBe(403);
+
+    // Spouse cannot check an item
+    const items = detailRes.json().items;
+    const spouseCheckRes = await app.inject({
+      method: 'POST',
+      url: `/api/lists/${savedList.id}/items/${items[0].id}/check`,
+      payload: { actorRole: 'spouse', expectedVersion: items[0].version }
+    });
+    expect(spouseCheckRes.statusCode).toBe(403);
+
+    await app.close();
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('detects version conflicts on list and item updates', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'olivia-lists-'));
+    const app = await buildApp({ config: createConfig(join(directory, 'test.sqlite')) });
+
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/lists',
+      payload: { actorRole: 'stakeholder', title: 'Conflict Test' }
+    });
+    const { savedList } = createRes.json();
+
+    // Stale version on title update
+    const conflictRes = await app.inject({
+      method: 'PATCH',
+      url: `/api/lists/${savedList.id}/title`,
+      payload: { actorRole: 'stakeholder', expectedVersion: 99, title: 'New Title' }
+    });
+    expect(conflictRes.statusCode).toBe(409);
+    expect(conflictRes.json().code).toBe('VERSION_CONFLICT');
+
+    // Add an item then use stale version
+    const addRes = await app.inject({
+      method: 'POST',
+      url: `/api/lists/${savedList.id}/items`,
+      payload: { actorRole: 'stakeholder', body: 'Test Item' }
+    });
+    const { savedItem } = addRes.json();
+
+    const itemConflictRes = await app.inject({
+      method: 'POST',
+      url: `/api/lists/${savedList.id}/items/${savedItem.id}/check`,
+      payload: { actorRole: 'stakeholder', expectedVersion: 99 }
+    });
+    expect(itemConflictRes.statusCode).toBe(409);
+
+    await app.close();
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('archive and restore routes reject requests without confirmation signal', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'olivia-lists-'));
+    const app = await buildApp({ config: createConfig(join(directory, 'test.sqlite')) });
+
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/lists',
+      payload: { actorRole: 'stakeholder', title: 'Confirm Test' }
+    });
+    const { savedList } = createRes.json();
+
+    // Archive without confirmed
+    const badArchive = await app.inject({
+      method: 'POST',
+      url: `/api/lists/${savedList.id}/archive`,
+      payload: { actorRole: 'stakeholder', expectedVersion: savedList.version }
+    });
+    expect(badArchive.statusCode).toBe(400);
+
+    await app.close();
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('list detail returns item count summary', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'olivia-lists-'));
+    const app = await buildApp({ config: createConfig(join(directory, 'test.sqlite')) });
+
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/lists',
+      payload: { actorRole: 'stakeholder', title: 'Summary Test' }
+    });
+    const { savedList } = createRes.json();
+
+    const item1Res = await app.inject({
+      method: 'POST',
+      url: `/api/lists/${savedList.id}/items`,
+      payload: { actorRole: 'stakeholder', body: 'Item A' }
+    });
+    const item2Res = await app.inject({
+      method: 'POST',
+      url: `/api/lists/${savedList.id}/items`,
+      payload: { actorRole: 'stakeholder', body: 'Item B' }
+    });
+    const item1 = item1Res.json().savedItem;
+
+    // Check one item
+    await app.inject({
+      method: 'POST',
+      url: `/api/lists/${savedList.id}/items/${item1.id}/check`,
+      payload: { actorRole: 'stakeholder', expectedVersion: item1.version }
+    });
+
+    const detailRes = await app.inject({
+      method: 'GET',
+      url: `/api/lists/${savedList.id}?actorRole=stakeholder`
+    });
+    expect(detailRes.statusCode).toBe(200);
+    const detail = detailRes.json();
+    expect(detail.list.activeItemCount).toBe(2);
+    expect(detail.list.checkedItemCount).toBe(1);
+    expect(detail.list.allChecked).toBe(false);
+    expect(detail.items).toHaveLength(2);
+    void item2Res; // used for side effect
+
+    await app.close();
     rmSync(directory, { recursive: true, force: true });
   });
 });
