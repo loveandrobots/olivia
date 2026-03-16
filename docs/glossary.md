@@ -89,11 +89,23 @@ The person providing product direction and decision authority for Olivia. In the
 ### Trust Model
 The set of rules defining what Olivia may do, what requires approval, and what the system must not do automatically.
 
+### AI-Assisted Content
+Content drafted by Olivia using an external AI provider and H4 temporal data (activity history, unified weekly view) as input, which the user reviews and accepts or edits before it becomes the canonical record. Distinct from advisory output: AI-assisted content is generated without a direct user command, but always requires explicit user acceptance before it is saved. First introduced in H5's AI-assisted planning ritual summaries workflow.
+
+### Trusted Action
+An H5 Selective Trusted Agency operation — either AI-assisted content generation or a proactive nudge — that Olivia initiates based on pattern detection or scheduled data rather than a direct user command. All trusted actions in H5 Phase 1 remain advisory-only: they propose or surface, but do not modify records without explicit user approval.
+
+### Proactive Nudge
+An Olivia-initiated prompt that surfaces actionable household state without the user having commanded it. Examples: "Weekly cleaning is overdue — mark done or skip to next week?" or "Planning ritual is due this Sunday." Proactive nudges are agentic actions — they require user response before any record change occurs.
+
 ### Activity History
 A reverse-chronological log of completed and resolved household activity across all four Horizon 3 workflow types (completed routines, resolved reminders, past meal plan entries, closed inbox items, and checked-off shared list items). The second Horizon 4 surface; pairs with the Unified Weekly View to form Olivia's temporal layer — the weekly view shows the present and near future, activity history shows the recent past.
 
 ### Unified Weekly View
 The first Horizon 4 surface in Olivia: a single read-only screen that assembles the household's scheduled and due items from all four Horizon 3 workflow types (reminders, recurring routines, meal plans, inbox items) into a day-by-day picture of the current calendar week (Monday through Sunday). Introduces no new entities — it surfaces existing H3 state in a cross-workflow temporal context.
+
+### Push Notification
+An OS-level device notification delivered outside the PWA when the app is not in the foreground. In Olivia's context, push notifications are the Phase 2 delivery extension for proactive nudges — the same nudge content that appears in the in-app nudge tray in Phase 1, surfaced to the device lock screen or notification center. Requires device token storage and server-side scheduling infrastructure; deferred from H5 Phase 1 until in-app nudge utility is household-validated.
 
 ### User Action
 An action explicitly and directly commanded by the user. Non-destructive user actions execute immediately — no confirmation step is needed, since they can be reversed through the normal UI (e.g., status changed again, ownership reassigned). Destructive user actions (archive, permanent delete) always require explicit confirmation regardless of source.

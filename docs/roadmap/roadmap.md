@@ -92,6 +92,8 @@ How Horizon 3 builds on the MVP:
 This is where Olivia starts to feel less like a single tool and more like a household coordination layer.
 
 ## Horizon 4: Household Memory And Planning
+Status: complete
+
 Focus: become a durable operational memory for the household, not only a current-state tracker.
 
 By the end of Horizon 3, Olivia surfaces what is active right now. Horizon 4 adds the temporal dimension: what happened last week, what is coming up, and how the household is doing over time.
@@ -115,14 +117,59 @@ Likely later capabilities:
 This horizon matters because household management is not only about what is due next. It is also about preserving context over time.
 
 ## Horizon 5: Selective Trusted Agency
-Focus: cautiously introduce limited automation only after the product is trusted and the rules are explicit.
+Status: active
 
-Possible future direction:
-- low-risk recurring actions with clear user-defined rules
-- proactive nudges or preparation behaviors within bounded scope
-- selective execution only where approval and auditability remain legible
+Focus: introduce the first layer of trusted agency — AI-assisted content generation and proactive temporal nudges — building directly on the H4 temporal layer that is now complete.
 
-This is intentionally later. Olivia should earn the right to act by first proving it can organize, clarify, and advise well.
+What H4 enables for H5:
+- Activity history and the unified weekly view together create a rich, structured temporal dataset that Olivia can now use as AI input rather than only displaying it
+- The planning ritual creates a natural trusted-agency touchpoint where AI-assisted draft content has immediate household value: generating the "last week recap" and "coming week overview" from real H4 data instead of requiring manual reconstruction
+- The carry-forward notes pattern in the planning ritual has a natural AI-assist angle: Olivia can suggest carry-forward items based on overdue and upcoming state from the weekly view
+- The H4 temporal loop (past, present, synthesis) gives H5 a grounded dataset for both AI content generation and proactive nudge timing
+
+Near-term workflow priorities:
+1. AI-assisted planning ritual summaries — first H5 spec target (see M16)
+   Olivia uses activity history and the unified weekly view to auto-draft the "last week recap" and "coming week overview" sections of the planning ritual. The household reviews, edits, and accepts the draft rather than writing from scratch. This is advisory-only: the user's accepted version is always the canonical record. External AI is used behind the provider adapter boundary established in D-008.
+
+2. Proactive household nudges — second H5 target, sequenced after Phase 1 validation
+   Olivia surfaces in-app prompts and push notifications for overdue routines (with a mark-done or skip choice), approaching reminder deadlines, and planning ritual due dates. These are agentic actions (Olivia-initiated), but remain advisory: the user decides how to respond. No record changes execute without user confirmation.
+
+3. Rule-based automation — explicitly deferred to H5 Phase 2+
+   User-defined automation rules (e.g., "auto-advance missed routine to next week", "auto-dismiss reminder after N days") are deferred until Phase 1 trusted-agency signals exist. Automation requires auditability infrastructure beyond Phase 1 scope and must not be introduced before the household has used and trusted AI-assisted content and proactive nudges.
+
+H5 behavioral guardrails (non-negotiables for all Phase 1 work):
+- AI-assisted content is always draft mode: Olivia proposes, user accepts or edits; the accepted version is the canonical record
+- Proactive nudges surface via in-app prompt or push notification only; no record modifications until user acts
+- External AI provider calls are scoped to content generation; no AI decision-making over household records without explicit user review
+- Every AI-generated or proactively surfaced item must be visibly attributable to Olivia: the user must be able to distinguish Olivia's output from their own
+- New storage is scoped to the minimum needed for AI-assisted events; the H4 pattern of minimal new tables is maintained in Phase 1
+
+How H5 builds on H4:
+- activity history and the unified weekly view become AI input surfaces, not just display surfaces
+- the planning ritual becomes the first trusted-agency touchpoint where AI-generated draft content appears
+- proactive nudges extend the routine and reminder scheduling model into Olivia-initiated surfaces, using the H4 temporal layer as the timing signal
+
+This is intentionally cautious. Olivia should earn the right to act by first proving it can organize, clarify, and advise well — and H4 has now built the foundation that makes earning that right possible.
+
+## H5 Phase 1 completion and Phase 2 direction
+
+Phase 1 is complete: both advisory-only capabilities are built and validated (D-041, 2026-03-16).
+
+What Phase 1 confirmed:
+- Advisory-only AI integrates as a strictly additive layer — the existing planning ritual flow, all 220+ tests, and the trust model all remained intact (L-023)
+- Purely-computed API endpoints (no new tables) work well for "active relevant items" surfaces — dismiss state belongs client-local in Dexie, not server-synced (L-024)
+- Page Visibility API pause/resume is the correct PWA pattern for nudge polling (L-025)
+- Skip-occurrence was a latent domain gap that nudges surfaced and filled — the domain model is now more complete (D-041)
+
+H5 Phase 2 priorities (in order):
+
+1. **Real AI provider wiring** — connect the `DisabledAiProvider` stub to a real Claude API provider behind the D-008 adapter boundary. This unlocks the AI-assisted planning ritual summaries feature for real households. The implementation path is bounded: the provider interface exists, the API routes call it, the prompts are defined. Phase 2 work is implementing `ClaudeAiProvider`, wiring API key configuration, and validating error propagation and rate limiting behavior. This is the highest-leverage Phase 2 step because it makes an already-built, already-visible user feature actually work.
+
+2. **Push notifications for nudges** — extend the proactive nudge surface beyond in-app to device push notifications (iOS/Android). Deferred from Phase 1 because push adds device token storage, server-side scheduling, and platform permission flows that should wait until in-app nudge utility is household-validated. Sequenced after real AI wiring because in-app nudge utility must be confirmed before adding delivery surface complexity.
+
+3. **AI-enhanced nudge timing** — use activity history patterns and household scheduling data to improve nudge timing signals (e.g., surface a routine nudge at a time historically associated with completion). Deferred to after push notifications because it requires auditability of AI nudge decisions and richer household usage data than Phase 1 generates.
+
+4. **Rule-based automation** — user-defined automation rules (auto-advance missed routine, auto-dismiss reminder after N days). Explicitly deferred to H5 Phase 3+. Requires auditability infrastructure, rule storage, and household trust in AI-assisted content before Olivia can act without explicit user confirmation. Must not be introduced before the household has used and trusted AI-assisted content and proactive nudges across a meaningful usage period.
 
 ## Near-Term Product Bets
 - The first enduring value will come from reducing coordination overhead, not from maximizing AI novelty.

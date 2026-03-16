@@ -17,6 +17,42 @@ Use this structure for future entries:
 
 ## Current Learnings
 
+### L-024: Proactive nudges confirm purely-computed API pattern — no new tables, client-only dismiss state
+- Date: 2026-03-15
+- Area: H5 architecture / Dexie / API design
+- Learning: `GET /api/nudges` is a wholly-computed, read-only endpoint that derives its payload from existing entity state (routine occurrences, reminders, routines table). It requires no new server-side tables. Dismiss state is stored client-only in a Dexie v7 `nudgeDismissals` table, daily-reset, never synced. This cleanly separates ephemeral UI state (dismiss) from durable household data.
+- Why it matters: any time a feature needs a "recent state" or "currently relevant items" view, a computed endpoint over existing tables is preferable to a new audit table. The pattern scales to other advisory surfaces.
+- Implication: future "surface-active-items" features should default to computed endpoints over new tables unless they need persistence beyond the current session.
+- Source: OLI-65 implementation (M19)
+- Related docs: `docs/specs/proactive-household-nudges.md`, `docs/plans/proactive-household-nudges-implementation-plan.md`
+
+### L-025: DST timezone issue in domain tests — use noon UTC (T12:00:00.000Z) for all routine due date fixtures
+- Date: 2026-03-15
+- Area: testing / domain
+- Learning: Routine due date fixtures using midnight UTC (T00:00:00.000Z) cause DST-boundary failures when `scheduleNextRoutineOccurrence` uses `setDate()` arithmetic — the result can land at 11pm UTC the previous day when DST springs forward. The fix is to use noon UTC (T12:00:00.000Z) for all `currentDueDate` test fixtures.
+- Why it matters: DST-related test failures appear non-deterministically (only around DST transitions) and are hard to diagnose.
+- Implication: all future routine occurrence date fixtures in tests should use T12:00:00.000Z, not T00:00:00.000Z.
+- Source: OLI-65 Phase 2 domain test debugging
+- Related docs: `packages/domain/test/nudges-domain.test.ts`
+
+### L-023: H5 Phase 1 validated the advisory-only AI integration pattern — strictly additive, no regressions, trust model holds
+- Date: 2026-03-15
+- Area: product validation / H5 architecture
+- Learning: The M17 build (AI-assisted planning ritual summaries) confirmed that advisory-only AI can be introduced as a strictly additive layer on top of an existing workflow without breaking any of the underlying flow's behavior, data model, or tests. All 220 existing tests continued to pass. The AI layer added two nullable columns to `review_records` (no new tables), a new server-side API endpoint, and new PWA surface states — none of which affected ritual completion, occurrence scheduling, or review record creation when AI was absent or failed.
+- Why it matters: this validates the H5 behavioral guardrail approach. Proactive nudges (H5 Phase 2) and future AI features can follow the same pattern: introduce new behavior as additive capability that degrades cleanly rather than introducing new dependencies that could break existing workflows.
+- Implication: when scoping subsequent H5 features, the Phase 1 constraint should remain "additive with clean degradation." Any H5 feature that requires modifying existing endpoint behavior (rather than adding new endpoints or new nullable fields) should be treated as a higher-risk change requiring explicit review.
+- Source: OLI-59 implementation (M17 complete, D-037)
+- Related docs: `docs/specs/ai-assisted-ritual-summaries.md`, `docs/roadmap/milestones.md` (M17), D-037, D-034
+
+### L-022: SQLite FK circular dependencies require a 3-step insert pattern — insert parent with null FK, insert child, update parent
+- Date: 2026-03-15
+- Area: data integrity / SQLite
+- Learning: When two tables have mutually-referencing FKs (A.ref → B.id and B.ref → A.id) with `PRAGMA foreign_keys = ON`, any single-INSERT order will violate one constraint. The correct pattern is: (1) insert the table whose FK field is nullable first (with null value), (2) insert the second table (first now exists, FK satisfied), (3) UPDATE the first table to set the FK back-reference. This must happen atomically inside a transaction.
+- Why it matters: the `review_records` / `routine_occurrences` circular reference is a real pattern in the schema. Getting the insert order wrong causes a silent 400 error at runtime (FK constraint propagated as SQLITE_CONSTRAINT_FOREIGNKEY through the Fastify error handler).
+- Implication: any schema with circular FKs must use this pattern. When reviewing new migrations, check for circular references and ensure the repository methods follow the 3-step pattern. Also: always test with `foreign_keys = ON` enabled — bugs in this area only appear when FK enforcement is active.
+- Source: OLI-59 implementation (AI-assisted planning ritual summaries, Phase 4/7)
+- Related docs: `apps/api/src/repository.ts` (`completeRitualOccurrence`), D-037
+
 ### L-001: The product should be framed as a household command center, not a general AI assistant
 - Date: 2026-03-08
 - Area: product framing
@@ -169,6 +205,33 @@ Use this structure for future entries:
 - Implication: future implementations that query household completion state should model their domain helpers and API endpoints after the activity history and weekly view patterns. The one structural note to carry forward: Reminder has no `state` column — completion state must be inferred from `completedAt`/`cancelledAt` fields.
 - Source: activity history implementation (OLI-50, 2026-03-16)
 - Related docs: `docs/specs/activity-history.md`, `docs/plans/activity-history-implementation-plan.md`, L-015, L-014
+
+### L-019: Planning ritual Phase 1 minimal scope is sufficient — structured synthesis adds value without AI or automation
+- Date: 2026-03-16
+- Area: product validation
+- Learning: The planning ritual support Phase 1 delivered a complete weekly review experience (3-step flow: last week recap, coming week overview, carry-forward notes) while deliberately deferring AI summaries, automatic carry-forward conversion, shared spouse participation in the review flow, draft-save, and push notifications for ritual due state.
+- Why it matters: validates that L-013's synthesis-first principle (synthesize existing H3 state before AI enhancement) extends successfully through Phase 1 delivery. The minimal ritual has clear standalone value without any AI or automation layer.
+- Implication: Phase 2 H4 extensions should be sequenced based on observed household use of Phase 1, not pre-specified. The most valuable next addition (AI summaries vs. carry-forward conversion vs. spouse participation) should emerge from actual ritual use rather than product assumption. This is the post-H4 validation loop that informs H5 planning.
+- Source: OLI-52 implementation and deferred boundary list, 2026-03-16
+- Related docs: `docs/specs/planning-ritual-support.md`, L-013, L-017
+
+### L-020: Horizon 4 introduced zero new entity types and only one new persistence table — minimal storage validates the synthesis model
+- Date: 2026-03-16
+- Area: product architecture / implementation validation
+- Learning: All three Horizon 4 workflows introduced zero new entity types and only one new database table across the entire H4 build phase. Unified weekly view: zero new tables. Activity history: zero new tables. Planning ritual support: one new table (`review_records`) plus two new columns on existing tables (`ritual_type` on routines, `review_record_id` on routine_occurrences). The direct link from occurrence to review record (`review_record_id`) enables navigation from activity history to review record detail without a separate lookup.
+- Why it matters: confirms that H4's synthesis model — building temporal views and synthesis moments on top of H3 state — is architecturally sound and does not require new entity proliferation. The H4 temporal loop is closed with minimal persistence overhead.
+- Implication: H5 (Selective Trusted Agency) should evaluate new storage requirements carefully. Trusted action execution and audit trails will likely require new tables, but those should be scoped narrowly and explicitly justified in terms of the trust model rather than assumed. The H4 pattern of minimal new storage is the right discipline to carry forward.
+- Source: all three H4 build phases — OLI-45 (unified weekly view), OLI-50 (activity history), OLI-52 (planning ritual support)
+- Related docs: L-017, L-018, `docs/specs/planning-ritual-support.md`
+
+### L-021: H4 temporal layer creates the data foundation H5 needs — AI-assisted content is the natural first trusted-agency capability
+- Date: 2026-03-16
+- Area: product strategy / H5 scoping
+- Learning: Horizon 4's three workflows (unified weekly view, activity history, planning ritual) together produce a structured, queryable temporal dataset — present/future, past 30 days, and weekly synthesis — that makes AI-assisted content generation meaningful rather than speculative. The planning ritual in particular has an immediate AI-assist angle: Olivia can draft "last week recap" and "coming week overview" from real H4 data rather than requiring the user to reconstruct them manually. This is the most natural first trusted-agency capability because it is advisory-only, uses confirmed H4 data sources, and reduces genuine cognitive load without introducing record-modification risk.
+- Why it matters: H5 should not begin by specifying low-level automation rules. It should begin with the capability that best demonstrates that H4's data is now worth reasoning about — and that capability is AI-assisted draft content for the planning ritual, not rule-based automation.
+- Implication: the first H5 spec target is AI-assisted planning ritual summaries. Rule-based automation (e.g., auto-advance routines) is explicitly H5 Phase 2+ and should not be scoped in Phase 1. The second H5 target — proactive household nudges — bridges from advisory AI content to Olivia-initiated surface prompts, sequenced after Phase 1 validation.
+- Source: M15 scoping (2026-03-16), L-017, L-019, L-020
+- Related docs: `docs/roadmap/roadmap.md`, `docs/roadmap/milestones.md` (M15), `docs/specs/planning-ritual-support.md`
 
 ### L-013: The unified weekly view is the natural first Horizon 4 surface — cross-workflow temporal context was the missing layer after four H3 workflows
 - Date: 2026-03-16

@@ -389,7 +389,7 @@ Completion note:
 ## M14: Horizon 4 Third Workflow Build
 Objective: deliver the planning ritual support workflow so the household gains a structured weekly review ritual that synthesizes activity history and the unified weekly view into a periodic review moment.
 
-Status: active
+Status: complete
 
 Required artifacts:
 - built planning ritual support — all seven phases of the implementation plan executed (`docs/plans/planning-ritual-support-implementation-plan.md`)
@@ -412,6 +412,247 @@ Evidence of completion:
 Progress notes:
 - Implementation plan ready (OLI-51): `docs/plans/planning-ritual-support-implementation-plan.md`
 - Visual spec ready (OLI-51): `docs/plans/planning-ritual-support-visual-implementation-spec.md`
+- Implementation complete (OLI-52): all seven phases delivered. Contracts (`ritualType`, `reviewRecordSchema`, `completeRitualRequestSchema`, `completeRitualResponseSchema`, `ritual_complete` outbox command), domain helpers (`getReviewWindowsForOccurrence` with Sunday-special-case anchor, `formatReviewWindowAsDateStrings`; 8 domain tests passing), API migration `0005_planning_ritual_support.sql` (review_records table, ritual_type column on routines, review_record_id column on routine_occurrences), repository (`completeRitualOccurrence` atomic transaction, `createReviewRecord`, `getReviewRecord`), API routes (`POST /api/routines/:id/complete-ritual`, `GET /api/review-records/:id`), PWA (Dexie v6 reviewRecords table, `submitRitualCompletion` online+offline, `loadReviewRecord`, `ritual_complete` outbox flush), PWA surfaces (`ReviewFlowPage` 3-step flow at `/routines/:id/review/:occurrenceId`, `ReviewRecordDetailPage` at `/review-records/:id`, ritual entry row in `HistoryPage`, `RitualCard` in `RoutinesPage`). 220 tests passing. Typecheck clean.
+
+Completion note:
+- Advanced to complete based on implementation evidence from OLI-52. All five M14 exit criteria satisfied: (1) planning ritual card shows "Start review" button in routine index — visual affordance distinguishes it from standard routines; (2) tapping opens the structured 3-step review flow at `/routines/:id/review/:occurrenceId`; (3) completing saves a review record and advances `currentDueDate` via the existing `completeRoutineOccurrence` domain function; (4) completed ritual entries appear in activity history with "Review" secondary label; tapping navigates to `/review-records/:id`; (5) no new workflow primitives — `review_records` table only, built entirely on recurring routines + activity history + weekly view infrastructure. All 18 acceptance criteria confirmed — 220 tests passing, typecheck clean. The planning ritual closes the H4 temporal loop: weekly view (forward), activity history (backward), and now a structured synthesis moment (planning ritual). Decision recorded as D-033 in decision-history.md. Horizon 4 is complete. M15 (Horizon 5 Scoping) is now the active milestone.
+
+## M15: Horizon 5 Scoping
+Objective: define the product shape of Selective Trusted Agency well enough that future planning compounds on the H4 memory and planning layer rather than introducing trust-model changes without a clear product foundation.
+
+Status: complete
+
+Required artifacts:
+- updated `docs/roadmap/roadmap.md` with concrete Horizon 5 scope — what trust-model changes are targeted in H5, what remains deferred, and why selective agency follows from H4's temporal layer ✓
+- a first H5 spec target or spec area explicitly named — the specific trusted-agency capability that will be the first implementation target ✓
+- updated `docs/glossary.md` with any new H5 terms introduced (e.g., "trusted action", "automation rule", "bounded automation") ✓
+- updated `docs/learnings/` reflecting the post-H4 product state — what the H4 temporal layer reveals about where selective agency should begin ✓
+
+Exit criteria:
+- Horizon 5 product direction is concrete enough that implementation agents do not need to guess what "Selective Trusted Agency" means in the context of Olivia's existing product model
+- the relationship between the H4 temporal layer (weekly view, activity history, planning ritual) and H5 trusted agency is described at a product level — what new data or trust signals H4 provides that make H5 possible
+- the first H5 capability area is specific enough to enter feature-spec work without ambiguity about which problem selective agency should solve first
+
+Evidence of completion:
+- a new agent can identify what Olivia should build first in Horizon 5, why it follows from the H4 foundation, and what should remain deferred at the start of H5
+
+Progress notes:
+- `docs/roadmap/roadmap.md` H5 section concretized: three H5 targets in priority order (AI-assisted planning ritual summaries → proactive household nudges → rule-based automation deferred to Phase 2+), H5 behavioral guardrails, and explicit H4→H5 data connection
+- Glossary updated: AI-Assisted Content, Trusted Action, Proactive Nudge (2026-03-16)
+- L-021 added: H4 temporal layer creates the AI input foundation; AI-assisted summaries is the natural first H5 capability (2026-03-16)
+
+Completion note:
+- All four M15 required artifacts are in place. Exit criteria met: (1) H5 direction is concrete — three workflow targets in sequence with behavioral guardrails and H5 Phase 2+ deferred boundary; (2) the H4→H5 connection is explicit — activity history + weekly view are AI input sources, planning ritual is the first trusted-agency touchpoint; (3) the first H5 spec target is specific: AI-assisted planning ritual summaries (advisory-only AI draft of the last-week recap and coming-week overview sections). Decision recorded as D-034 (2026-03-16). M16 (H5 Build Readiness) is now the active milestone.
+
+## M16: Horizon 5 Build Readiness
+Objective: prepare the first H5 workflow (AI-assisted planning ritual summaries) for implementation so the household's H4 temporal data becomes an AI input source for the first time.
+
+Status: complete
+
+Required artifacts:
+- CEO-approved feature spec for AI-assisted planning ritual summaries (`docs/specs/ai-assisted-ritual-summaries.md`) ✓ approved D-035, 2026-03-15
+- Visual spec for the AI-assisted ritual summary experience (`docs/plans/ai-assisted-ritual-summaries-visual-implementation-spec.md`) ✓ complete
+- Implementation plan for AI-assisted planning ritual summaries (`docs/plans/ai-assisted-ritual-summaries-implementation-plan.md`) ✓ complete (OLI-58)
+- Updated learnings and decisions based on M15 scoping outcomes (L-021, D-034) ✓
+
+Exit criteria:
+- the feature spec is CEO-approved and is concrete enough for implementation without major product ambiguity
+- the visual spec resolves all designer decisions deferred from the feature spec: draft section layout, edit affordance, accept/discard interaction, Olivia-attribution visual indicator, AI provider error state
+- the implementation plan defines the external AI provider call shape, prompt design boundary, data inputs from H4 APIs, and the storage model for accepted draft content
+- the trust model implications are documented: what the user sees, what Olivia generated, and how the attribution is preserved in the saved review record
+
+Evidence of completion:
+- an implementation plan can be generated for AI-assisted ritual summaries without rediscovering the product model
+- the implementation agent has clear acceptance criteria, a visual reference, and bounded engineering decisions for the AI provider integration
+
+Progress notes:
+- Feature spec complete and CEO-approved (OLI-56, D-035, 2026-03-15): `docs/specs/ai-assisted-ritual-summaries.md` — 17 acceptance criteria, advisory-only, 2 nullable columns on review_records, H5 behavioral guardrails fully applied
+- Visual spec complete: `docs/plans/ai-assisted-ritual-summaries-visual-implementation-spec.md` — resolves all designer decisions (draft section layout, lavender-tinted AI card with Olivia wordmark badge, inline tap-to-edit affordance, fixed-footer accept/dismiss pair, inline skeleton loading state, calm inline error fallback, AI-assisted badge in review record detail, null narrative state omits section entirely)
+- Implementation plan complete (OLI-58): `docs/plans/ai-assisted-ritual-summaries-implementation-plan.md` — 7-phase plan, server-side AI calls behind D-008 boundary, DisabledAiProvider stub for testability, minimal new storage (2 nullable columns + ai_generation_used flag)
+
+Completion note:
+- All four M16 required artifacts are in place. Exit criteria met: (1) feature spec is CEO-approved (D-035) with 17 acceptance criteria — execution-ready without product ambiguity; (2) visual spec (OLI-57) resolves all designer decisions deferred from the feature spec; (3) implementation plan (OLI-58) defines the AI provider call shape (server-side via D-008 adapter boundary), prompt design boundary (H4 structured data only, item names included per Decision E), data inputs from H4 APIs, and storage model (2 nullable columns on review_records); (4) trust model implications are documented — user sees a lavender-attributed draft, Olivia generated it, attribution preserved as "AI-assisted" badge in the saved review record. Decision to be recorded as D-036. M17 (H5 Build) is now the active milestone.
+
+## M17: Horizon 5 First Workflow Build
+Objective: deliver the AI-assisted planning ritual summaries workflow so the household's H4 temporal data becomes an AI input source for the first time — Olivia generates advisory-only draft narratives for the planning ritual review flow.
+
+Status: complete
+
+Required artifacts:
+- built AI-assisted planning ritual summaries — all seven phases of the implementation plan executed (`docs/plans/ai-assisted-ritual-summaries-implementation-plan.md`)
+- PWA `ReviewFlowPage` extended with AI draft state: loading skeleton, lavender-tinted draft card, inline tap-to-edit, accept/dismiss footer pair
+- PWA `ReviewRecordDetailPage` extended with narrative sections and "AI-assisted" attribution badges
+- updated learnings and decision history based on H5 Phase 1 build outcomes
+- evidence of how the AI layer integrates with the existing planning ritual, activity history, and weekly view infrastructure
+
+Exit criteria:
+- opening the planning ritual review flow triggers AI draft generation for both the last week recap and coming week overview sections simultaneously
+- the household member can accept, edit, or dismiss the AI draft independently per section; dismissal has no effect on ritual completion
+- accepted draft text is stored in `review_records.recap_narrative` and `review_records.overview_narrative`; dismissed drafts produce null — no record changes occur without user acceptance
+- the review record detail screen shows accepted narratives with "AI-assisted" attribution badges; null narrative sections are omitted entirely
+- if the AI call fails, times out, or the device is offline, each section falls back to the structured item list — the review flow is always completable without AI
+- no AI calls originate from the PWA — all generation is server-side behind the D-008 adapter boundary
+- the implementation agent has confirmed all 17 acceptance criteria from `docs/specs/ai-assisted-ritual-summaries.md` are met
+- all 18 planning ritual support acceptance criteria from `docs/specs/planning-ritual-support.md` continue to pass (the AI layer is strictly additive)
+
+Evidence of completion:
+- the project can point to a working advisory AI layer on the planning ritual, confirmed trust model enforcement (no storage before acceptance), attribution visible in the review record detail, and build-phase learnings that inform the second H5 capability (proactive household nudges)
+
+Progress notes:
+- Implementation plan ready (OLI-58): `docs/plans/ai-assisted-ritual-summaries-implementation-plan.md`
+- Visual spec ready (OLI-57): `docs/plans/ai-assisted-ritual-summaries-visual-implementation-spec.md`
+- Feature spec ready and CEO-approved (D-035): `docs/specs/ai-assisted-ritual-summaries.md`
+- All 7 implementation phases complete (OLI-59): DB migration, contracts, AI provider, API endpoints, PWA client/sync, PWA surface (ReviewFlowPage + ReviewRecordDetailPage), 50 API tests passing. FK insert-order bug in `completeRitualOccurrence` found and fixed (D-036). M18 (next H5 capability) is now available.
+
+## M18: Horizon 5 Second Workflow Build Readiness
+Objective: prepare the proactive household nudges workflow for implementation so the household gains Olivia-initiated time-sensitive awareness without the household member having to check proactively.
+
+Status: complete
+
+Required artifacts:
+- CEO-approved feature spec for proactive household nudges (`docs/specs/proactive-household-nudges.md`) ✓ approved D-039, 2026-03-15
+- Visual spec for the proactive household nudges experience (`docs/plans/proactive-household-nudges-visual-implementation-spec.md`) ✓ complete OLI-62, 2026-03-16
+- Implementation plan for proactive household nudges (`docs/plans/proactive-household-nudges-implementation-plan.md`) ✓ complete OLI-63, 2026-03-16
+- Updated learnings and decisions based on M17 build outcomes (L-023, D-038) ✓
+
+Exit criteria:
+- the feature spec is CEO-approved and is concrete enough for implementation without major product ambiguity
+- the visual spec resolves all designer decisions deferred from the feature spec: nudge tray placement, nudge card layout, action button affordances, dismiss interaction, navigation count badge
+- the implementation plan defines the `GET /api/nudges` computed endpoint, the Dexie dismiss-state model, and the polling strategy — with no new server-side tables required
+- the five open questions in the feature spec are either resolved or explicitly deferred with rationale
+
+Evidence of completion:
+- an implementation plan can be generated for proactive household nudges without rediscovering the product model
+- the implementation agent has clear acceptance criteria, a visual reference, and bounded engineering decisions for the nudge polling and action integration
+
+Progress notes:
+- M17 complete (D-037, 2026-03-15): AI-assisted planning ritual summaries fully built and validated; H5 Phase 1 advisory-only AI pattern confirmed
+- Feature spec drafted (OLI-60): `docs/specs/proactive-household-nudges.md` — 18 acceptance criteria, in-app nudges only (push deferred to Phase 2), three nudge types (routine overdue, reminder approaching, planning ritual overdue), no new server-side tables
+- L-023 added: H5 Phase 1 validated the advisory-only AI integration pattern; same trust model applies to Phase 2 nudges
+- D-038 recorded: M17 complete, M18 activated
+- CEO approved feature spec (OLI-61, D-039, 2026-03-15): all five open questions resolved; Phase 1 = in-app only, snooze 1h, reminder threshold 24h, display cap 5, no ritual snooze in Phase 1
+- Visual spec complete (OLI-62, 2026-03-16): `docs/plans/proactive-household-nudges-visual-implementation-spec.md` — all 9 designer decisions resolved: nudge tray placement (top of home content, no empty placeholder), compact action card design distinct from AI voice card, action button affordances (primary + ghost pair for routine/reminder; full-width primary for ritual), dismiss × tap, rose navigation badge on Home tab, workflow-type differentiation (mint/rose/violet per type), "+ N more" overflow row, empty nudge tray absent from DOM, calm non-judgmental copy tone
+- Implementation plan complete (OLI-63, 2026-03-16): `docs/plans/proactive-household-nudges-implementation-plan.md` — 7-phase plan, no new server-side tables, skip-occurrence built as new work in Phase 3 (existing skip domain model gap identified), Dexie v7 nudgeDismissals table
+
+Completion note:
+- All four M18 required artifacts are in place. Exit criteria met: (1) feature spec is CEO-approved (D-039) with 18 acceptance criteria — execution-ready without product ambiguity; (2) visual spec (OLI-62) resolves all nine designer decisions including nudge tray placement (dedicated top-of-home-content section), card design (compact action card with left accent stripe, distinct from AI voice card), action button affordances (primary + ghost pair; 44px tap targets), dismiss × (immediate, no confirmation), navigation count badge (rose dot on Home tab), workflow-type differentiation, overflow indicator, empty nudge state, and copy tone; (3) implementation plan (OLI-63) defines the `GET /api/nudges` computed endpoint, Dexie v7 nudgeDismissals table, 15-minute polling with Page Visibility API pause, skip-occurrence as new Phase 3 work, and no new server-side tables; (4) all five open questions from the feature spec are resolved in D-039. Decision recorded as D-040 (2026-03-16). M19 (H5 Second Workflow Build) is now the active milestone.
+
+## M19: Horizon 5 Second Workflow Build
+Objective: deliver the proactive household nudges workflow so the household gains Olivia-initiated time-sensitive awareness for overdue routines, approaching reminders, and overdue planning rituals.
+
+Status: complete
+
+Required artifacts:
+- built proactive household nudges — all seven phases of the implementation plan executed (`docs/plans/proactive-household-nudges-implementation-plan.md`)
+- PWA home screen nudge tray with per-type nudge cards (routine, reminder, planning ritual) and inline action buttons
+- navigation count badge on Home tab when active nudges exist
+- updated learnings and decision history based on H5 Phase 2 build outcomes
+- evidence of how the nudge tray integrates with the existing home screen and the three entity types it surfaces
+
+Exit criteria:
+- the nudge tray appears on the home screen when overdue routines, approaching reminders, or overdue planning rituals exist; it is completely absent when no nudges are active
+- each nudge card displays the item name, trigger condition text, and workflow-type–differentiated styling (mint/rose/violet stripe and icon)
+- action buttons are functional: "Mark done" completes a routine occurrence, "Skip" skips it, "Done" resolves a reminder, "Snooze" snoozes 1 hour, "Start review →" opens the review flow
+- dismiss × removes the card client-locally for the current calendar day without modifying any server record
+- the navigation count badge on the Home tab shows the active nudge count; it is absent when the count is zero
+- no AI calls originate from this feature — nudges are computed from existing entity state; the AI layer is a Phase 2 extension
+- no new server-side tables — `GET /api/nudges` is a purely computed endpoint
+- the implementation agent has confirmed all 18 acceptance criteria from `docs/specs/proactive-household-nudges.md` are met
+
+Evidence of completion:
+- the project can point to a working Olivia-initiated nudge surface, confirmed inline action integration, and build-phase learnings that inform Phase 2 H5 capabilities (AI-enhanced nudge timing, push notifications)
+
+Completion notes:
+- All 7 implementation phases delivered: contracts, domain helpers + 8 tests, API endpoints (GET /api/nudges + POST /api/routines/:routineId/skip) + 13 API tests, PWA api.ts/sync.ts, Dexie v7 nudgeDismissals table, nudge-tray.tsx with full card variants and polling, home-page.tsx integration with nav badge. 211 total tests pass.
+- Skip-occurrence (`skipRoutineOccurrence`) is now a first-class domain capability, closing a gap in the domain model.
+- `GET /api/nudges` is a purely computed endpoint — no new server tables.
+- Dismiss state is client-local (Dexie v7 `nudgeDismissals`), daily-reset, never synced.
+- 15-minute polling with Page Visibility API pause/resume implemented in `useNudges` hook.
+- Navigation count badge implemented in `BottomNav` via `nudgeBadgeCount` prop.
+- H5 Phase 1 is now fully complete: both advisory-only capabilities (AI-assisted planning ritual summaries + proactive household nudges) are built and validated. Decision recorded as D-041 (2026-03-16). M20 (H5 Phase 2 Scoping) is now the active milestone.
+
+## M20: Horizon 5 Phase 2 Scoping
+Objective: define the product shape of H5 Phase 2 well enough that future planning compounds on the Phase 1 advisory-only capabilities rather than drifting into automation before the household has validated the Phase 1 trust model.
+
+Status: complete
+
+Required artifacts:
+- updated `docs/roadmap/roadmap.md` with concrete H5 Phase 2 scope and sequencing rationale ✓
+- a first H5 Phase 2 spec target explicitly named — the specific capability that extends Phase 1 to unlock real household AI value ✓
+- updated `docs/glossary.md` with any new H5 Phase 2 terms introduced ✓
+- updated `docs/learnings/` reflecting the post-Phase 1 product state — what Phase 1 build evidence reveals about where Phase 2 should begin ✓
+
+Exit criteria:
+- H5 Phase 2 product direction is concrete enough that implementation agents do not need to guess what "real AI" or "push notifications" means in the context of Olivia's existing Phase 1 product model
+- the relationship between the Phase 1 advisory capabilities (AI-assisted summaries + proactive nudges) and Phase 2 extensions is described at a product level
+- the first Phase 2 capability area is specific enough to enter feature-spec work without ambiguity
+
+Evidence of completion:
+- a new agent can identify what Olivia should build first in H5 Phase 2, why it follows from Phase 1, and what should remain deferred
+
+Progress notes:
+- M19 complete (D-041, 2026-03-16): proactive household nudges built and validated; H5 Phase 1 complete
+- First Phase 2 target identified in D-041: real AI provider wiring — connecting `DisabledAiProvider` stub to real Claude API via D-008 adapter boundary
+- Roadmap H5 section updated with Phase 2 priorities in order: real AI provider wiring → push notifications → AI-enhanced nudge timing → rule-based automation (Phase 3+)
+- Glossary updated: Push Notification added (2026-03-15)
+- Phase 1 build learnings captured: L-024 (computed API pattern), L-025 (DST-safe test fixtures)
+
+Completion note:
+- All four M20 required artifacts are in place. Exit criteria met: (1) H5 Phase 2 direction is concrete — four Phase 2 targets in priority order with sequencing rationale, all documented in the roadmap H5 section; (2) the Phase 1 → Phase 2 connection is explicit — Phase 1 validation of advisory-only patterns and computed endpoints informs Phase 2 scope (L-023, L-024); (3) the first Phase 2 spec target is specific: real AI provider wiring — connecting the `DisabledAiProvider` stub to a real Claude API provider via the D-008 adapter boundary, unlocking AI-assisted summaries for real household use. Decision recorded as D-042 (2026-03-15). M21 (H5 Phase 2 Build Readiness) is now the active milestone.
+
+## M21: Horizon 5 Phase 2 Build Readiness
+Objective: prepare the first H5 Phase 2 capability (real AI provider wiring) for implementation so that the AI-assisted planning ritual summaries feature delivers actual AI-generated content to real households for the first time.
+
+Status: complete
+
+Required artifacts:
+- CEO-approved feature spec for real AI provider wiring — defines the `ClaudeAiProvider` interface contract, API key configuration strategy, error propagation model, and rate limiting approach within the existing D-008 adapter boundary
+- Implementation plan for real AI provider wiring — covers the provider implementation, configuration, integration with the existing `generate-ritual-summary` endpoint, and verification approach
+- Updated learnings and decisions based on M20 scoping outcomes (D-042)
+
+Exit criteria:
+- the feature spec is CEO-approved and is concrete enough for implementation without major product ambiguity
+- the spec defines what happens at each failure mode: AI provider error, API key missing or invalid, rate limit hit, timeout — and confirms that the existing fallback (structured item list) covers all degraded states
+- the implementation plan is scoped to the D-008 adapter boundary — no changes to the PWA or to how the review flow calls the API
+- the spec confirms which Claude model is targeted and why, what the prompt token budget is, and whether response streaming is in scope for Phase 2
+
+Evidence of completion:
+- an implementation plan can be generated for real AI provider wiring without rediscovering the product model
+- the implementation agent has a clear provider interface to implement, a configuration model to follow, and bounded engineering decisions for rate limiting and error handling
+
+Completion note:
+- All M21 exit criteria met. CEO approved `docs/specs/real-ai-provider-wiring.md` (OLI-67, 2026-03-16). Decision recorded as D-043. Implementation plan at `docs/plans/real-ai-provider-wiring-implementation-plan.md`. Implementation task (OLI-70) commissioned and completed by Founding Engineer — ClaudeAiProvider implemented, `ANTHROPIC_API_KEY` wired, error propagation validated per spec. No PWA changes, no new routes, no new tables. Phase 2 is backend-only as designed.
+
+Progress notes:
+- M20 complete (D-042, 2026-03-15): H5 Phase 2 scoped; real AI provider wiring confirmed as first Phase 2 target
+- D-008 adapter boundary is already in place — the provider interface, API routes, and prompt definitions exist; Phase 2 work is implementing the real provider behind that boundary
+
+## M22: Horizon 5 Phase 2 Build
+Objective: implement real AI provider wiring so that the AI-assisted planning ritual summaries feature delivers actual Claude-generated content to real households for the first time.
+
+Status: complete
+
+Required artifacts:
+- `ClaudeAiProvider` implementation in `apps/api/src/ai.ts` — satisfying the `AiProvider` interface, making real Anthropic SDK calls for `generateRitualSummaries` (parallel, `Promise.allSettled`, 10-second timeout, never throws), and using stub behavior for other interface methods
+- `createAiProvider` factory in `apps/api/src/ai.ts` — selects `ClaudeAiProvider` when `ANTHROPIC_API_KEY` is set and non-empty, falls back to `DisabledAiProvider` with a startup warning
+- `ANTHROPIC_API_KEY` wired into `buildApp` config in `apps/api/src/app.ts` — no PWA changes, no new routes, no new database tables
+- Tests in `apps/api/test/ai.test.ts` — happy path, network error, 429, partial failure, privacy scope guard, and factory selection cases (8 tests)
+
+Exit criteria:
+- `ClaudeAiProvider` satisfies the `AiProvider` interface — TypeScript enforces at compile time
+- `generateRitualSummaries` makes real Anthropic SDK calls and handles all failure modes: network error, rate limit, timeout, partial section failure — all return null drafts without throwing
+- Factory returns `ClaudeAiProvider` when `ANTHROPIC_API_KEY` is set; returns `DisabledAiProvider` with warning when not set
+- All existing API tests pass without `ANTHROPIC_API_KEY` set (regression check)
+- Prompt contains only H4 structured data from `RitualSummaryInput` — no household free-text outside the approved privacy scope
+- `ANTHROPIC_API_KEY` is not logged at INFO or above, not returned in any API response, not stored in the database
+
+Evidence of completion:
+- All 71 tests passing (63 existing API tests + 8 new `ai.test.ts` tests)
+- TypeScript typecheck clean across all packages
+- OLI-70 implementation committed (d68fc64) — no PWA changes, no schema changes, no new routes
+
+Completion note:
+- All M22 exit criteria met. Founding Engineer implemented `ClaudeAiProvider` and `createAiProvider` factory in OLI-70 (committed d68fc64, 2026-03-16). 71 tests pass. All 7 acceptance criteria from the spec verified. The AI-assisted planning ritual summaries feature now delivers real Claude Haiku-generated content when `ANTHROPIC_API_KEY` is set in the server environment; falls back cleanly to `DisabledAiProvider` stub text when not set. Decision recorded as D-044. Next H5 Phase 2 target per D-042: push notifications for proactive household nudges.
 
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:
