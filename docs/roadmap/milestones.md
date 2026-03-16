@@ -738,27 +738,62 @@ Completion note:
 ## M26: AI-Enhanced Nudge Timing Build Readiness
 Objective: prepare the completion-window-based push timing capability for implementation so the push notification scheduler delivers routine nudges at times historically associated with household completion rather than immediately on detection.
 
-Status: active
+Status: complete
 
 Required artifacts:
-- CEO-approved feature spec for completion-window-based push timing — defines the completion window calculation algorithm, minimum completion threshold, hold-vs-send decision logic, per-entity-type applicability, and fallback behavior
-- Implementation plan for completion-window-based push timing — covers the scheduler extension, timing signal computation, storage model (if any), and verification approach
-- Updated learnings and decisions based on M25 scoping outcomes (L-027, D-047)
+- CEO-approved feature spec for completion-window-based push timing (`docs/specs/completion-window-push-timing.md`) ✓ approved D-048, 2026-03-16
+- Implementation plan for completion-window-based push timing (`docs/plans/completion-window-push-timing-implementation-plan.md`) ✓ complete OLI-80, 2026-03-16
+- Updated learnings and decisions based on M25 scoping outcomes (L-027, D-047) ✓
 
 Exit criteria:
-- the feature spec is CEO-approved and is concrete enough for implementation without major product ambiguity
-- the spec defines what happens at each edge case: insufficient completion data, completion window that has already passed today, routine with highly variable completion times, overnight routines
-- the implementation plan is scoped to the existing scheduler evaluation loop — no new scheduling infrastructure, no new entity types
-- the spec confirms whether completion windows are stored/cached or computed on each scheduler run, and the trade-offs of each approach
-- the trust model implications are confirmed: timing changes are strictly delivery optimization; trigger conditions and record state are unaffected
+- the feature spec is CEO-approved and is concrete enough for implementation without major product ambiguity ✓ — D-048 confirms 14 acceptance criteria are concrete and testable
+- the spec defines what happens at each edge case: insufficient completion data, completion window that has already passed today, routine with highly variable completion times, overnight routines ✓ — all edge cases documented in spec sections "Detailed behavior rules" and "Risks And Failure Modes"
+- the implementation plan is scoped to the existing scheduler evaluation loop — no new scheduling infrastructure, no new entity types ✓ — plan modifies only `evaluateNudgePushRule` in `jobs.ts`, adds domain function and repository method, no new tables/columns/migrations
+- the spec confirms whether completion windows are stored/cached or computed on each scheduler run, and the trade-offs of each approach ✓ — on-demand computation, trade-offs documented: simplicity vs repeated queries, acceptable at household scale
+- the trust model implications are confirmed: timing changes are strictly delivery optimization; trigger conditions and record state are unaffected ✓ — spec section "Permissions And Trust Model" confirms advisory-only; implementation plan Decision F confirms routine-only push path
 
 Evidence of completion:
-- an implementation plan can be generated for completion-window-based push timing without rediscovering the product model
-- the implementation agent has a clear algorithm to implement, edge cases to handle, and bounded engineering decisions
+- an implementation plan can be generated for completion-window-based push timing without rediscovering the product model ✓
+- the implementation agent has a clear algorithm to implement, edge cases to handle, and bounded engineering decisions ✓ — 7 architecture decisions resolve all 5 open questions from the spec
 
 Progress notes:
 - Feature spec drafted and CEO-approved (OLI-79, D-048): `docs/specs/completion-window-push-timing.md` — 14 acceptance criteria, IQR algorithm with variance guard, no new tables, 5 Founding Engineer open questions resolved in implementation plan.
 - Implementation plan complete (OLI-80): `docs/plans/completion-window-push-timing-implementation-plan.md` — 7 phases, 7 architecture decisions (timezone source, max hold duration, sample size, lead buffer, variance threshold, routine-only scope, constants-not-env-vars), 14 acceptance criteria mapped to unit and integration tests.
+
+Completion note:
+- All three M26 required artifacts are in place. Exit criteria met: (1) feature spec is CEO-approved (D-048) with 14 acceptance criteria — execution-ready without product ambiguity; (2) all edge cases are documented: insufficient data (<4 completions → immediate delivery), window already passed (deliver immediately), high variance (IQR >6h → no_window), overnight routines (day-boundary stateless evaluation), long-overdue bypass (>2 days → deliver regardless); (3) implementation plan is scoped to the existing scheduler evaluation loop — inserts one new step between dedup and send in `evaluateNudgePushRule`, no new infrastructure; (4) on-demand computation confirmed with trade-offs documented; (5) trust model unchanged — timing affects delivery, not trigger conditions or record state. Decision recorded as D-049 (2026-03-16). M27 (AI-Enhanced Nudge Timing Build) is now the active milestone.
+
+## M27: AI-Enhanced Nudge Timing Build
+Objective: implement completion-window-based push timing so the push notification scheduler delivers routine nudges at times historically associated with household completion rather than immediately on detection.
+
+Status: active
+
+Required artifacts:
+- built completion-window-based push timing — all seven phases of the implementation plan executed (`docs/plans/completion-window-push-timing-implementation-plan.md`)
+- `computeCompletionWindow` domain function in `@olivia/domain` with IQR algorithm, variance guard, and lead buffer
+- `getRoutineCompletionTimestamps` repository method in `InboxRepository`
+- modified `evaluateNudgePushRule` in `apps/api/src/jobs.ts` with completion window evaluation step
+- `OLIVIA_HOUSEHOLD_TIMEZONE` config support in `AppConfig`
+- unit test coverage for completion window computation edge cases
+- integration test coverage for full scheduler cycle with hold/deliver behavior
+- updated learnings and decision history based on build outcomes
+
+Exit criteria:
+- when the push scheduler evaluates a routine nudge with at least 4 completed occurrences and the current local time is before the computed completion window start, the push is not delivered on that cycle
+- when the same routine nudge is evaluated on a subsequent cycle where the current local time is within or after the completion window, the push is delivered normally
+- routine nudges with fewer than 4 completed occurrences are delivered immediately (existing behavior, no timing hold)
+- reminder nudges are delivered immediately regardless of any routine completion window data
+- planning ritual nudges are delivered immediately regardless of completion window data
+- if the IQR spans more than 6 hours, the routine falls back to immediate delivery
+- if a routine has been overdue for more than 2 days, the completion window is bypassed and the push delivers immediately
+- no dedup log entry is created for held nudges
+- in-app nudge tray display is completely unaffected by completion window logic
+- no new database tables or columns are introduced
+- all existing push notification and nudge tests pass (regression)
+- the implementation agent has confirmed all 14 acceptance criteria from `docs/specs/completion-window-push-timing.md` are met
+
+Evidence of completion:
+- the project can point to a working completion-window timing optimization on routine push notifications, confirmed hold/deliver behavior across scheduler cycles, and build-phase learnings that inform Layer 2 (LLM timing) and Phase 3+ extensions
 
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:

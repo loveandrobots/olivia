@@ -18,6 +18,26 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-050: M26 complete — completion-window push timing build readiness achieved; M27 activated
+- Date: 2026-03-16
+- Area: delivery planning / roadmap progression / H5 Phase 2 Layer 1
+- Decision: Advance M26 (AI-Enhanced Nudge Timing Build Readiness) to complete. All three required artifacts are in place: (1) CEO-approved feature spec (D-048) with 14 acceptance criteria; (2) implementation plan (OLI-80, D-049) with 7 phases and all 5 open questions resolved; (3) learnings and decisions updated (L-027, D-047, D-048, D-049). All five exit criteria satisfied. M27 (AI-Enhanced Nudge Timing Build) is now the active milestone — the Founding Engineer can implement completion-window-based push timing using the spec and plan without product ambiguity.
+- Rationale: The build readiness pattern (spec + plan + learnings) has been validated across M16, M18, M21, M23, and now M26. The implementation plan resolves all open questions, maps all 14 acceptance criteria to tests, and is scoped entirely within the existing scheduler evaluation loop. No new infrastructure, tables, or entity types. The Founding Engineer has a clear algorithm, edge cases, and bounded engineering decisions.
+- Alternatives considered: none — M26 follows the established build-readiness milestone pattern.
+- Trade-offs: advancing now means the Founding Engineer begins implementation on the current plan. If household usage reveals the IQR algorithm needs tuning, the configurable constants in `@olivia/contracts` allow adjustment without architectural changes.
+- Status: active
+- Related docs: `docs/roadmap/milestones.md` (M26, M27), `docs/specs/completion-window-push-timing.md`, `docs/plans/completion-window-push-timing-implementation-plan.md`, D-048, D-049, L-027
+
+### D-049: Completion-window push timing implementation plan — 5 open questions resolved
+- Date: 2026-03-16
+- Area: delivery planning / H5 Phase 2 Layer 1
+- Decision: Complete the implementation plan for completion-window-based push timing (`docs/plans/completion-window-push-timing-implementation-plan.md`). Resolve the 5 open questions from the spec as architecture decisions: (1) timezone source — `OLIVIA_HOUSEHOLD_TIMEZONE` env var with server-local fallback via `Intl.DateTimeFormat`, (2) maximum hold duration — 2 days (48h since `currentDueDate`), (3) sample size — 8 most recent non-null non-skipped `completedAt` timestamps, (4) lead buffer — 1 hour before 25th percentile, (5) variance threshold — 6-hour IQR span. Two additional decisions: configurable constants are exported from `@olivia/contracts` (not env-var-configurable), and completion windows apply only to routine nudges in the push path (not in-app tray). The plan has 7 phases and maps all 14 acceptance criteria to specific unit and integration tests.
+- Rationale: All 5 spec recommendations adopted as-is — they are well-reasoned defaults for household scale. Timezone via env var is the simplest reliable source for single-household Phase 2. Constants as code (not env vars) because they are algorithm parameters requiring statistical understanding to tune, not deployment configuration. The plan follows the established push-notifications implementation plan structure (8 phases, verification matrix, phase gates).
+- Alternatives considered: (1) timezone from most recent client request header — rejected because the scheduler runs server-side without a request context; (2) env vars for all algorithm constants — rejected as over-engineering for parameters that are unlikely to need per-environment tuning; (3) `date-fns-tz` for timezone conversion — deferred in favor of `Intl.DateTimeFormat` which requires no new dependency.
+- Trade-offs: `Intl.DateTimeFormat` is slightly more verbose than `date-fns-tz` but avoids a new dependency. Constants-as-code means redeployment to change thresholds, accepted because tuning is expected to be rare.
+- Status: active
+- Related docs: `docs/plans/completion-window-push-timing-implementation-plan.md`, `docs/specs/completion-window-push-timing.md`, D-048, M26
+
 ### D-048: CEO approves completion-window-based push timing spec — M26 spec gate passed
 - Date: 2026-03-16
 - Area: delivery planning / H5 Phase 2 Layer 1
