@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import { addDays, format, isSameDay, parseISO, startOfWeek, endOfWeek } from 'date-fns';
-import { buildSuggestions, groupItems, groupReminders, getRoutineOccurrenceDatesForWeek, getRoutineOccurrenceStatusForDate } from '@olivia/domain';
+import { buildSuggestions, groupItems, groupReminders, getRoutineOccurrenceDatesForWeek, getRoutineOccurrenceStatusForDate, getActivityHistoryWindow, groupActivityHistoryByDay } from '@olivia/domain';
 import type {
   ActiveListIndexResponse,
   ActiveRoutineIndexResponse,
@@ -27,6 +27,8 @@ import type {
   Routine,
   RoutineDetailResponse,
   RoutineOccurrence,
+  ActivityHistoryItem,
+  ActivityHistoryResponse,
   SharedList,
   WeeklyViewResponse
 } from '@olivia/contracts';
@@ -525,4 +527,131 @@ export async function assembleWeeklyViewFromCache(weekStartStr: string): Promise
   });
 
   return { weekStart: weekStartDate, weekEnd: weekEndDate, days };
+}
+
+// ─── Activity History offline assembly ────────────────────────────────────────
+
+export async function assembleActivityHistoryFromCache(): Promise<ActivityHistoryResponse> {
+  const now = new Date();
+  const { windowStart, windowEnd } = getActivityHistoryWindow(now);
+  const windowStartStr = format(windowStart, 'yyyy-MM-dd');
+  const windowEndStr = format(windowEnd, 'yyyy-MM-dd');
+
+  const [routineOccurrences, routines, reminders, mealPlans, mealEntries, inboxItems, listItems, sharedLists] =
+    await Promise.all([
+      clientDb.routineOccurrences.toArray(),
+      clientDb.routines.toArray(),
+      clientDb.reminders.toArray(),
+      clientDb.mealPlans.toArray(),
+      clientDb.mealEntries.toArray(),
+      clientDb.items.toArray(),
+      clientDb.listItems.toArray(),
+      clientDb.sharedLists.toArray()
+    ]);
+
+  const items: ActivityHistoryItem[] = [];
+
+  // Completed routine occurrences
+  const routineMap = new Map(routines.map((r) => [r.id, r]));
+  for (const occ of routineOccurrences) {
+    if (!occ.completedAt) continue;
+    const dateStr = occ.dueDate;
+    if (dateStr < windowStartStr || dateStr > windowEndStr) continue;
+    const routine = routineMap.get(occ.routineId);
+    if (!routine || routine.status === 'archived') continue;
+    items.push({
+      type: 'routine',
+      routineId: routine.id,
+      routineTitle: routine.title,
+      owner: routine.owner,
+      dueDate: occ.dueDate,
+      completedAt: occ.completedAt
+    });
+  }
+
+  // Resolved reminders (completed or cancelled)
+  for (const r of reminders) {
+    if (r.state === 'completed' && r.completedAt) {
+      const dateStr = r.completedAt.split('T')[0];
+      if (dateStr >= windowStartStr && dateStr <= windowEndStr) {
+        items.push({
+          type: 'reminder',
+          reminderId: r.id,
+          title: r.title,
+          owner: r.owner,
+          resolvedAt: r.completedAt,
+          resolution: 'completed'
+        });
+      }
+    } else if (r.state === 'cancelled' && r.cancelledAt) {
+      const dateStr = r.cancelledAt.split('T')[0];
+      if (dateStr >= windowStartStr && dateStr <= windowEndStr) {
+        items.push({
+          type: 'reminder',
+          reminderId: r.id,
+          title: r.title,
+          owner: r.owner,
+          resolvedAt: r.cancelledAt,
+          resolution: 'dismissed'
+        });
+      }
+    }
+  }
+
+  // Past meal plan entries
+  const currentMonday = startOfWeek(now, { weekStartsOn: 1 });
+  const currentMondayStr = format(currentMonday, 'yyyy-MM-dd');
+  const pastPlans = mealPlans.filter((p) => p.status !== 'archived' && p.weekStartDate < currentMondayStr);
+  for (const plan of pastPlans) {
+    const planEntries = mealEntries.filter((e) => e.planId === plan.id);
+    for (const entry of planEntries) {
+      const entryDate = addDays(parseISO(plan.weekStartDate), entry.dayOfWeek);
+      const entryDateStr = format(entryDate, 'yyyy-MM-dd');
+      if (entryDateStr < windowStartStr || entryDateStr > windowEndStr) continue;
+      items.push({
+        type: 'meal',
+        entryId: entry.id,
+        planId: plan.id,
+        planTitle: plan.title,
+        name: entry.name,
+        dayOfWeek: entry.dayOfWeek,
+        date: entryDateStr
+      });
+    }
+  }
+
+  // Done inbox items
+  for (const item of inboxItems) {
+    if (item.status !== 'done' || !item.lastStatusChangedAt) continue;
+    const dateStr = item.lastStatusChangedAt.split('T')[0];
+    if (dateStr < windowStartStr || dateStr > windowEndStr) continue;
+    items.push({
+      type: 'inbox',
+      itemId: item.id,
+      title: item.title,
+      owner: item.owner,
+      completedAt: item.lastStatusChangedAt
+    });
+  }
+
+  // Checked list items
+  const listMap = new Map(sharedLists.map((l) => [l.id, l]));
+  for (const li of listItems) {
+    if (!li.checked || !li.checkedAt) continue;
+    const dateStr = li.checkedAt.split('T')[0];
+    if (dateStr < windowStartStr || dateStr > windowEndStr) continue;
+    const list = listMap.get(li.listId);
+    if (!list) continue;
+    items.push({
+      type: 'listItem',
+      itemId: li.id,
+      body: li.body,
+      listId: li.listId,
+      listName: list.title,
+      checkedAt: li.checkedAt
+    });
+  }
+
+  const days = groupActivityHistoryByDay(items);
+  return { windowStart: windowStartStr, windowEnd: windowEndStr, days };
 }

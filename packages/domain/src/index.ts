@@ -1,4 +1,4 @@
-import { addDays, addMonths, addWeeks, compareAsc, differenceInCalendarDays, endOfWeek, format, getDaysInMonth, isAfter, isBefore, isSameDay, setDate, startOfDay, startOfWeek, subDays, subMonths, subWeeks } from 'date-fns';
+import { addDays, addMonths, addWeeks, compareAsc, differenceInCalendarDays, endOfDay, endOfWeek, format, getDaysInMonth, isAfter, isBefore, isSameDay, setDate, startOfDay, startOfWeek, subDays, subMonths, subWeeks } from 'date-fns';
 import { parse, parseDate } from 'chrono-node';
 import {
   draftReminderSchema,
@@ -16,6 +16,8 @@ import {
   routineSchema,
   routineOccurrenceSchema,
   sharedListSchema,
+  type ActivityHistoryDay,
+  type ActivityHistoryItem,
   type ActorRole,
   type DraftItem,
   type DraftReminder,
@@ -1651,4 +1653,80 @@ export function getRoutineOccurrenceStatusForDate(
   if (targetMidnight > now) return 'upcoming';
   if (targetMidnight >= twentyFourHoursAgo) return 'due';
   return 'overdue';
+}
+
+// ─── Activity History domain helpers ─────────────────────────────────────────
+
+/**
+ * Returns the rolling 30-day window anchored to today (local time).
+ * windowStart = midnight of (today - 29 days)
+ * windowEnd   = end of day (23:59:59.999) of today
+ */
+export function getActivityHistoryWindow(today: Date): { windowStart: Date; windowEnd: Date } {
+  const windowStart = startOfDay(subDays(today, 29));
+  const windowEnd = endOfDay(today);
+  return { windowStart, windowEnd };
+}
+
+/**
+ * Returns the ISO date string (YYYY-MM-DD) representing the item's completion/resolution date.
+ */
+function getItemDate(item: ActivityHistoryItem): string {
+  switch (item.type) {
+    case 'routine': return item.completedAt.split('T')[0];
+    case 'reminder': return item.resolvedAt.split('T')[0];
+    case 'meal': return item.date;
+    case 'inbox': return item.completedAt.split('T')[0];
+    case 'listItem': return item.checkedAt.split('T')[0];
+  }
+}
+
+/**
+ * Returns a Unix millisecond timestamp for sort ordering within a day.
+ * Meal entries (date-only) use end-of-day so they sort below timed items.
+ */
+function getItemTimestamp(item: ActivityHistoryItem): number {
+  switch (item.type) {
+    case 'routine': return new Date(item.completedAt).getTime();
+    case 'reminder': return new Date(item.resolvedAt).getTime();
+    case 'meal': return new Date(item.date + 'T23:59:59').getTime();
+    case 'inbox': return new Date(item.completedAt).getTime();
+    case 'listItem': return new Date(item.checkedAt).getTime();
+  }
+}
+
+/**
+ * Groups activity history items by day, sorts days most-recent-first,
+ * and within each day sorts items reverse-chronologically.
+ * Empty days are suppressed.
+ */
+export function groupActivityHistoryByDay(
+  items: ActivityHistoryItem[]
+): ActivityHistoryDay[] {
+  if (items.length === 0) return [];
+
+  // Group by date string
+  const byDate = new Map<string, ActivityHistoryItem[]>();
+  for (const item of items) {
+    const date = getItemDate(item);
+    const bucket = byDate.get(date);
+    if (bucket) {
+      bucket.push(item);
+    } else {
+      byDate.set(date, [item]);
+    }
+  }
+
+  // Build day entries, sort items within each day reverse-chronologically
+  const days: ActivityHistoryDay[] = [];
+  for (const [date, dayItems] of byDate.entries()) {
+    if (dayItems.length === 0) continue;
+    const sorted = [...dayItems].sort((a, b) => getItemTimestamp(b) - getItemTimestamp(a));
+    days.push({ date, items: sorted });
+  }
+
+  // Sort days most-recent-first
+  days.sort((a, b) => b.date.localeCompare(a.date));
+
+  return days;
 }

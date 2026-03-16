@@ -15,6 +15,7 @@ import { RoutinesPage } from './routes/routines-page';
 import { RoutineDetailPage } from './routes/routine-detail-page';
 import { MealsPage } from './routes/meals-page';
 import { MealDetailPage } from './routes/meal-detail-page';
+import { HistoryPage } from './routes/history-page';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -31,6 +32,7 @@ const oliviaRoute = createRoute({ getParentRoute: () => rootRoute, path: '/olivi
 const listsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/lists', component: ListsPage });
 const listDetailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/lists/$listId', component: ListDetailPage });
 const memoryRoute = createRoute({ getParentRoute: () => rootRoute, path: '/memory', component: MemoryPage });
+const historyRoute = createRoute({ getParentRoute: () => rootRoute, path: '/history', component: HistoryPage });
 
 // ── Supporting routes (token-compliant, hidden from primary nav) ─────────────
 const itemRoute = createRoute({ getParentRoute: () => rootRoute, path: '/items/$itemId', component: ItemDetailPage });
@@ -67,6 +69,7 @@ const routeTree = rootRoute.addChildren([
   listsRoute,
   listDetailRoute,
   memoryRoute,
+  historyRoute,
   itemRoute,
   remindersRoute,
   reminderDetailRoute,

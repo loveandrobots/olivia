@@ -1176,3 +1176,79 @@ export type WeeklyMealEntry = z.infer<typeof weeklyMealEntrySchema>;
 export type WeeklyInboxItem = z.infer<typeof weeklyInboxItemSchema>;
 export type WeeklyDayView = z.infer<typeof weeklyDaySchema>;
 export type WeeklyViewResponse = z.infer<typeof weeklyViewResponseSchema>;
+
+// ─── Activity History ─────────────────────────────────────────────────────────
+
+export const activityHistoryRoutineItemSchema = z.object({
+  type: z.literal('routine'),
+  routineId: z.string().uuid(),
+  routineTitle: z.string(),
+  owner: ownerSchema,
+  dueDate: z.string(),        // ISO date, YYYY-MM-DD
+  completedAt: z.string().datetime()
+});
+
+export const activityHistoryReminderItemSchema = z.object({
+  type: z.literal('reminder'),
+  reminderId: z.string().uuid(),
+  title: z.string(),
+  owner: ownerSchema,
+  resolvedAt: z.string().datetime(),
+  resolution: z.enum(['completed', 'dismissed'])
+});
+
+export const activityHistoryMealItemSchema = z.object({
+  type: z.literal('meal'),
+  entryId: z.string().uuid(),
+  planId: z.string().uuid(),
+  planTitle: z.string(),
+  name: z.string(),
+  dayOfWeek: dayOfWeekSchema,
+  date: z.string()            // ISO date, YYYY-MM-DD (weekStartDate + dayOfWeek)
+});
+
+export const activityHistoryInboxItemSchema = z.object({
+  type: z.literal('inbox'),
+  itemId: z.string().uuid(),
+  title: z.string(),
+  owner: ownerSchema,
+  completedAt: z.string().datetime()
+});
+
+export const activityHistoryListItemSchema = z.object({
+  type: z.literal('listItem'),
+  itemId: z.string().uuid(),
+  body: z.string(),
+  listId: z.string().uuid(),
+  listName: z.string(),
+  checkedAt: z.string().datetime()
+});
+
+export const activityHistoryItemSchema = z.discriminatedUnion('type', [
+  activityHistoryRoutineItemSchema,
+  activityHistoryReminderItemSchema,
+  activityHistoryMealItemSchema,
+  activityHistoryInboxItemSchema,
+  activityHistoryListItemSchema
+]);
+
+export const activityHistoryDaySchema = z.object({
+  date: z.string(),           // ISO date YYYY-MM-DD (most recent first)
+  items: z.array(activityHistoryItemSchema)
+});
+
+export const activityHistoryResponseSchema = z.object({
+  windowStart: z.string(),    // ISO date YYYY-MM-DD
+  windowEnd: z.string(),      // ISO date YYYY-MM-DD
+  days: z.array(activityHistoryDaySchema)
+});
+
+// Activity History types
+export type ActivityHistoryRoutineItem = z.infer<typeof activityHistoryRoutineItemSchema>;
+export type ActivityHistoryReminderItem = z.infer<typeof activityHistoryReminderItemSchema>;
+export type ActivityHistoryMealItem = z.infer<typeof activityHistoryMealItemSchema>;
+export type ActivityHistoryInboxItem = z.infer<typeof activityHistoryInboxItemSchema>;
+export type ActivityHistoryListItem = z.infer<typeof activityHistoryListItemSchema>;
+export type ActivityHistoryItem = z.infer<typeof activityHistoryItemSchema>;
+export type ActivityHistoryDay = z.infer<typeof activityHistoryDaySchema>;
+export type ActivityHistoryResponse = z.infer<typeof activityHistoryResponseSchema>;

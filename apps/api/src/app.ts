@@ -73,6 +73,7 @@ import {
   updateMealPlanTitleRequestSchema,
   updateRoutineRequestSchema,
   weeklyViewResponseSchema,
+  activityHistoryResponseSchema,
   type ActorRole,
   type DraftItem,
   type DraftReminder,
@@ -138,7 +139,9 @@ import {
   updateRoutine,
   getWeekBounds,
   getRoutineOccurrenceDatesForWeek,
-  getRoutineOccurrenceStatusForDate
+  getRoutineOccurrenceStatusForDate,
+  getActivityHistoryWindow,
+  groupActivityHistoryByDay
 } from '@olivia/domain';
 import { DisabledAiProvider } from './ai';
 import type { AppConfig } from './config';
@@ -1566,6 +1569,87 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     return reply.send(weeklyViewResponseSchema.parse({
       weekStart: weekStartDateStr,
       weekEnd: weekEndDateStr,
+      days
+    }));
+  });
+
+  // ─── Activity History ────────────────────────────────────────────────────────
+  app.get('/api/activity-history', async (request, reply) => {
+    const query = request.query as Record<string, unknown>;
+    const role = query.role;
+    if (role !== undefined && !isReadableActorRole(role)) {
+      return reply.status(403).send({ code: 'ROLE_INVALID', message: 'Invalid role.' });
+    }
+
+    const now = new Date();
+    const { windowStart, windowEnd } = getActivityHistoryWindow(now);
+    const windowStartDate = windowStart.toISOString().split('T')[0];
+    const windowEndDate = windowEnd.toISOString().split('T')[0];
+
+    const data = repository.getActivityHistoryData(windowStart, windowEnd);
+
+    // Map each source to ActivityHistoryItem union members
+    const items = [
+      // Routine occurrences
+      ...data.completedRoutineOccurrences.map(({ routineOccurrence, routine }) => ({
+        type: 'routine' as const,
+        routineId: routine.id,
+        routineTitle: routine.title,
+        owner: routine.owner,
+        dueDate: routineOccurrence.dueDate.split('T')[0],
+        completedAt: routineOccurrence.completedAt!
+      })),
+
+      // Resolved reminders
+      ...data.resolvedReminders.map((r) => ({
+        type: 'reminder' as const,
+        reminderId: r.id,
+        title: r.title,
+        owner: r.owner,
+        resolvedAt: r.state === 'completed' ? r.completedAt! : r.cancelledAt!,
+        resolution: (r.state === 'completed' ? 'completed' : 'dismissed') as 'completed' | 'dismissed'
+      })),
+
+      // Meal entries
+      ...data.pastMealEntries.map(({ entry, plan }) => {
+        const entryDate = new Date(plan.weekStartDate + 'T00:00:00');
+        entryDate.setDate(entryDate.getDate() + entry.dayOfWeek);
+        return {
+          type: 'meal' as const,
+          entryId: entry.id,
+          planId: plan.id,
+          planTitle: plan.title,
+          name: entry.name,
+          dayOfWeek: entry.dayOfWeek,
+          date: entryDate.toISOString().split('T')[0]
+        };
+      }),
+
+      // Done inbox items
+      ...data.doneInboxItems.map((item) => ({
+        type: 'inbox' as const,
+        itemId: item.id,
+        title: item.title,
+        owner: item.owner,
+        completedAt: item.lastStatusChangedAt
+      })),
+
+      // Checked list items
+      ...data.checkedListItems.map(({ item, listName }) => ({
+        type: 'listItem' as const,
+        itemId: item.id,
+        body: item.body,
+        listId: item.listId,
+        listName,
+        checkedAt: item.checkedAt!
+      }))
+    ];
+
+    const days = groupActivityHistoryByDay(items);
+
+    return reply.send(activityHistoryResponseSchema.parse({
+      windowStart: windowStartDate,
+      windowEnd: windowEndDate,
       days
     }));
   });

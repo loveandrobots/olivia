@@ -69,6 +69,7 @@ import type {
   StructuredInput,
   StructuredReminderInput,
   UpdateChange,
+  ActivityHistoryResponse,
   WeeklyViewResponse
 } from '@olivia/contracts';
 import {
@@ -119,7 +120,8 @@ import {
   removeOutboxCommand,
   removeRoutineFromCache,
   setMeta,
-  assembleWeeklyViewFromCache
+  assembleWeeklyViewFromCache,
+  assembleActivityHistoryFromCache
 } from './client-db';
 import {
   ApiError,
@@ -178,7 +180,8 @@ import {
   updateMealEntry as updateMealEntryApi,
   updateMealPlanTitle as updateMealPlanTitleApi,
   updateRoutine as updateRoutineApi,
-  fetchWeeklyView
+  fetchWeeklyView,
+  fetchActivityHistory
 } from './api';
 
 const isOffline = () => !window.navigator.onLine;
@@ -1296,4 +1299,17 @@ export async function loadWeeklyView(weekStart: string): Promise<WeeklyViewRespo
     }
   }
   return assembleWeeklyViewFromCache(weekStart);
+}
+
+// ─── Activity History ─────────────────────────────────────────────────────────
+
+export async function loadActivityHistory(): Promise<ActivityHistoryResponse> {
+  if (!isOffline()) {
+    try {
+      return await fetchActivityHistory();
+    } catch {
+      return assembleActivityHistoryFromCache();
+    }
+  }
+  return assembleActivityHistoryFromCache();
 }

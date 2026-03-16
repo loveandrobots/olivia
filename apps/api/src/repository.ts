@@ -1120,6 +1120,162 @@ export class InboxRepository {
     return { reminders, routines, routineOccurrences, activeMealPlan, mealEntries, inboxItems };
   }
 
+  getActivityHistoryData(windowStart: Date, windowEnd: Date): {
+    completedRoutineOccurrences: Array<{ routineOccurrence: RoutineOccurrence; routine: Routine }>;
+    resolvedReminders: Reminder[];
+    pastMealEntries: Array<{ entry: MealEntry; plan: MealPlan }>;
+    doneInboxItems: InboxItem[];
+    checkedListItems: Array<{ item: ListItem; listName: string }>;
+  } {
+    const windowStartDate = windowStart.toISOString().split('T')[0];
+    const windowEndDate = windowEnd.toISOString().split('T')[0];
+
+    // Completed routine occurrences within the window (joined with non-archived routines)
+    const routineOccurrenceRows = this.db.prepare(`
+      SELECT ro.*, r.title AS routine_title, r.owner AS routine_owner,
+             r.recurrence_rule, r.interval_days, r.status AS routine_status,
+             r.current_due_date, r.created_at AS routine_created_at,
+             r.updated_at AS routine_updated_at, r.archived_at AS routine_archived_at,
+             r.version AS routine_version
+      FROM routine_occurrences ro
+      JOIN routines r ON ro.routine_id = r.id
+      WHERE ro.completed_at IS NOT NULL
+        AND r.status != 'archived'
+        AND date(ro.due_date) >= ?
+        AND date(ro.due_date) <= ?
+      ORDER BY ro.completed_at DESC
+    `).all(windowStartDate, windowEndDate) as Record<string, unknown>[];
+
+    const completedRoutineOccurrences = routineOccurrenceRows.map((row) => {
+      const routineOccurrence = this.mapRoutineOccurrenceRow(row);
+      const routine = routineSchema.parse({
+        id: row.routine_id,
+        title: row.routine_title,
+        owner: row.routine_owner,
+        recurrenceRule: row.recurrence_rule,
+        intervalDays: row.interval_days ?? null,
+        status: row.routine_status,
+        currentDueDate: row.current_due_date,
+        createdAt: row.routine_created_at,
+        updatedAt: row.routine_updated_at,
+        archivedAt: row.routine_archived_at ?? null,
+        version: row.routine_version
+      });
+      return { routineOccurrence, routine };
+    });
+
+    // Resolved reminders (completed or cancelled/dismissed) within the window
+    const reminderRows = this.db.prepare(`
+      SELECT * FROM reminders
+      WHERE (
+        (completed_at IS NOT NULL
+          AND date(completed_at) >= ? AND date(completed_at) <= ?)
+        OR
+        (cancelled_at IS NOT NULL AND completed_at IS NULL
+          AND date(cancelled_at) >= ? AND date(cancelled_at) <= ?)
+      )
+      ORDER BY COALESCE(completed_at, cancelled_at) DESC
+    `).all(windowStartDate, windowEndDate, windowStartDate, windowEndDate) as Record<string, unknown>[];
+
+    const resolvedReminders = reminderRows.map((row) => mapReminderRow(row));
+
+    // Past meal plan entries: plans starting before current Monday whose entries fall in window
+    // Add 7-day buffer to handle plans that started before window but have in-window entries
+    const windowStartMinus7 = new Date(windowStart);
+    windowStartMinus7.setDate(windowStartMinus7.getDate() - 7);
+    const windowStartMinus7Date = windowStartMinus7.toISOString().split('T')[0];
+
+    // Current Monday date string for "before current Monday" filter
+    const currentDate = new Date();
+    const dow = currentDate.getDay();
+    const diffToMonday = dow === 0 ? -6 : 1 - dow;
+    const currentMonday = new Date(currentDate);
+    currentMonday.setDate(currentDate.getDate() + diffToMonday);
+    currentMonday.setHours(0, 0, 0, 0);
+    const currentMondayDate = currentMonday.toISOString().split('T')[0];
+
+    const mealRows = this.db.prepare(`
+      SELECT mp.id AS plan_id, mp.title AS plan_title, mp.week_start_date, mp.status AS plan_status,
+             mp.generated_list_refs, mp.created_at AS plan_created_at,
+             mp.updated_at AS plan_updated_at, mp.archived_at AS plan_archived_at,
+             mp.version AS plan_version,
+             me.id AS entry_id, me.day_of_week, me.name, me.shopping_items,
+             me.position, me.created_at AS entry_created_at,
+             me.updated_at AS entry_updated_at, me.version AS entry_version
+      FROM meal_plans mp
+      JOIN meal_entries me ON me.plan_id = mp.id
+      WHERE mp.status != 'archived'
+        AND mp.week_start_date < ?
+        AND mp.week_start_date >= ?
+      ORDER BY mp.week_start_date DESC, me.day_of_week ASC
+    `).all(currentMondayDate, windowStartMinus7Date) as Record<string, unknown>[];
+
+    const pastMealEntries: Array<{ entry: MealEntry; plan: MealPlan }> = [];
+    for (const row of mealRows) {
+      // Compute entry effective date
+      const weekStart = row.week_start_date as string;
+      const dayOfWeek = Number(row.day_of_week);
+      const entryDate = new Date(weekStart + 'T00:00:00');
+      entryDate.setDate(entryDate.getDate() + dayOfWeek);
+      const entryDateStr = entryDate.toISOString().split('T')[0];
+
+      // Filter to entries within the activity window
+      if (entryDateStr < windowStartDate || entryDateStr > windowEndDate) continue;
+
+      const plan = this.mapMealPlanRow({
+        id: row.plan_id,
+        title: row.plan_title,
+        week_start_date: row.week_start_date,
+        status: row.plan_status,
+        generated_list_refs: row.generated_list_refs,
+        created_at: row.plan_created_at,
+        updated_at: row.plan_updated_at,
+        archived_at: row.plan_archived_at ?? null,
+        version: row.plan_version
+      });
+      const entry = this.mapMealEntryRow({
+        id: row.entry_id,
+        plan_id: row.plan_id,
+        day_of_week: row.day_of_week,
+        name: row.name,
+        shopping_items: row.shopping_items,
+        position: row.position,
+        created_at: row.entry_created_at,
+        updated_at: row.entry_updated_at,
+        version: row.entry_version
+      });
+      pastMealEntries.push({ entry, plan });
+    }
+
+    // Done inbox items within the window (by lastStatusChangedAt)
+    const inboxRows = this.db.prepare(`
+      SELECT * FROM inbox_items
+      WHERE status = 'done'
+        AND date(last_status_changed_at) >= ?
+        AND date(last_status_changed_at) <= ?
+      ORDER BY last_status_changed_at DESC
+    `).all(windowStartDate, windowEndDate) as Record<string, unknown>[];
+    const doneInboxItems = inboxRows.map(mapItemRow);
+
+    // Checked list items within the window (JOIN with shared_lists for list name)
+    const listItemRows = this.db.prepare(`
+      SELECT li.*, sl.title AS list_title
+      FROM list_items li
+      JOIN shared_lists sl ON li.list_id = sl.id
+      WHERE li.checked = 1
+        AND li.checked_at IS NOT NULL
+        AND date(li.checked_at) >= ?
+        AND date(li.checked_at) <= ?
+      ORDER BY li.checked_at DESC
+    `).all(windowStartDate, windowEndDate) as Record<string, unknown>[];
+    const checkedListItems = listItemRows.map((row) => ({
+      item: mapListItemRow(row),
+      listName: String(row.list_title)
+    }));
+
+    return { completedRoutineOccurrences, resolvedReminders, pastMealEntries, doneInboxItems, checkedListItems };
+  }
+
   exportSnapshot(): {
     items: InboxItem[];
     history: HistoryEntry[];

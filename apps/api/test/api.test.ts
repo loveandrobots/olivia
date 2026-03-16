@@ -3,7 +3,7 @@ import Database from 'better-sqlite3';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { addHours, addMinutes, addDays, subDays, format, startOfWeek, endOfWeek } from 'date-fns';
+import { addHours, addMinutes, addDays, subDays, format, startOfWeek, endOfWeek, subWeeks } from 'date-fns';
 import { buildApp } from '../src/app';
 import type { AppConfig } from '../src/config';
 import { createDatabase } from '../src/db/client';
@@ -1467,6 +1467,394 @@ describe('unified weekly view api', () => {
     const body = res.json();
     for (const day of body.days) {
       expect(day.routines).toHaveLength(0);
+    }
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe('activity history api', () => {
+  function makeDir() {
+    return mkdtempSync(join(tmpdir(), 'olivia-history-'));
+  }
+
+  // Returns the Monday date string of the current week (local time)
+  function thisWeekMonday(): string {
+    return format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  }
+
+  // Returns the Monday date string of last week (local time)
+  function lastWeekMonday(): string {
+    return format(subWeeks(startOfWeek(new Date(), { weekStartsOn: 1 }), 1), 'yyyy-MM-dd');
+  }
+
+  it('returns empty days array for an empty household', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const res = await app.inject({ method: 'GET', url: '/api/activity-history' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.days).toEqual([]);
+    expect(body.windowStart).toBeDefined();
+    expect(body.windowEnd).toBeDefined();
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('completed routine occurrence in last 30 days appears as type routine', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    // Create a daily routine due today
+    const today = new Date();
+    today.setHours(10, 0, 0, 0);
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/routines',
+      payload: {
+        actorRole: 'stakeholder',
+        title: 'Morning walk',
+        owner: 'stakeholder',
+        recurrenceRule: 'daily',
+        firstDueDate: today.toISOString()
+      }
+    });
+    expect(createRes.statusCode).toBe(201);
+    const { savedRoutine } = createRes.json();
+
+    // Complete it
+    const completeRes = await app.inject({
+      method: 'POST',
+      url: `/api/routines/${savedRoutine.id}/complete`,
+      payload: { actorRole: 'stakeholder', expectedVersion: savedRoutine.version }
+    });
+    expect(completeRes.statusCode).toBe(200);
+
+    const res = await app.inject({ method: 'GET', url: '/api/activity-history' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+
+    const allItems = body.days.flatMap((d: { items: unknown[] }) => d.items);
+    const routineItems = allItems.filter((i: { type: string }) => i.type === 'routine');
+    expect(routineItems.length).toBeGreaterThanOrEqual(1);
+    expect((routineItems[0] as { routineTitle: string }).routineTitle).toBe('Morning walk');
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('archived routine occurrences do not appear', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const today = new Date();
+    today.setHours(10, 0, 0, 0);
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/routines',
+      payload: {
+        actorRole: 'stakeholder',
+        title: 'Archived routine',
+        owner: 'stakeholder',
+        recurrenceRule: 'daily',
+        firstDueDate: today.toISOString()
+      }
+    });
+    const { savedRoutine } = createRes.json();
+
+    // Complete first
+    const completeRes = await app.inject({
+      method: 'POST',
+      url: `/api/routines/${savedRoutine.id}/complete`,
+      payload: { actorRole: 'stakeholder', expectedVersion: savedRoutine.version }
+    });
+    const { savedRoutine: completedRoutine } = completeRes.json();
+
+    // Archive
+    await app.inject({
+      method: 'POST',
+      url: `/api/routines/${savedRoutine.id}/archive`,
+      payload: { actorRole: 'stakeholder', expectedVersion: completedRoutine.version, confirmed: true }
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/activity-history' });
+    const allItems = res.json().days.flatMap((d: { items: unknown[] }) => d.items);
+    const routineItems = allItems.filter((i: { type: string }) => i.type === 'routine');
+    expect(routineItems).toHaveLength(0);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('completed reminder appears as type reminder with resolution completed', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const { savedReminder } = await createReminderViaApi(app);
+    await app.inject({
+      method: 'POST',
+      url: '/api/reminders/complete',
+      payload: { actorRole: 'stakeholder', reminderId: savedReminder.id, expectedVersion: savedReminder.version, approved: true }
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/activity-history' });
+    const allItems = res.json().days.flatMap((d: { items: unknown[] }) => d.items);
+    const reminderItems = allItems.filter((i: { type: string }) => i.type === 'reminder');
+    expect(reminderItems.length).toBeGreaterThanOrEqual(1);
+    expect((reminderItems[0] as { resolution: string }).resolution).toBe('completed');
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('dismissed (cancelled) reminder appears as type reminder with resolution dismissed', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const { savedReminder } = await createReminderViaApi(app);
+    await app.inject({
+      method: 'POST',
+      url: '/api/reminders/cancel',
+      payload: { actorRole: 'stakeholder', reminderId: savedReminder.id, expectedVersion: savedReminder.version, approved: true }
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/activity-history' });
+    const allItems = res.json().days.flatMap((d: { items: unknown[] }) => d.items);
+    const reminderItems = allItems.filter((i: { type: string }) => i.type === 'reminder');
+    expect(reminderItems.length).toBeGreaterThanOrEqual(1);
+    expect((reminderItems[0] as { resolution: string }).resolution).toBe('dismissed');
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('done inbox item appears as type inbox', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const item = await createInboxItemViaApi(app, 'Fix the gate');
+    // Mark done
+    await app.inject({
+      method: 'POST',
+      url: '/api/inbox/items/confirm-update',
+      payload: {
+        actorRole: 'stakeholder',
+        itemId: item.id,
+        expectedVersion: item.version,
+        approved: true,
+        proposedChange: { status: 'done' }
+      }
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/activity-history' });
+    const allItems = res.json().days.flatMap((d: { items: unknown[] }) => d.items);
+    const inboxItems = allItems.filter((i: { type: string }) => i.type === 'inbox');
+    expect(inboxItems.length).toBeGreaterThanOrEqual(1);
+    expect((inboxItems[0] as { title: string }).title).toBe('Fix the gate');
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('open inbox item does not appear', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    await createInboxItemViaApi(app, 'Open task stays open');
+
+    const res = await app.inject({ method: 'GET', url: '/api/activity-history' });
+    const allItems = res.json().days.flatMap((d: { items: unknown[] }) => d.items);
+    const inboxItems = allItems.filter((i: { type: string }) => i.type === 'inbox');
+    expect(inboxItems).toHaveLength(0);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('checked list item appears as type listItem with listName', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const listRes = await app.inject({
+      method: 'POST', url: '/api/lists',
+      payload: { actorRole: 'stakeholder', title: 'Grocery List' }
+    });
+    const list = listRes.json().savedList;
+
+    const addRes = await app.inject({
+      method: 'POST', url: `/api/lists/${list.id}/items`,
+      payload: { actorRole: 'stakeholder', body: 'Oat milk' }
+    });
+    const listItem = addRes.json().savedItem;
+
+    await app.inject({
+      method: 'POST', url: `/api/lists/${list.id}/items/${listItem.id}/check`,
+      payload: { actorRole: 'stakeholder', expectedVersion: listItem.version }
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/activity-history' });
+    const allItems = res.json().days.flatMap((d: { items: unknown[] }) => d.items);
+    const listItems = allItems.filter((i: { type: string }) => i.type === 'listItem');
+    expect(listItems.length).toBeGreaterThanOrEqual(1);
+    expect((listItems[0] as { listName: string; body: string }).listName).toBe('Grocery List');
+    expect((listItems[0] as { body: string }).body).toBe('Oat milk');
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('unchecked list item does not appear', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const listRes = await app.inject({
+      method: 'POST', url: '/api/lists',
+      payload: { actorRole: 'stakeholder', title: 'Shopping' }
+    });
+    const list = listRes.json().savedList;
+
+    const addRes = await app.inject({
+      method: 'POST', url: `/api/lists/${list.id}/items`,
+      payload: { actorRole: 'stakeholder', body: 'Butter' }
+    });
+    const listItem = addRes.json().savedItem;
+    // Check then uncheck
+    const checkRes = await app.inject({
+      method: 'POST', url: `/api/lists/${list.id}/items/${listItem.id}/check`,
+      payload: { actorRole: 'stakeholder', expectedVersion: listItem.version }
+    });
+    const checkedItem = checkRes.json().savedItem;
+    await app.inject({
+      method: 'POST', url: `/api/lists/${list.id}/items/${listItem.id}/uncheck`,
+      payload: { actorRole: 'stakeholder', expectedVersion: checkedItem.version }
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/activity-history' });
+    const allItems = res.json().days.flatMap((d: { items: unknown[] }) => d.items);
+    const listItems = allItems.filter((i: { type: string }) => i.type === 'listItem');
+    expect(listItems).toHaveLength(0);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('past meal plan entry appears as type meal', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    // Create a meal plan for last week (which is "past" relative to current Monday)
+    const lastMonday = lastWeekMonday();
+    const createPlanRes = await app.inject({
+      method: 'POST', url: '/api/meal-plans',
+      payload: { actorRole: 'stakeholder', title: 'Last week', weekStartDate: lastMonday }
+    });
+    expect(createPlanRes.statusCode).toBe(201);
+    const plan = createPlanRes.json().plan;
+
+    // Add a meal entry for Monday (dayOfWeek=0) of that plan
+    const addEntryRes = await app.inject({
+      method: 'POST', url: `/api/meal-plans/${plan.id}/entries`,
+      payload: { actorRole: 'stakeholder', dayOfWeek: 0, name: 'Pasta carbonara' }
+    });
+    expect(addEntryRes.statusCode).toBe(201);
+
+    const res = await app.inject({ method: 'GET', url: '/api/activity-history' });
+    const allItems = res.json().days.flatMap((d: { items: unknown[] }) => d.items);
+    const mealItems = allItems.filter((i: { type: string }) => i.type === 'meal');
+    expect(mealItems.length).toBeGreaterThanOrEqual(1);
+    expect((mealItems[0] as { name: string }).name).toBe('Pasta carbonara');
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('items older than 30 days do not appear', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+    const db = new Database(join(dir, 'test.sqlite'));
+
+    // Create a done inbox item via API and then backdate its last_status_changed_at to 35 days ago
+    const item = await createInboxItemViaApi(app, 'Very old task');
+    await app.inject({
+      method: 'POST', url: '/api/inbox/items/confirm-update',
+      payload: {
+        actorRole: 'stakeholder', itemId: item.id, expectedVersion: item.version,
+        approved: true, proposedChange: { status: 'done' }
+      }
+    });
+
+    const oldDate = subDays(new Date(), 35).toISOString();
+    db.prepare('UPDATE inbox_items SET last_status_changed_at = ? WHERE id = ?').run(oldDate, item.id);
+    db.close();
+
+    const res = await app.inject({ method: 'GET', url: '/api/activity-history' });
+    const allItems = res.json().days.flatMap((d: { items: unknown[] }) => d.items);
+    const inboxItems = allItems.filter((i: { type: string }) => i.type === 'inbox');
+    expect(inboxItems).toHaveLength(0);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('multiple items on same day appear in same day section sorted reverse-chronologically', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    // Create and complete two items on the same day (today)
+    const item1 = await createInboxItemViaApi(app, 'Task one');
+    await app.inject({
+      method: 'POST', url: '/api/inbox/items/confirm-update',
+      payload: {
+        actorRole: 'stakeholder', itemId: item1.id, expectedVersion: item1.version,
+        approved: true, proposedChange: { status: 'done' }
+      }
+    });
+
+    const item2 = await createInboxItemViaApi(app, 'Task two');
+    await app.inject({
+      method: 'POST', url: '/api/inbox/items/confirm-update',
+      payload: {
+        actorRole: 'stakeholder', itemId: item2.id, expectedVersion: item2.version,
+        approved: true, proposedChange: { status: 'done' }
+      }
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/activity-history' });
+    const body = res.json();
+    const today = new Date().toISOString().split('T')[0];
+    const todaySection = body.days.find((d: { date: string }) => d.date === today);
+    expect(todaySection).toBeDefined();
+    expect(todaySection.items.length).toBeGreaterThanOrEqual(2);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('days are ordered most-recent-first and empty days are suppressed', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const item = await createInboxItemViaApi(app, 'Some item');
+    await app.inject({
+      method: 'POST', url: '/api/inbox/items/confirm-update',
+      payload: {
+        actorRole: 'stakeholder', itemId: item.id, expectedVersion: item.version,
+        approved: true, proposedChange: { status: 'done' }
+      }
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/activity-history' });
+    const body = res.json();
+    // All days should have at least one item (no empty days)
+    for (const day of body.days) {
+      expect(day.items.length).toBeGreaterThan(0);
+    }
+    // Days should be sorted most-recent-first
+    for (let i = 1; i < body.days.length; i++) {
+      expect(body.days[i - 1].date >= body.days[i].date).toBe(true);
     }
 
     await app.close();

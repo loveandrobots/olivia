@@ -1,5 +1,7 @@
 import {
+  activityHistoryResponseSchema,
   weeklyViewResponseSchema,
+  type ActivityHistoryResponse,
   type WeeklyViewResponse,
   activeListIndexResponseSchema,
   activeRoutineIndexResponseSchema,
@@ -589,5 +591,13 @@ export async function generateGroceryList(role: ActorRole, planId: string): Prom
 export async function fetchWeeklyView(weekStart: string): Promise<WeeklyViewResponse> {
   return weeklyViewResponseSchema.parse(
     await request<WeeklyViewResponse>(`/api/weekly-view?weekStart=${weekStart}`)
+  );
+}
+
+// ─── Activity History API client ─────────────────────────────────────────────
+
+export async function fetchActivityHistory(): Promise<ActivityHistoryResponse> {
+  return activityHistoryResponseSchema.parse(
+    await request<ActivityHistoryResponse>('/api/activity-history')
   );
 }

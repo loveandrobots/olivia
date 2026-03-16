@@ -1,4 +1,4 @@
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
@@ -462,6 +462,10 @@ export function HomePage() {
             ))}
           </div>
         )}
+
+        <div className="weekly-view-footer">
+          <Link to="/history" className="view-history-link">View history →</Link>
+        </div>
 
         <div className="spacer-bottom" />
       </div>

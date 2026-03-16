@@ -7,7 +7,7 @@ const NAV_ITEMS: Array<{ tab: NavTab; to: string; icon: string; label: string }>
   { tab: 'tasks',  to: '/tasks',   icon: '✅', label: 'Tasks'  },
   { tab: 'olivia', to: '/olivia',  icon: '✦',  label: 'Olivia' },
   { tab: 'lists',  to: '/lists',   icon: '☑',  label: 'Lists'  },
-  { tab: 'memory', to: '/memory',  icon: '🗂️', label: 'Memory' },
+  { tab: 'memory', to: '/history', icon: '🗂️', label: 'Memory' },
 ];
 
 export function BottomNav({ activeTab }: { activeTab: NavTab }) {
