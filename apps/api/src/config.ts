@@ -21,6 +21,7 @@ export type AppConfig = {
   vapidContact: string;
   notificationRules: NotificationRulesConfig;
   notificationIntervalMs: number;
+  nudgePushIntervalMs: number;
   pwaOrigin: string;
 };
 
@@ -42,6 +43,7 @@ export function loadConfig(): AppConfig {
       digestEnabled: process.env.OLIVIA_NOTIFY_DIGEST === 'true'
     },
     notificationIntervalMs: Number(process.env.OLIVIA_NOTIFICATION_INTERVAL_MS ?? 3_600_000),
+    nudgePushIntervalMs: Number(process.env.OLIVIA_NUDGE_PUSH_INTERVAL_MS ?? 1_800_000),
     pwaOrigin: process.env.OLIVIA_PWA_ORIGIN ?? 'http://localhost:4173'
   };
 }

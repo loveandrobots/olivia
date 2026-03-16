@@ -170,3 +170,22 @@ export const mealEntriesTable = sqliteTable('meal_entries', {
   updatedAt: text('updated_at').notNull(),
   version: integer('version').notNull()
 });
+
+export const pushSubscriptionsTable = sqliteTable('push_subscriptions', {
+  id: text('id').primaryKey(),
+  householdId: text('household_id').notNull(),
+  endpoint: text('endpoint').notNull().unique(),
+  p256dhKey: text('p256dh_key').notNull(),
+  authKey: text('auth_key').notNull(),
+  userId: text('user_id'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const pushNotificationLogTable = sqliteTable('push_notification_log', {
+  id: text('id').primaryKey(),
+  subscriptionId: text('subscription_id').notNull(),
+  entityType: text('entity_type').notNull(),
+  entityId: text('entity_id').notNull(),
+  sentAt: text('sent_at').notNull(),
+});

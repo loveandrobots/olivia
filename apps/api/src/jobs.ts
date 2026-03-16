@@ -1,8 +1,8 @@
 import type { FastifyBaseLogger } from 'fastify';
-import { buildSuggestions, groupReminders, rankRemindersForSurfacing } from '@olivia/domain';
-import type { Reminder } from '@olivia/contracts';
+import { buildSuggestions, groupReminders, rankRemindersForSurfacing, sortNudgesByPriority } from '@olivia/domain';
+import type { Nudge, Reminder } from '@olivia/contracts';
 import type { AppConfig } from './config';
-import type { PushProvider, PushSubscriptionPayload } from './push';
+import type { PushProvider, NotificationPayload, PushSubscriptionPayload } from './push';
 import type { InboxRepository, NotificationDeliveryRecord } from './repository';
 
 type NotificationRecord = {
@@ -302,6 +302,83 @@ export async function evaluateDigestRule(
   );
 }
 
+// ─── Nudge Push (H5 Phase 2) ────────────────────────────────────────────────
+
+function buildNudgeNotification(nudge: Nudge, pwaOrigin: string): NotificationPayload {
+  let body: string;
+  if (nudge.entityType === 'routine') {
+    body = `${nudge.entityName} routine is overdue`;
+  } else if (nudge.entityType === 'planningRitual') {
+    body = `${nudge.entityName} is overdue`;
+  } else {
+    body = `${nudge.entityName} — reminder approaching`;
+  }
+
+  return {
+    title: 'Olivia household nudge',
+    body,
+    url: `${pwaOrigin}/`,
+    tag: `nudge-${nudge.entityType}-${nudge.entityId}`,
+  };
+}
+
+export async function evaluateNudgePushRule(
+  repository: InboxRepository,
+  push: PushProvider,
+  config: AppConfig,
+  logger: FastifyBaseLogger,
+  now: Date = new Date()
+): Promise<void> {
+  if (!push.isConfigured()) {
+    logger.debug('nudge push rule: VAPID keys not configured, skipping');
+    return;
+  }
+
+  const DEDUP_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
+  const PURGE_RETENTION_MS = 48 * 60 * 60 * 1000; // 48 hours
+
+  repository.purgeStalePushNotificationLog(PURGE_RETENTION_MS, now);
+
+  const subscriptions = repository.listPushSubscriptions();
+  if (subscriptions.length === 0) {
+    logger.debug('nudge push rule: no push subscriptions');
+    return;
+  }
+
+  const nudges = sortNudgesByPriority(repository.getNudgePayloads(now));
+  if (nudges.length === 0) {
+    logger.debug('nudge push rule: no active nudges');
+    return;
+  }
+
+  for (const subscription of subscriptions) {
+    for (const nudge of nudges) {
+      const alreadySent = repository.hasPushNotificationLog(
+        subscription.id, nudge.entityType, nudge.entityId, DEDUP_WINDOW_MS, now
+      );
+      if (alreadySent) continue;
+
+      const notification = buildNudgeNotification(nudge, config.pwaOrigin);
+      try {
+        await push.send(
+          { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh_key, auth: subscription.auth_key } },
+          notification
+        );
+        repository.recordPushNotificationLog(subscription.id, nudge.entityType, nudge.entityId, now);
+        logger.info({ subscriptionId: subscription.id, entityType: nudge.entityType, entityId: nudge.entityId }, 'nudge push delivered');
+      } catch (error) {
+        const statusCode = (error as { statusCode?: number }).statusCode;
+        if (statusCode === 410) {
+          repository.deletePushSubscription(subscription.endpoint);
+          logger.info({ subscriptionId: subscription.id }, 'nudge push: 410 Gone — subscription removed');
+          break;
+        }
+        logger.warn({ subscriptionId: subscription.id, entityId: nudge.entityId, error }, 'nudge push delivery failed (non-fatal)');
+      }
+    }
+  }
+}
+
 export function startBackgroundJobs(
   repository: InboxRepository,
   push: PushProvider,
@@ -333,5 +410,16 @@ export function startBackgroundJobs(
 
   const intervalId = setInterval(() => void runOnce(), config.notificationIntervalMs);
 
-  return () => clearInterval(intervalId);
+  // Nudge push scheduler (separate interval from reminder notifications)
+  const nudgePushIntervalMs = config.nudgePushIntervalMs ?? 1_800_000;
+  logger.info({ nudgePushIntervalMs }, 'starting nudge push scheduler');
+  const nudgeIntervalId = setInterval(
+    () => void evaluateNudgePushRule(repository, push, config, logger),
+    nudgePushIntervalMs
+  );
+
+  return () => {
+    clearInterval(intervalId);
+    clearInterval(nudgeIntervalId);
+  };
 }

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
 import { format, isSameDay, parseISO, startOfDay } from 'date-fns';
 import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
@@ -1981,6 +1982,39 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     vapidPublicKey: config.vapidPublicKey ?? null,
     notificationsEnabled: config.notificationsEnabled
   }));
+
+  // ─── Push Subscriptions (H5 nudge push) ─────────────────────────────────────
+
+  app.get('/api/push-subscriptions/vapid-public-key', async () => ({
+    vapidPublicKey: config.vapidPublicKey ?? null,
+  }));
+
+  const postPushSubscriptionBodySchema = z.object({
+    endpoint: z.string().url(),
+    keys: z.object({
+      p256dh: z.string().min(1),
+      auth: z.string().min(1),
+    }),
+  });
+
+  app.post('/api/push-subscriptions', async (request, reply) => {
+    const parsed = postPushSubscriptionBodySchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ code: 'BAD_REQUEST', message: parsed.error.message });
+    }
+    const { endpoint, keys } = parsed.data;
+    const record = repository.savePushSubscription(endpoint, keys.p256dh, keys.auth);
+    return reply.status(201).send({ id: record.id, endpoint: record.endpoint });
+  });
+
+  app.delete('/api/push-subscriptions', async (request, reply) => {
+    const { endpoint } = request.query as { endpoint?: string };
+    if (!endpoint) {
+      return reply.status(400).send({ code: 'BAD_REQUEST', message: 'endpoint query param required' });
+    }
+    repository.deletePushSubscription(endpoint);
+    return reply.status(204).send();
+  });
 
   app.setErrorHandler((error, _request, reply) => {
     const statusCode = (error as Error & { statusCode?: number }).statusCode ?? 400;

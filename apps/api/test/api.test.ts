@@ -24,6 +24,7 @@ const createConfig = (dbPath: string): AppConfig => ({
   vapidContact: 'mailto:test@localhost',
   notificationRules: { dueSoonEnabled: false, staleItemEnabled: false, digestEnabled: false },
   notificationIntervalMs: 3_600_000,
+  nudgePushIntervalMs: 1_800_000,
   pwaOrigin: 'http://localhost:4173'
 });
 
@@ -290,7 +291,7 @@ describe('reminder migrations and api', () => {
       .all() as Array<{ name: string }>;
 
     expect(repository.listItems()).toHaveLength(1);
-    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql', '0003_recurring_routines.sql', '0004_meal_planning.sql', '0005_planning_ritual_support.sql', '0006_ai_ritual_summaries.sql']);
+    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql', '0003_recurring_routines.sql', '0004_meal_planning.sql', '0005_planning_ritual_support.sql', '0006_ai_ritual_summaries.sql', '0007_push_notifications.sql']);
     expect(reminderTables.map((row) => row.name).sort()).toEqual([
       'notification_delivery_log',
       'reminder_notification_preferences',

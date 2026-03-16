@@ -12,6 +12,7 @@ import {
   snoozeReminderCommand
 } from '../lib/sync';
 import { dismissNudge, filterDismissed, pruneStaleNudgeDismissals, clientDb } from '../lib/client-db';
+import { usePushOptIn } from '../lib/push-opt-in';
 
 const POLL_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -230,6 +231,29 @@ function NudgeCard({ nudge, isSpouse, onDismiss, onDone, onSkip, onSnooze, onSta
   );
 }
 
+// ─── PushOptInPrompt ────────────────────────────────────────────────────────────
+
+function PushOptInPrompt() {
+  const { state, requestPermission, dismiss } = usePushOptIn();
+
+  if (state !== 'prompt') return null;
+
+  return (
+    <div className="push-opt-in-prompt">
+      <p>
+        Get notified about overdue routines and reminders even when Olivia is closed.
+        {/iPad|iPhone|iPod/.test(navigator.userAgent) && (
+          <span> Note: on iOS, Olivia must be added to your Home Screen for push notifications to work.</span>
+        )}
+      </p>
+      <div className="push-opt-in-actions">
+        <button type="button" onClick={() => void requestPermission()}>Turn on</button>
+        <button type="button" onClick={dismiss}>Not now</button>
+      </div>
+    </div>
+  );
+}
+
 // ─── NudgeTray ─────────────────────────────────────────────────────────────────
 
 interface NudgeTrayProps {
@@ -312,6 +336,7 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
 
   return (
     <div className="nudge-tray" role="region" aria-label="Household nudges">
+      <PushOptInPrompt />
       {displayed.map((nudge) => (
         <NudgeCard
           key={nudge.entityId}
