@@ -167,7 +167,24 @@ H5 Phase 2 priorities (in order):
 
 2. **Push notifications for nudges** — extend the proactive nudge surface beyond in-app to device push notifications (iOS/Android). Deferred from Phase 1 because push adds device token storage, server-side scheduling, and platform permission flows that should wait until in-app nudge utility is household-validated. Sequenced after real AI wiring because in-app nudge utility must be confirmed before adding delivery surface complexity.
 
-3. **AI-enhanced nudge timing** — use activity history patterns and household scheduling data to improve nudge timing signals (e.g., surface a routine nudge at a time historically associated with completion). Deferred to after push notifications because it requires auditability of AI nudge decisions and richer household usage data than Phase 1 generates.
+3. **AI-enhanced nudge timing** — improve when Olivia delivers nudges by learning from household activity patterns. This is a two-layer capability:
+
+   **Layer 1: Completion-window-based push timing (first spec target)**
+   Use historical routine completion timestamps (`routine_occurrences.completedAt`) to derive per-routine preferred completion windows — the time-of-day range when the household typically completes each routine. The push notification scheduler holds nudges for routines with a detected completion window and delivers them at the start of that window rather than immediately when the scheduler detects the overdue state. This is data-driven heuristic timing, not LLM-based. Fallback: when fewer than 4 completions exist for a routine, use the existing immediate-delivery behavior. This layer also applies to approaching reminder nudges: if the household has a pattern of resolving reminders in the evening, a reminder approaching its deadline at 3am does not need a push at 3am.
+
+   **Layer 2: Context-aware timing (deferred to Phase 3+)**
+   Use the Claude API (behind the D-008 adapter boundary) to consider cross-workflow context when making timing decisions — e.g., if the household has a meal plan tonight that implies a later evening schedule, hold the evening routine nudge. This requires richer household interaction data and validated Phase 2 timing patterns before the AI reasoning layer adds value over simple heuristics.
+
+   How AI timing builds on push notifications (M24):
+   - The `evaluateNudgePushRule` scheduler already runs every 30 minutes and makes per-nudge send/skip decisions via dedup logic. Adding timing-window checks is a bounded extension of this evaluation loop — no new scheduling infrastructure needed (L-027).
+   - Timing decisions are strictly about delivery timing, not trigger conditions. The nudge trigger logic (overdue/approaching thresholds) remains deterministic and unchanged.
+   - AI timing is advisory in the same sense as all H5 capabilities: it changes when Olivia speaks, not what Olivia can do. The trust model is unchanged.
+
+   What AI timing does NOT do:
+   - Does not change whether a nudge exists (trigger conditions remain deterministic)
+   - Does not suppress nudges permanently — only holds delivery within a timing window; if the window passes, the nudge delivers on the next scheduler cycle
+   - Does not introduce LLM calls in Layer 1 (heuristic only)
+   - Does not require new entity types — timing signals are derived from existing completion timestamps
 
 4. **Rule-based automation** — user-defined automation rules (auto-advance missed routine, auto-dismiss reminder after N days). Explicitly deferred to H5 Phase 3+. Requires auditability infrastructure, rule storage, and household trust in AI-assisted content before Olivia can act without explicit user confirmation. Must not be introduced before the household has used and trusted AI-assisted content and proactive nudges across a meaningful usage period.
 

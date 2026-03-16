@@ -681,26 +681,83 @@ Completion notes:
 ## M24: Horizon 5 Phase 2 Push Notifications Build
 Objective: implement all push notification delivery infrastructure as specified in `docs/specs/push-notifications.md` and `docs/plans/push-notifications-implementation-plan.md`, so household members can opt in to OS-level push notifications for proactive nudges.
 
+Status: complete
+
+Required artifacts:
+- Drizzle migration `0007_push_notifications.sql` with `push_subscriptions` (nullable `userId`) and `push_notification_log` tables ✓
+- New repository methods for push subscription CRUD and notification log dedup ✓
+- Three new API endpoints: `GET /api/push-subscriptions/vapid-public-key`, `POST /api/push-subscriptions`, `DELETE /api/push-subscriptions` ✓
+- `evaluateNudgePushRule` in `apps/api/src/jobs.ts` with 30-minute in-process scheduler ✓
+- `apps/pwa/src/sw.ts` with push event and notificationclick handlers (VitePWA `injectManifest` strategy) ✓
+- `apps/pwa/src/lib/push-opt-in.ts` with `usePushOptIn` hook ✓
+- Opt-in prompt rendered in `nudge-tray.tsx` when nudges active and push permission not yet granted ✓
+- Test coverage: unit tests for dedup logic and 410 cleanup; integration tests for full push delivery flow (mocked push provider) ✓
+
+Exit criteria:
+- All 15 acceptance criteria from `docs/specs/push-notifications.md` are verifiable ✓
+- `push_subscriptions.user_id` is nullable TEXT from the start (Phase 3 readiness) ✓
+- VAPID private key is never logged at INFO or above, never returned in API responses, never stored in the database ✓
+- Scheduler runs in-process on a 30-minute interval; starts without error when VAPID keys are absent (warning + skip) ✓
+- Service Worker registers and receives push events on HTTPS (or localhost) environments ✓
+- Full test suite green; no regression in existing nudge, reminder, or household endpoints ✓ (267 tests passing)
+- `docs/roadmap/milestones.md` updated to reflect M24 complete ✓
+
+Completion note:
+- All eight implementation phases delivered in OLI-77 (commit f824a67, 2026-03-16): (1) `nudgePushIntervalMs` config (30-min default); (2) migration `0007_push_notifications.sql` with `push_subscriptions` (nullable `userId`) and `push_notification_log` tables; (3) repository CRUD — `savePushSubscription`, `deletePushSubscription`, `listPushSubscriptions`, dedup log methods; (4) three API endpoints; (5) `evaluateNudgePushRule` scheduler with 2-hour dedup window, 48-hour log purge, 410 cleanup; (6) VitePWA switched to `injectManifest`, custom `sw.ts` with push + notificationclick handlers; (7) `usePushOptIn` hook + `PushOptInPrompt` in nudge tray with iOS Home Screen note; (8) 12 new tests covering endpoints, dedup, 410 cleanup, and purge. 267 total tests pass. Vite build clean. Decision recorded as D-046 (2026-03-16). The third H5 Phase 2 target per D-042 is AI-enhanced nudge timing. M25 (AI-Enhanced Nudge Timing Scoping) is now the active milestone.
+
+## M25: AI-Enhanced Nudge Timing Scoping
+Objective: define the product shape of AI-enhanced nudge timing well enough that future planning compounds on the Phase 2 push notification and in-app nudge infrastructure rather than introducing AI timing signals without a clear product foundation.
+
+Status: complete
+
+Required artifacts:
+- updated `docs/roadmap/roadmap.md` with concrete AI-enhanced nudge timing scope — what timing signals are targeted, what remains deferred, and why AI timing follows from push notifications and in-app nudge utility ✓
+- a first spec target explicitly named — the specific AI timing capability that will be the first implementation target ✓ (completion-window-based push timing)
+- updated `docs/glossary.md` with any new terms introduced (e.g., "timing signal", "completion pattern") ✓ (Completion Window, Timing Signal)
+- updated `docs/learnings/` reflecting the post-push-notifications product state — what the push delivery infrastructure reveals about where AI timing should begin ✓ (L-027)
+
+Exit criteria:
+- AI-enhanced nudge timing product direction is concrete enough that implementation agents do not need to guess what "AI timing" means in the context of Olivia's existing nudge infrastructure ✓ — two-layer scope defined: Layer 1 (heuristic, no LLM) and Layer 2 (LLM, D-008 boundary)
+- the relationship between push notifications (M24) and AI timing is described at a product level — what new data or delivery capability push provides that makes AI timing meaningful ✓ — the `evaluateNudgePushRule` scheduler is the extension point; timing logic fits inside the existing evaluation loop (L-027)
+- the first AI timing capability area is specific enough to enter feature-spec work without ambiguity about which problem AI timing should solve first ✓ — completion-window-based push timing: per-routine preferred completion windows derived from historical timestamps
+- the scoping explicitly addresses whether AI timing is advisory-only (consistent with H5 Phase 1/2 trust model) or introduces new trust model implications ✓ — AI timing is strictly advisory; it changes when Olivia speaks, not what Olivia can do; trust model unchanged
+
+Evidence of completion:
+- a new agent can identify what Olivia should build first for AI-enhanced nudge timing, why it follows from the push notification foundation, and what should remain deferred
+
+Progress notes:
+- M24 complete (D-046, 2026-03-16): push notifications fully built; `evaluateNudgePushRule` scheduler architecture confirmed as extension point
+- L-027 added: push scheduler evaluation loop is the natural AI timing extension point — no new scheduling infrastructure needed
+- Roadmap H5 section updated with two-layer AI-enhanced nudge timing scope: Layer 1 (completion-window-based push timing, heuristic, no LLM) and Layer 2 (context-aware timing, LLM, D-008 boundary, deferred to Phase 3+)
+- Glossary updated: Completion Window, Timing Signal (2026-03-16)
+- First spec target explicitly named: completion-window-based push timing — use historical `routine_occurrences.completedAt` timestamps to derive per-routine preferred completion windows, hold push delivery until the window start, fall back to immediate delivery when <4 completions exist
+
+Completion note:
+- All four M25 required artifacts are in place. Exit criteria met: (1) AI timing direction is concrete — two-layer scope with Layer 1 as the first implementation target (heuristic timing) and Layer 2 deferred to Phase 3+ (LLM timing); (2) the M24→M25 connection is explicit — the `evaluateNudgePushRule` scheduler is the extension point, timing logic is a bounded addition to the existing per-nudge evaluation loop (L-027); (3) the first spec target is specific: completion-window-based push timing using per-routine historical completion timestamps from `routine_occurrences.completedAt`, with a minimum-completions threshold for reliability and clean fallback to existing behavior; (4) AI timing is explicitly advisory-only — timing signals affect delivery timing, not trigger conditions or record state; trust model unchanged. Decision recorded as D-047 (2026-03-16). M26 (AI-Enhanced Nudge Timing Build Readiness) is now the active milestone.
+
+## M26: AI-Enhanced Nudge Timing Build Readiness
+Objective: prepare the completion-window-based push timing capability for implementation so the push notification scheduler delivers routine nudges at times historically associated with household completion rather than immediately on detection.
+
 Status: active
 
 Required artifacts:
-- Drizzle migration `0007_push_notifications.sql` with `push_subscriptions` (nullable `userId`) and `push_notification_log` tables
-- New repository methods for push subscription CRUD and notification log dedup
-- Three new API endpoints: `GET /api/push-subscriptions/vapid-public-key`, `POST /api/push-subscriptions`, `DELETE /api/push-subscriptions`
-- `evaluateNudgePushRule` in `apps/api/src/jobs.ts` with 30-minute in-process scheduler
-- `apps/pwa/src/sw.ts` with push event and notificationclick handlers (VitePWA `injectManifest` strategy)
-- `apps/pwa/src/lib/push-opt-in.ts` with `usePushOptIn` hook
-- Opt-in prompt rendered in `nudge-tray.tsx` when nudges active and push permission not yet granted
-- Test coverage: unit tests for dedup logic and 410 cleanup; integration tests for full push delivery flow (mocked push provider)
+- CEO-approved feature spec for completion-window-based push timing — defines the completion window calculation algorithm, minimum completion threshold, hold-vs-send decision logic, per-entity-type applicability, and fallback behavior
+- Implementation plan for completion-window-based push timing — covers the scheduler extension, timing signal computation, storage model (if any), and verification approach
+- Updated learnings and decisions based on M25 scoping outcomes (L-027, D-047)
 
 Exit criteria:
-- All 15 acceptance criteria from `docs/specs/push-notifications.md` are verifiable
-- `push_subscriptions.user_id` is nullable TEXT from the start (Phase 3 readiness)
-- VAPID private key is never logged at INFO or above, never returned in API responses, never stored in the database
-- Scheduler runs in-process on a 30-minute interval; starts without error when VAPID keys are absent (warning + skip)
-- Service Worker registers and receives push events on HTTPS (or localhost) environments
-- Full test suite green; no regression in existing nudge, reminder, or household endpoints
-- `docs/roadmap/milestones.md` updated to reflect M24 complete
+- the feature spec is CEO-approved and is concrete enough for implementation without major product ambiguity
+- the spec defines what happens at each edge case: insufficient completion data, completion window that has already passed today, routine with highly variable completion times, overnight routines
+- the implementation plan is scoped to the existing scheduler evaluation loop — no new scheduling infrastructure, no new entity types
+- the spec confirms whether completion windows are stored/cached or computed on each scheduler run, and the trade-offs of each approach
+- the trust model implications are confirmed: timing changes are strictly delivery optimization; trigger conditions and record state are unaffected
+
+Evidence of completion:
+- an implementation plan can be generated for completion-window-based push timing without rediscovering the product model
+- the implementation agent has a clear algorithm to implement, edge cases to handle, and bounded engineering decisions
+
+Progress notes:
+- Feature spec drafted (OLI-79): `docs/specs/completion-window-push-timing.md` — 14 acceptance criteria, IQR algorithm with variance guard, no new tables, 5 Founding Engineer open questions. Pending CEO approval.
 
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:

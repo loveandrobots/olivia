@@ -107,6 +107,12 @@ The first Horizon 4 surface in Olivia: a single read-only screen that assembles 
 ### Push Notification
 An OS-level device notification delivered outside the PWA when the app is not in the foreground. In Olivia's context, push notifications are the Phase 2 delivery extension for proactive nudges — the same nudge content that appears in the in-app nudge tray in Phase 1, surfaced to the device lock screen or notification center. Requires device token storage and server-side scheduling infrastructure; deferred from H5 Phase 1 until in-app nudge utility is household-validated.
 
+### Completion Window
+The time-of-day range when the household typically completes a specific routine, derived from historical completion timestamps in `routine_occurrences.completedAt`. Used by AI-enhanced nudge timing to shift push notification delivery to more relevant times rather than delivering immediately when the scheduler detects an overdue state. A completion window requires a minimum number of historical completions (recommended: 4) before it is considered reliable enough to influence delivery timing. First introduced in H5 Phase 2 AI-enhanced nudge timing (Layer 1).
+
+### Timing Signal
+A data point derived from household activity patterns that influences when Olivia delivers a proactive nudge, as opposed to the trigger condition (which determines whether a nudge should exist at all). Timing signals are strictly about delivery optimization — they do not change what nudges exist or suppress nudges permanently. Examples: per-routine completion windows, per-household active hours, cross-workflow schedule context. The trust model is unchanged: timing signals affect when Olivia speaks, not what Olivia can do.
+
 ### User Action
 An action explicitly and directly commanded by the user. Non-destructive user actions execute immediately — no confirmation step is needed, since they can be reversed through the normal UI (e.g., status changed again, ownership reassigned). Destructive user actions (archive, permanent delete) always require explicit confirmation regardless of source.
 

@@ -17,6 +17,24 @@ Use this structure for future entries:
 
 ## Current Learnings
 
+### L-027: Push notification scheduler architecture is the natural extension point for AI-enhanced nudge timing — timing logic fits inside the existing evaluation loop
+- Date: 2026-03-16
+- Area: H5 architecture / nudge timing
+- Learning: The `evaluateNudgePushRule` function in `jobs.ts` already runs every 30 minutes, computes the active nudge list, and makes per-nudge send/skip decisions via the 2-hour dedup window. Adding "when to send" timing logic to this evaluation loop is a bounded change: the scheduler already decides WHETHER to push each nudge, so deciding WHEN to push (hold for a better window vs. send immediately) is a natural extension of the same decision point. The data inputs for timing decisions — routine completion timestamps from `routine_occurrences.completedAt`, reminder resolution timestamps, and activity history patterns — are already queryable from the same database the scheduler reads. No new scheduling infrastructure, no external job queue, no separate timing service.
+- Why it matters: AI-enhanced nudge timing does not require a new architectural component. It fits inside the existing scheduler as an additional decision layer: compute nudges → check dedup → check timing window → send or hold. This means the first AI timing spec can focus on the timing signal algorithm and data model rather than delivery infrastructure.
+- Implication: the first AI timing feature spec should define: (1) what data inputs produce a timing signal per entity, (2) how the scheduler decides to hold vs. send based on that signal, and (3) what the fallback is when insufficient data exists. The scheduler architecture itself does not need to change.
+- Source: push notifications implementation (OLI-77, M24, D-046), `apps/api/src/jobs.ts`
+- Related docs: `docs/specs/push-notifications.md`, `docs/plans/push-notifications-implementation-plan.md`, L-026, L-024
+
+### L-026: Push notifications confirm the injectManifest + in-process scheduler pattern — minimal infrastructure for household-scale delivery
+- Date: 2026-03-16
+- Area: H5 architecture / PWA / push delivery
+- Learning: Push notification delivery at household scale requires surprisingly little infrastructure: an in-process scheduler (30-min interval), a dedup log with time-window checks (2 hours), and a custom Service Worker via VitePWA `injectManifest` strategy. No external job queue, no message broker, no third-party push service. The Web Push API + VAPID standard handles cross-platform delivery natively. The `injectManifest` strategy gives full Service Worker control (push event + notificationclick handlers) while VitePWA still handles precache manifest injection. Stale subscription cleanup (410 Gone auto-removal) and log purge (48-hour TTL) keep storage bounded without operator intervention.
+- Why it matters: future delivery mechanisms (e.g., email digests, SMS alerts if ever scoped) should follow the same pattern: in-process scheduler over existing data, time-windowed dedup, and automatic cleanup. The temptation to reach for external infrastructure should be resisted until multi-household scale demands it.
+- Implication: any future scheduled-delivery feature should default to in-process interval + dedup log pattern. If the feature needs more than a simple interval and dedup window, that's a signal the feature may be over-scoped for household scale.
+- Source: OLI-77 implementation (M24, D-046)
+- Related docs: `docs/specs/push-notifications.md`, `docs/plans/push-notifications-implementation-plan.md`, L-024
+
 ### L-024: Proactive nudges confirm purely-computed API pattern — no new tables, client-only dismiss state
 - Date: 2026-03-15
 - Area: H5 architecture / Dexie / API design
