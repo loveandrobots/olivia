@@ -90,7 +90,7 @@ export function RemindersPage() {
     if (!reminderQuery.data) return null;
     const byState = reminderQuery.data.remindersByState;
     const groups: { label: string; reminders: Reminder[] }[] = [];
-    if (byState.overdue.length > 0) groups.push({ label: 'Overdue', reminders: byState.overdue });
+    if (byState.overdue.length > 0) groups.push({ label: 'Needs attention', reminders: byState.overdue });
     if (byState.due.length > 0) groups.push({ label: 'Due today', reminders: byState.due });
     if (byState.upcoming.length > 0) groups.push({ label: 'Upcoming', reminders: byState.upcoming });
     if (byState.snoozed.length > 0) groups.push({ label: 'Snoozed', reminders: byState.snoozed });

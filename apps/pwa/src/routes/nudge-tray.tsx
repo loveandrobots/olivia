@@ -241,7 +241,7 @@ function PushOptInPrompt() {
   return (
     <div className="push-opt-in-prompt">
       <p>
-        Get notified about overdue routines and reminders even when Olivia is closed.
+        Get notified about routines and reminders that need attention, even when Olivia is closed.
         {/iPad|iPhone|iPod/.test(navigator.userAgent) && (
           <span> Note: on iOS, Olivia must be added to your Home Screen for push notifications to work.</span>
         )}

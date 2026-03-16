@@ -24,7 +24,7 @@ function StatusBadge({ variant }: { variant: BadgeVariant }) {
     upcoming: 'UPCOMING',
     due: 'DUE',
     'due-today': 'DUE TODAY',
-    overdue: 'OVERDUE',
+    overdue: 'NEEDS ATTENTION',
     done: 'DONE',
     snoozed: 'SNOOZED',
     paused: 'PAUSED'

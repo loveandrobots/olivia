@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import type { AddTaskPreview, CompletedTask, FullTask } from '../../types/display';
 
-export type FilterTab = 'All' | 'Mine' | 'Shared' | 'Overdue' | 'Snoozed';
+export type FilterTab = 'All' | 'Mine' | 'Shared' | 'Needs attention' | 'Snoozed';
 
-const FILTER_TABS: FilterTab[] = ['All', 'Mine', 'Shared', 'Overdue', 'Snoozed'];
+const FILTER_TABS: FilterTab[] = ['All', 'Mine', 'Shared', 'Needs attention', 'Snoozed'];
 
 export type TasksViewProps = {
   openTasks: FullTask[];
@@ -40,7 +40,7 @@ export function TasksView({
   const filteredOpen = openTasks.filter((t) => {
     if (activeFilter === 'Mine')    return t.assignee?.cls === '';
     if (activeFilter === 'Shared')  return t.assignee?.cls === 'rose-av';
-    if (activeFilter === 'Overdue') return t.accent === 'rose';
+    if (activeFilter === 'Needs attention') return t.accent === 'rose';
     if (activeFilter === 'Snoozed') return false;
     return true;
   });

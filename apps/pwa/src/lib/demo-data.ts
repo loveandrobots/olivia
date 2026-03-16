@@ -8,7 +8,7 @@ export type DemoTask = {
   id: string;
   title: string;
   meta: string;
-  badge: 'Overdue' | 'Soon' | 'Shared';
+  badge: 'Needs attention' | 'Soon' | 'Shared';
   accent: 'rose' | 'peach' | 'mint';
   badgeClass: 'badge-rose' | 'badge-peach' | 'badge-violet';
 };
@@ -48,7 +48,7 @@ export const DEMO_TASKS: DemoTask[] = [
     id: 'demo-task-1',
     title: 'Follow up on plumber quote',
     meta: 'Added 3 days ago · no reply',
-    badge: 'Overdue',
+    badge: 'Needs attention',
     accent: 'rose',
     badgeClass: 'badge-rose',
   },
@@ -75,7 +75,7 @@ export const DEMO_EVENTS: DemoEvent[] = [
   { dateNum: '14', dateMon: 'Mar', name: 'HVAC service visit',    time: '10:00 – 12:00' },
   { dateNum: '15', dateMon: 'Mar', name: "Jordan's birthday dinner", time: '7:00 PM · River North' },
   { dateNum: '18', dateMon: 'Mar', name: 'Vet — Luna annual',     time: '2:30 PM · Dr. Patel' },
-  { dateNum: '31', dateMon: 'Mar', name: 'Car registration due',  time: "Don't forget!" },
+  { dateNum: '31', dateMon: 'Mar', name: 'Car registration due',  time: 'Renew by end of month' },
 ];
 
 /** Seeded memory categories for the Memory screen. */
@@ -149,7 +149,7 @@ export const DEMO_FULL_TASKS = [
     assignee: 'Lexi',
     assigneeInitial: 'L',
     assigneeClass: '',
-    badge: 'Overdue' as const,
+    badge: 'Needs attention' as const,
     badgeClass: 'badge-rose',
     accent: 'rose' as const,
   },

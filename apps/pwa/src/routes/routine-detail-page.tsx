@@ -37,7 +37,7 @@ function formatOwnerLabel(owner: string): string {
 
 function dueStateBadge(state: RoutineDueState): { label: string; className: string } {
   switch (state) {
-    case 'overdue': return { label: 'Overdue', className: 'rem-badge rem-badge-rose' };
+    case 'overdue': return { label: 'Needs attention', className: 'rem-badge rem-badge-rose' };
     case 'due': return { label: 'Due today', className: 'rem-badge rem-badge-peach' };
     case 'upcoming': return { label: 'Upcoming', className: 'rem-badge rem-badge-neutral' };
     case 'completed': return { label: 'Done', className: 'rem-badge rem-badge-mint' };

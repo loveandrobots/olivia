@@ -174,7 +174,7 @@ export function ReminderDetailPage() {
                   <div className="linked-task-card-title">{reminder.linkedInboxItem.title}</div>
                   <div className="linked-task-card-meta">
                     Owner: {ownerLabel(reminder.linkedInboxItem.owner)} · Status: {reminder.linkedInboxItem.status.replace('_', ' ')}
-                    {reminder.linkedInboxItem.status === 'open' && state === 'overdue' && ' · Overdue'}
+                    {reminder.linkedInboxItem.status === 'open' && state === 'overdue' && ' · Needs attention'}
                   </div>
                 </div>
               )}

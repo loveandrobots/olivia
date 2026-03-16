@@ -14,7 +14,7 @@ function toFullTask(item: InboxItem): FullTask {
   const flags = computeFlags(item);
   const accent: FullTask['accent'] = flags.overdue ? 'rose' : flags.dueSoon ? 'peach' : item.owner === 'spouse' ? 'mint' : '';
   const badge: FullTask['badge'] = flags.overdue
-    ? { label: 'Overdue', cls: 'badge-rose' }
+    ? { label: 'Needs attention', cls: 'badge-rose' }
     : flags.dueSoon
     ? { label: 'Soon', cls: 'badge-peach' }
     : item.owner === 'spouse'

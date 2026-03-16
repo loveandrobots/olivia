@@ -25,7 +25,7 @@ export function getDueDisplayForState(
       return {
         borderClass: 'border-rose',
         dotClass: 'dot-rose',
-        badgeText: 'Overdue',
+        badgeText: 'Needs attention',
         badgeClass: 'rem-badge-rose',
         opacityClass: '',
       };
