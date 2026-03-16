@@ -1,7 +1,7 @@
 # Feature Spec: Activity History
 
 ## Status
-- Draft
+- Approved (CEO, 2026-03-15)
 
 ## Summary
 

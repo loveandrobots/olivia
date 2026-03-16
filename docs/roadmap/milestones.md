@@ -300,13 +300,13 @@ Objective: prepare the activity history workflow for implementation so the house
 Status: active
 
 Required artifacts:
-- CEO-approved activity history spec (`docs/specs/activity-history.md` — currently Draft; requires CEO approval before implementation planning begins)
+- CEO-approved activity history spec (`docs/specs/activity-history.md` — approved, D-028)
 - Visual spec for activity history (`docs/plans/activity-history-visual-implementation-spec.md`)
 - Implementation plan for activity history
 - Updated learnings and decisions based on unified weekly view build outcomes (L-015)
 
 Exit criteria:
-- the activity history spec has CEO approval and is concrete enough for implementation without major product ambiguity
+- the activity history spec has CEO approval (met: D-028) and is concrete enough for implementation without major product ambiguity
 - the visual spec resolves all designer decisions deferred from the feature spec (navigation entry point, day-section layout, workflow-type visual differentiation consistent with the weekly view)
 - the implementation plan builds on existing H3 completion-state data — no new entity types introduced in Phase 1
 - the four open questions in the activity history spec are either resolved or explicitly deferred with rationale
@@ -316,7 +316,7 @@ Evidence of completion:
 - the implementation agent has clear acceptance criteria, a visual reference, and bounded engineering decisions
 
 Progress notes:
-- Activity history feature spec written (OLI-41): `docs/specs/activity-history.md` — status is Draft, awaiting CEO approval
+- Activity history feature spec written (OLI-41): `docs/specs/activity-history.md` — approved by CEO (D-028, 2026-03-15); visual spec and implementation plan can now begin
 - Planning ritual support spec written (OLI-43): `docs/specs/planning-ritual-support.md` — provides forward context for the third H4 workflow
 - L-015 added: unified weekly view build outcomes inform activity history implementation approach
 

@@ -248,6 +248,16 @@ Use this structure for future entries:
 - Status: active
 - Related docs: `docs/roadmap/milestones.md`, `docs/learnings/learnings-log.md` (L-011, L-012), `docs/learnings/decision-history.md` (D-022)
 
+### D-028: Activity history spec approved by CEO
+- Date: 2026-03-15
+- Area: delivery planning
+- Decision: Approve `docs/specs/activity-history.md` for implementation planning. The spec is complete, correctly scoped, and properly aligned with prior H4 architectural decisions. The Designer should proceed with the visual spec and the Founding Engineer should proceed with the implementation plan.
+- Rationale: the spec meets all quality gates — full template coverage, correct trust model application (D-002, D-010), 20 concrete acceptance criteria, clean integration with all five H3/H2 data sources (routines, reminders, meal plans, inbox, shared lists), and appropriate scope boundaries. The five open questions are correctly deferred to the visual spec (navigation, dismissed/completed distinction) and the Founding Engineer (timestamp availability). No open questions block Phase 1. The spec correctly follows L-013 (synthesize before AI), L-015 (mirror weekly view pattern backward), and L-014 (temporal pair with weekly view). One minor inconsistency: the spec and glossary say "four Horizon 3 workflow types" but the view assembles five data sources (four H3 + the H2 inbox). This should be read as five data sources by the Designer and Founding Engineer — the wording is a carry-over from the roadmap convention of calling the inbox an H2 artifact.
+- Alternatives considered: requesting wording changes before approval. The inconsistency is cosmetic and does not affect implementation guidance; approving now with an explicit note is preferable to stalling M11.
+- Trade-offs: approving now maintains M11 momentum. The timestamp availability question (open question 4) is appropriately delegated to the Founding Engineer before Phase 1 implementation begins.
+- Status: active
+- Related docs: `docs/specs/activity-history.md`, `docs/roadmap/milestones.md` (M11), D-022, D-025, L-013, L-014, L-015
+
 ### D-027: M10 is complete — Horizon 4 first workflow built
 - Date: 2026-03-16
 - Area: roadmap progression
