@@ -94,11 +94,23 @@ This is where Olivia starts to feel less like a single tool and more like a hous
 ## Horizon 4: Household Memory And Planning
 Focus: become a durable operational memory for the household, not only a current-state tracker.
 
-Likely capabilities:
-- richer recall of prior plans, decisions, and important context
-- support for recurring planning rituals and household review
-- stronger summarization of what changed, what matters, and what needs attention
-- clearer continuity across tasks, schedules, reminders, and notes
+By the end of Horizon 3, Olivia surfaces what is active right now. Horizon 4 adds the temporal dimension: what happened last week, what is coming up, and how the household is doing over time.
+
+Near-term workflow priorities:
+1. unified weekly view — a single surface that shows the household's week at a glance across all H3 workflow types (routines scheduled, meals planned, reminders due, inbox items outstanding). This is the coordination layer's natural command center summary.
+2. activity history — recall what the household accomplished: completed routines, used recipes, triggered reminders, closed inbox items. Answers "what did we actually do?" rather than only "what is open?"
+3. planning ritual support — structured recurring workflows for household review, building on recurring routines primitives. A weekly review routine that auto-summarizes state rather than requiring manual reconstruction.
+
+How Horizon 4 builds on Horizon 3:
+- all four H3 workflows (reminders, shared lists, recurring routines, meal planning) produce events that feed the timeline and weekly view
+- the unified view does not add new entities — it surfaces existing entities in a cross-workflow temporal context
+- planning rituals are recurring routines with memory-aware content rather than a new workflow primitive
+
+First spec target: unified weekly view.
+
+Likely later capabilities:
+- stronger AI-driven summarization of what changed, what matters, and what needs attention
+- clearer continuity across tasks, schedules, reminders, and notes across longer time horizons
 
 This horizon matters because household management is not only about what is due next. It is also about preserving context over time.
 

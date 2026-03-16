@@ -209,6 +209,29 @@ M7 exit criteria assessment (2026-03-15):
 
 Advancement recommendation: The household should decide whether to advance M7 to complete following the M4 precedent — advance based on implementation completeness and product-shape confidence rather than waiting for a full household validation cycle. If the stakeholder prefers to require actual usage notes before advancing, M7 should remain in progress until those notes are collected and recorded here.
 
+## M8: Horizon 4 Scoping
+Objective: define the product shape of the household memory and planning layer well enough that future planning compounds on the Horizon 3 coordination layer rather than drifting away from it.
+
+Status: upcoming
+
+Required artifacts:
+- updated `docs/roadmap/roadmap.md` with concrete Horizon 4 scope
+- updated `docs/roadmap/milestones.md`
+- updated glossary and learnings reflecting the post-M7 product state
+- an explicitly named first Horizon 4 feature-spec target, currently `unified weekly view`
+
+Exit criteria:
+- Horizon 4 product direction is concrete enough that implementation agents do not need to guess what comes after the coordination layer
+- the relationship between the four H3 workflows and the H4 memory and planning layer is described at a product level
+- the next workflow area is specific enough to enter feature-spec work without ambiguity about which spec comes first
+
+Evidence of completion:
+- a new agent can identify what Olivia should build next in Horizon 4, why it matters, and what should remain deferred
+
+Progress notes:
+- M7 advancement pending stakeholder decision (assessment captured in M7 progress notes, 2026-03-15)
+- Horizon 4 roadmap sharpened with concrete first workflow targets: unified weekly view → activity history → planning ritual support (OLI-36, 2026-03-15)
+
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:
 - Do the docs make the current phase legible to a new agent?

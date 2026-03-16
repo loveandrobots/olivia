@@ -218,6 +218,16 @@ Use this structure for future entries:
 - Status: active
 - Related docs: `docs/specs/meal-planning.md`, `docs/learnings/decision-history.md` (D-019), `docs/specs/shared-lists.md`
 
+### D-022: Horizon 4 first spec target is unified weekly view
+- Date: 2026-03-15
+- Area: roadmap sequencing
+- Decision: The first Horizon 4 feature-spec target is the unified weekly view — a single surface showing the household's week at a glance across all H3 workflow types (reminders due, routines scheduled, meals planned, inbox items outstanding). Activity history is second priority; planning ritual support is third.
+- Rationale: the unified weekly view is the natural "household command center" summary the existing coordination layer implicitly needs. It adds the temporal and cross-workflow dimension that is missing after four H3 workflows all operate in their own views. It does not introduce new entities — it surfaces existing H3 entities in a cross-workflow context, which minimizes product ambiguity and maximizes compounding value. L-011 confirms all four H3 workflows share a coherent model that this view can draw from.
+- Alternatives considered: starting with AI-driven smart digest (too dependent on AI tuning before the surface is proven useful); starting with activity history (less actionable on first use than the forward-looking weekly view); opening spouse write-access expansion instead (a different problem class, deferred for good reasons per D-004).
+- Trade-offs: the weekly view is narrower than a full household memory model, but sets the right foundation — cross-workflow temporal context — before introducing AI summarization or longer-term recall. Scoping to one week at a time matches the household's natural planning rhythm and keeps the first spec bounded.
+- Status: active
+- Related docs: `docs/roadmap/roadmap.md`, `docs/roadmap/milestones.md`, `docs/learnings/learnings-log.md` (L-011, L-012)
+
 ### D-017: Recurring Routines is the next Horizon 3 spec target
 - Date: 2026-03-15
 - Area: roadmap sequencing
