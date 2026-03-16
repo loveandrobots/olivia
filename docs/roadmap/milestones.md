@@ -654,6 +654,29 @@ Evidence of completion:
 Completion note:
 - All M22 exit criteria met. Founding Engineer implemented `ClaudeAiProvider` and `createAiProvider` factory in OLI-70 (committed d68fc64, 2026-03-16). 71 tests pass. All 7 acceptance criteria from the spec verified. The AI-assisted planning ritual summaries feature now delivers real Claude Haiku-generated content when `ANTHROPIC_API_KEY` is set in the server environment; falls back cleanly to `DisabledAiProvider` stub text when not set. Decision recorded as D-044. Next H5 Phase 2 target per D-042: push notifications for proactive household nudges.
 
+## M23: Horizon 5 Phase 2 Push Notifications Build Readiness
+Objective: produce a CEO-approved push notifications spec and a commissioned implementation plan, so the Founding Engineer can implement push notification delivery for proactive nudges without product ambiguity.
+
+Status: active
+
+Required artifacts:
+- `docs/specs/push-notifications.md` — CEO-approved feature spec covering Web Push API + VAPID architecture, push subscription storage model, server-side scheduler, Service Worker integration, trust model, 15 acceptance criteria, and open questions for CEO and Founding Engineer
+- `docs/plans/push-notifications-implementation-plan.md` — Founding Engineer implementation plan covering: VAPID key setup and environment config, new tables (`push_subscriptions`, `push_notification_log`), new API endpoints (`GET vapid-public-key`, `POST push-subscriptions`, `DELETE push-subscriptions/:endpoint`), Service Worker push event handler and `notificationclick` handler, server-side nudge push scheduler, dedup logic, stale subscription cleanup on 410 Gone, and test coverage
+
+Exit criteria:
+- The spec is concrete enough for implementation without major product ambiguity: all failure modes are defined, the deduplication strategy is specified, VAPID key management is documented
+- The implementation plan is scoped strictly to push notification delivery infrastructure — no changes to existing nudge trigger logic, no new entity types
+- Trust model alignment confirmed: push notification surfaces information and invites action; no record changes execute from push delivery alone
+- VAPID private key handling is specified: never logged, never in API responses, never in database
+- Founding Engineer open questions from the spec (scheduler interval, dedup window, in-process vs. external scheduler) are answered or explicitly delegated to the Founding Engineer in the implementation plan
+
+Evidence of completion:
+- CEO approval of `docs/specs/push-notifications.md` recorded as a decision entry (D-045)
+- Implementation plan exists at `docs/plans/push-notifications-implementation-plan.md`
+
+Progress notes:
+- Feature spec complete and CEO-approved (OLI-73, D-045, 2026-03-15): `docs/specs/push-notifications.md` — 15 acceptance criteria, advisory-only, 2 new tables, 3 new API endpoints, in-process scheduler, VAPID key management, open questions resolved: 30-min scheduler interval, 2-hour dedup window, nullable userId column in push_subscriptions, iOS Home Screen note in opt-in UI
+
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:
 - Do the docs make the current phase legible to a new agent?
