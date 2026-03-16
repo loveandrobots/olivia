@@ -236,7 +236,7 @@ Completion note:
 ## M9: Horizon 4 Build Readiness
 Objective: prepare the first Horizon 4 workflow for implementation planning so the household memory and planning layer can begin construction.
 
-Status: active
+Status: complete
 
 Required artifacts:
 - implementation-ready feature spec for the unified weekly view (exists: `docs/specs/unified-weekly-view.md`)
@@ -256,11 +256,40 @@ Evidence of completion:
 - the implementation agent has clear acceptance criteria, a visual reference, and bounded engineering decisions
 
 Progress notes:
-- Feature spec complete (OLI-38)
-- Visual spec in progress (OLI-40, assigned to Designer)
-- Implementation plan pending (OLI-42, assigned to Founding Engineer — awaiting visual spec)
-- Activity history feature spec drafted (OLI-41, `docs/specs/activity-history.md`, 2026-03-16) — pending CEO review
-- Planning ritual support feature spec drafted (OLI-43, `docs/specs/planning-ritual-support.md`, 2026-03-16) — pending CEO review
+- Feature spec complete (OLI-38): `docs/specs/unified-weekly-view.md`
+- Visual spec complete (OLI-40): `docs/plans/unified-weekly-view-visual-implementation-spec.md`
+- Implementation plan complete (OLI-42): `docs/plans/unified-weekly-view-implementation-plan.md`
+- Activity history feature spec complete (OLI-41): `docs/specs/activity-history.md`
+- Planning ritual support feature spec complete (OLI-43): `docs/specs/planning-ritual-support.md` — bonus third H4 target
+- Updated learnings: L-013 (H4 synthesis-first pattern), L-014 (weekly view + activity history temporal pair)
+- Updated decisions: D-024 (M8 complete), D-025 (planning ritual support scoping)
+
+Completion note:
+- All M9 required artifacts are in place. Exit criteria met: (1) the unified weekly view spec is execution-ready with 13 acceptance criteria and a complete visual spec; (2) the visual spec resolves all seven designer decisions deferred from the feature spec; (3) the implementation plan is scoped entirely to existing H3 data — no new entity types in Phase 1; (4) open questions are either resolved or explicitly deferred with rationale in the spec. Bonus: all three H4 feature specs (unified weekly view, activity history, planning ritual support) are written, giving the Founding Engineer full H4 context before build begins. Decision recorded as D-026 (2026-03-16).
+
+## M10: Horizon 4 Layer Build
+Objective: deliver and evaluate the first Horizon 4 workflow so Olivia gains a household memory and temporal planning layer.
+
+Status: active
+
+Required artifacts:
+- built unified weekly view — all three H4 specs provide context; the weekly view implementation plan is the primary guide
+- updated learnings and decision history based on H4 build outcomes
+- evidence of how the unified weekly view integrates with the four H3 workflow screens
+
+Exit criteria:
+- the unified weekly view is available in the PWA and surfaces reminders, routines, meal plans, and inbox items by day
+- household members can navigate to the weekly view and see the current week's household state at a glance
+- no new entity types were introduced — the view draws entirely from existing H3 entity state
+- the implementation agent has confirmed all acceptance criteria from `docs/specs/unified-weekly-view.md` are met
+
+Evidence of completion:
+- the project can point to a working cross-workflow temporal view, a confirmed navigation entry point, and build-phase learnings that sharpen the activity history and planning ritual support specs
+
+Progress notes:
+- Implementation plan ready (OLI-42): `docs/plans/unified-weekly-view-implementation-plan.md`
+- Visual spec ready (OLI-40): `docs/plans/unified-weekly-view-visual-implementation-spec.md`
+- Build not yet started
 
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:

@@ -248,6 +248,16 @@ Use this structure for future entries:
 - Status: active
 - Related docs: `docs/roadmap/milestones.md`, `docs/learnings/learnings-log.md` (L-011, L-012), `docs/learnings/decision-history.md` (D-022)
 
+### D-026: M9 is complete — Horizon 4 Build Readiness achieved
+- Date: 2026-03-16
+- Area: roadmap progression
+- Decision: Advance M9 (Horizon 4 Build Readiness) to complete. All required artifacts exist and all exit criteria are met. M10 (Horizon 4 Layer Build) is now the active milestone.
+- Rationale: (1) The unified weekly view has a complete feature spec, visual spec, and implementation plan — the Founding Engineer has everything needed to build without product ambiguity. (2) The visual spec resolves all seven designer decisions deferred from the feature spec. (3) The implementation plan is scoped entirely to existing H3 data — no new entity types in Phase 1. (4) Two additional H4 specs were completed beyond M9 requirements: activity history (OLI-41) and planning ritual support (OLI-43), giving the Founding Engineer full H4 context before build begins. L-013 and L-014 provide durable architectural learnings for the build phase.
+- Alternatives considered: waiting for CEO review of activity history and planning ritual support specs before advancing; requiring an additional assumption to be validated.
+- Trade-offs: advancing now unblocks the Founding Engineer to start the unified weekly view build immediately; the two additional H4 specs are already written and available as context even if not formally required by M9.
+- Status: active
+- Related docs: `docs/roadmap/milestones.md`, `docs/specs/unified-weekly-view.md`, `docs/plans/unified-weekly-view-visual-implementation-spec.md`, `docs/plans/unified-weekly-view-implementation-plan.md`, `docs/specs/activity-history.md`, `docs/specs/planning-ritual-support.md`, D-022, D-024, D-025, L-013, L-014
+
 ### D-025: Planning ritual support spec drafted as the third H4 target
 - Date: 2026-03-16
 - Area: delivery planning
