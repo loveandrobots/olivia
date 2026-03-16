@@ -188,6 +188,30 @@ H5 Phase 2 priorities (in order):
 
 4. **Rule-based automation** — user-defined automation rules (auto-advance missed routine, auto-dismiss reminder after N days). Explicitly deferred to H5 Phase 3+. Requires auditability infrastructure, rule storage, and household trust in AI-assisted content before Olivia can act without explicit user confirmation. Must not be introduced before the household has used and trusted AI-assisted content and proactive nudges across a meaningful usage period.
 
+## H5 Phase 2 completion and Phase 3 direction
+
+Phase 2 is complete: all three actionable priorities are built and validated (D-052, 2026-03-16).
+
+What Phase 2 delivered:
+- Real AI provider wiring (M21/M22) — `ClaudeAiProvider` delivers real Claude Haiku content for planning ritual summaries behind the D-008 adapter boundary
+- Push notifications (M23/M24) — full push delivery infrastructure with scheduler, opt-in, Service Worker, and 2-hour dedup
+- AI-enhanced nudge timing Layer 1 (M25/M26/M27) — completion-window-based push timing with IQR algorithm, variance guard, lead buffer, and max hold bypass
+
+What Phase 2 confirmed:
+- The push scheduler architecture (30-min interval, per-nudge evaluation) is naturally extensible for timing optimization without new infrastructure (L-027)
+- Completion-window heuristics are tractable at household scale with existing data — no LLM, no new tables, no new entity types
+- The advisory-only trust model continues to hold: Phase 2 changed when and how Olivia speaks, not what Olivia can do
+
+Phase 3 direction is pending household validation. The project has shipped continuously from H2 through H5 Phase 2 without a meaningful usage feedback loop. M28 (Household Validation & Phase 3 Scoping) pauses building to observe real household usage before committing to the next cycle. Phase 3 candidates include:
+- Rule-based automation (the deferred Phase 2 item)
+- Per-member push targeting
+- Push action buttons (complete/snooze from lock screen)
+- Layer 2 LLM-based nudge timing
+- Horizontal product expansion (spouse write-access, multi-user roles)
+- A new direction surfaced by household usage
+
+The direction will be set by D-053+ based on usage observations, not speculative sequencing.
+
 ## Near-Term Product Bets
 - The first enduring value will come from reducing coordination overhead, not from maximizing AI novelty.
 - The inbox implementation gives Olivia a stable product center; Horizon 3 should compound on that rather than reopening the MVP wedge.

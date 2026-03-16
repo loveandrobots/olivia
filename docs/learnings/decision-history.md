@@ -18,6 +18,16 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-052: H5 Phase 2 complete — household validation pause before Phase 3 scoping
+- Date: 2026-03-16
+- Area: roadmap progression / product strategy
+- Decision: Record H5 Phase 2 as complete. All three actionable Phase 2 priorities are built and validated: (1) real AI provider wiring — M21/M22 complete (D-044), `ClaudeAiProvider` built and delivering real Claude Haiku content for planning ritual summaries; (2) push notifications — M23/M24 complete (D-046), full push delivery infrastructure with scheduler, opt-in, and Service Worker; (3) AI-enhanced nudge timing Layer 1 — M25/M26/M27 complete (D-051), completion-window-based push timing with IQR algorithm. The fourth Phase 2 priority (rule-based automation) was explicitly deferred to Phase 3+ per D-042. Define M28 as **Household Validation & Phase 3 Scoping** — a usage-observation milestone, not a build milestone. The next build cycle does not begin until real household usage of Phase 2 capabilities provides signal on what to build next.
+- Rationale: The project has shipped continuously from H2 through H5 Phase 2 without a meaningful usage feedback loop. Every milestone from M4 onward was advanced on implementation completeness, not household usage observation. That was the right call for momentum — but the product now has a substantial feature surface (shared inbox, reminders, shared lists, recurring routines, meal planning, unified weekly view, activity history, planning ritual support, AI-assisted summaries, proactive nudges, push notifications, and completion-window timing) that no household member has lived with at steady state. The highest-ROI move is to pause building and observe: which features get used, which get ignored, where friction appears, and what the household actually asks for next. Phase 3 direction (rule-based automation, per-member push targeting, push action buttons, Layer 2 LLM timing, or something else entirely) should be informed by that signal rather than by speculative sequencing.
+- Alternatives considered: (1) immediately scoping Phase 3 with rule-based automation as the next target per D-042 — rejected because rule-based automation was the lowest-priority Phase 2 item, and committing to it now without usage signal would be speculative. (2) Starting a horizontal expansion cycle (spouse write-access, multi-user roles) — rejected for the same reason; the right expansion depends on which H2-H5 features prove useful. (3) A pure retrospective milestone (M25/M20 pattern) that immediately feeds into a build cycle — rejected because the gap is not spec clarity, it is usage data.
+- Trade-offs: pausing building risks losing momentum if the pause extends too long. Mitigated by defining concrete exit criteria on M28 that do not require exhaustive data — qualitative household observations and a defined review date are sufficient. The team can resume building quickly once M28 closes. The risk of building the wrong thing without usage signal is higher than the risk of a brief pause.
+- Status: active
+- Related docs: `docs/roadmap/roadmap.md` (H5 Phase 2), `docs/roadmap/milestones.md` (M28), D-051, D-046, D-044, D-042, D-041
+
 ### D-051: M27 complete — completion-window push timing implemented
 - Date: 2026-03-16
 - Area: build completion / H5 Phase 2 Layer 1

@@ -805,6 +805,28 @@ Exit criteria:
 Evidence of completion:
 - the project can point to a working completion-window timing optimization on routine push notifications, confirmed hold/deliver behavior across scheduler cycles, and build-phase learnings that inform Layer 2 (LLM timing) and Phase 3+ extensions
 
+## M28: Household Validation & Phase 3 Scoping
+Objective: observe real household usage of H5 Phase 2 capabilities (and the full H2-H4 feature surface) to inform the direction of the next build cycle, then scope Phase 3 based on that signal.
+
+Status: active
+
+This is a validation milestone, not a build milestone. The deliverable is a product direction decision, not code.
+
+Required artifacts:
+- household usage observations — qualitative notes on which features are used, which are ignored, where friction appears, and what the household asks for. Captured in `docs/learnings/` as observations, not requirements.
+- updated assumptions log — validate or invalidate key assumptions that have been running on implementation-completeness evidence: A-007 (shared lists are distinct from inbox), A-008 (recurrence model is reusable), A-009 (recurring/list primitives enable meal planning). Usage data should confirm, refine, or challenge these.
+- Phase 3 direction decision (D-053+) — a decision recording what comes next and why, informed by usage observations. Options include but are not limited to: rule-based automation (the deferred Phase 2 item), per-member push targeting, push action buttons, Layer 2 LLM timing, horizontal product expansion (spouse write-access, multi-user roles), or a new direction surfaced by usage.
+- updated roadmap — `docs/roadmap/roadmap.md` updated to reflect H5 Phase 2 completion and Phase 3 direction.
+
+Exit criteria:
+- at least two weeks of household usage of the deployed H5 Phase 2 product have elapsed since deployment
+- at least 3 qualitative observations are documented about which H5 Phase 2 capabilities are used and how
+- the CEO has recorded a Phase 3 direction decision based on usage signal, not speculative sequencing
+- the next milestone (M29) is defined with clear objectives that trace back to usage observations
+
+Evidence of completion:
+- the project can point to a usage-informed product direction for Phase 3 rather than a pre-determined roadmap continuation, and the next build cycle targets what matters most based on real household behavior
+
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:
 - Do the docs make the current phase legible to a new agent?
