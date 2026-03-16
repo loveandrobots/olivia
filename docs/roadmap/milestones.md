@@ -657,7 +657,7 @@ Completion note:
 ## M23: Horizon 5 Phase 2 Push Notifications Build Readiness
 Objective: produce a CEO-approved push notifications spec and a commissioned implementation plan, so the Founding Engineer can implement push notification delivery for proactive nudges without product ambiguity.
 
-Status: active
+Status: complete
 
 Required artifacts:
 - `docs/specs/push-notifications.md` — CEO-approved feature spec covering Web Push API + VAPID architecture, push subscription storage model, server-side scheduler, Service Worker integration, trust model, 15 acceptance criteria, and open questions for CEO and Founding Engineer
@@ -674,8 +674,33 @@ Evidence of completion:
 - CEO approval of `docs/specs/push-notifications.md` recorded as a decision entry (D-045)
 - Implementation plan exists at `docs/plans/push-notifications-implementation-plan.md`
 
-Progress notes:
+Completion notes:
 - Feature spec complete and CEO-approved (OLI-73, D-045, 2026-03-15): `docs/specs/push-notifications.md` — 15 acceptance criteria, advisory-only, 2 new tables, 3 new API endpoints, in-process scheduler, VAPID key management, open questions resolved: 30-min scheduler interval, 2-hour dedup window, nullable userId column in push_subscriptions, iOS Home Screen note in opt-in UI
+- Implementation plan complete (OLI-74, 2026-03-16): `docs/plans/push-notifications-implementation-plan.md` — 8 phases, architecture decisions documented including: separate push_subscriptions table (not reusing notification_subscriptions), injectManifest SW strategy, 30-min in-process scheduler, 2-hour dedup with 48-hour purge, householdId='household' placeholder, nullable userId column. Codebase reuses existing push.ts (WebPushProvider) and VAPID config.
+
+## M24: Horizon 5 Phase 2 Push Notifications Build
+Objective: implement all push notification delivery infrastructure as specified in `docs/specs/push-notifications.md` and `docs/plans/push-notifications-implementation-plan.md`, so household members can opt in to OS-level push notifications for proactive nudges.
+
+Status: active
+
+Required artifacts:
+- Drizzle migration `0007_push_notifications.sql` with `push_subscriptions` (nullable `userId`) and `push_notification_log` tables
+- New repository methods for push subscription CRUD and notification log dedup
+- Three new API endpoints: `GET /api/push-subscriptions/vapid-public-key`, `POST /api/push-subscriptions`, `DELETE /api/push-subscriptions`
+- `evaluateNudgePushRule` in `apps/api/src/jobs.ts` with 30-minute in-process scheduler
+- `apps/pwa/src/sw.ts` with push event and notificationclick handlers (VitePWA `injectManifest` strategy)
+- `apps/pwa/src/lib/push-opt-in.ts` with `usePushOptIn` hook
+- Opt-in prompt rendered in `nudge-tray.tsx` when nudges active and push permission not yet granted
+- Test coverage: unit tests for dedup logic and 410 cleanup; integration tests for full push delivery flow (mocked push provider)
+
+Exit criteria:
+- All 15 acceptance criteria from `docs/specs/push-notifications.md` are verifiable
+- `push_subscriptions.user_id` is nullable TEXT from the start (Phase 3 readiness)
+- VAPID private key is never logged at INFO or above, never returned in API responses, never stored in the database
+- Scheduler runs in-process on a 30-minute interval; starts without error when VAPID keys are absent (warning + skip)
+- Service Worker registers and receives push events on HTTPS (or localhost) environments
+- Full test suite green; no regression in existing nudge, reminder, or household endpoints
+- `docs/roadmap/milestones.md` updated to reflect M24 complete
 
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:
