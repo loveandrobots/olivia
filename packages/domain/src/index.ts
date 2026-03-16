@@ -1,4 +1,4 @@
-import { addDays, addMonths, addWeeks, compareAsc, differenceInCalendarDays, getDaysInMonth, isAfter, isBefore, setDate } from 'date-fns';
+import { addDays, addMonths, addWeeks, compareAsc, differenceInCalendarDays, endOfWeek, format, getDaysInMonth, isAfter, isBefore, isSameDay, setDate, startOfDay, startOfWeek, subDays, subMonths, subWeeks } from 'date-fns';
 import { parse, parseDate } from 'chrono-node';
 import {
   draftReminderSchema,
@@ -1511,4 +1511,144 @@ export function deriveMealPlanSummary(entries: MealEntry[]): { mealCount: number
   const mealCount = entries.length;
   const shoppingItemCount = entries.reduce((sum, e) => sum + e.shoppingItems.length, 0);
   return { mealCount, shoppingItemCount };
+}
+
+// ─── Unified Weekly View domain helpers ──────────────────────────────────────
+
+/**
+ * Returns the Monday 00:00:00 and Sunday 23:59:59 (local time) of the calendar
+ * week containing `referenceDate`. Week starts on Monday (ISO week).
+ */
+export function getWeekBounds(referenceDate: Date): { weekStart: Date; weekEnd: Date } {
+  const weekStart = startOfWeek(referenceDate, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(referenceDate, { weekStartsOn: 1 });
+  return { weekStart, weekEnd };
+}
+
+/**
+ * Returns a human-readable week label like "Mon 16 – Sun 22, March".
+ */
+export function formatWeekLabel(weekStart: Date, weekEnd: Date): string {
+  const startFormatted = format(weekStart, 'EEE d');
+  const endFormatted = format(weekEnd, 'EEE d');
+  const month = format(weekEnd, 'MMMM');
+  return `${startFormatted} – ${endFormatted}, ${month}`;
+}
+
+/**
+ * Returns a short day label like "Mon 16" or "TODAY — Mon 16" (when isToday).
+ */
+export function formatDayLabel(date: Date, isToday: boolean): string {
+  const label = format(date, 'EEE d');
+  return isToday ? `TODAY — ${label}` : label;
+}
+
+/**
+ * Returns all Date objects (one per day, normalized to midnight) within
+ * [weekStart, weekEnd] on which the given routine is due.
+ * Paused and archived routines return [].
+ */
+export function getRoutineOccurrenceDatesForWeek(
+  routine: Routine,
+  weekStart: Date,
+  weekEnd: Date
+): Date[] {
+  if (routine.status === 'paused' || routine.status === 'archived') {
+    return [];
+  }
+
+  const anchor = startOfDay(new Date(routine.currentDueDate));
+
+  // Determine max backward steps to avoid infinite loops.
+  // The anchor (currentDueDate) may be up to ~1 cycle ahead of weekEnd,
+  // so we need enough steps to reach weekStart from there.
+  let maxBackward: number;
+  switch (routine.recurrenceRule) {
+    case 'daily':
+      maxBackward = 14; // anchor could be up to weekEnd+7 days ahead
+      break;
+    case 'weekly':
+      maxBackward = 3; // at most 2 weeks back from any anchor within range
+      break;
+    case 'monthly':
+      maxBackward = 3;
+      break;
+    case 'every_n_days':
+      maxBackward = Math.ceil(14 / (routine.intervalDays ?? 1)) + 1;
+      break;
+    default:
+      maxBackward = 14;
+  }
+
+  const stepBack = (d: Date): Date => {
+    switch (routine.recurrenceRule) {
+      case 'daily': return subDays(d, 1);
+      case 'weekly': return subWeeks(d, 1);
+      case 'monthly': return subMonths(d, 1);
+      case 'every_n_days': return subDays(d, routine.intervalDays ?? 1);
+    }
+  };
+
+  const stepForward = (d: Date): Date => {
+    switch (routine.recurrenceRule) {
+      case 'daily': return addDays(d, 1);
+      case 'weekly': return addWeeks(d, 1);
+      case 'monthly': return addMonths(d, 1);
+      case 'every_n_days': return addDays(d, routine.intervalDays ?? 1);
+    }
+  };
+
+  // Walk backward from anchor to find the earliest occurrence >= weekStart
+  let earliest = anchor;
+  let steps = 0;
+  while (earliest >= weekStart && steps < maxBackward) {
+    const prev = stepBack(earliest);
+    if (prev < weekStart) break;
+    earliest = prev;
+    steps++;
+  }
+  // If earliest fell below weekStart during the walk, step back up one
+  if (earliest < weekStart) {
+    earliest = stepForward(earliest);
+  }
+
+  // Walk forward collecting all dates within [weekStart, weekEnd]
+  const results: Date[] = [];
+  let current = earliest;
+  while (current <= weekEnd) {
+    if (current >= weekStart) {
+      results.push(startOfDay(current));
+    }
+    current = stepForward(current);
+  }
+
+  return results;
+}
+
+/**
+ * Returns the RoutineDueState for a specific projected occurrence date.
+ * Checks if a matching completed occurrence row exists for that date.
+ */
+export function getRoutineOccurrenceStatusForDate(
+  routine: Routine,
+  occurrences: RoutineOccurrence[],
+  targetDate: Date,
+  now: Date
+): RoutineDueState {
+  if (routine.status === 'paused') return 'paused';
+
+  const matchingOccurrence = occurrences.find((occ) =>
+    isSameDay(startOfDay(new Date(occ.dueDate)), startOfDay(targetDate))
+  );
+
+  if (matchingOccurrence && matchingOccurrence.completedAt !== null) {
+    return 'completed';
+  }
+
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const targetMidnight = startOfDay(targetDate);
+
+  if (targetMidnight > now) return 'upcoming';
+  if (targetMidnight >= twentyFourHoursAgo) return 'due';
+  return 'overdue';
 }

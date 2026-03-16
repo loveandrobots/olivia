@@ -68,7 +68,8 @@ import type {
   SharedList,
   StructuredInput,
   StructuredReminderInput,
-  UpdateChange
+  UpdateChange,
+  WeeklyViewResponse
 } from '@olivia/contracts';
 import {
   appendCachedReminderTimelineEntries,
@@ -117,7 +118,8 @@ import {
   removeMealPlanFromCache,
   removeOutboxCommand,
   removeRoutineFromCache,
-  setMeta
+  setMeta,
+  assembleWeeklyViewFromCache
 } from './client-db';
 import {
   ApiError,
@@ -175,7 +177,8 @@ import {
   updateListTitle as updateListTitleApi,
   updateMealEntry as updateMealEntryApi,
   updateMealPlanTitle as updateMealPlanTitleApi,
-  updateRoutine as updateRoutineApi
+  updateRoutine as updateRoutineApi,
+  fetchWeeklyView
 } from './api';
 
 const isOffline = () => !window.navigator.onLine;
@@ -1280,4 +1283,17 @@ export async function generateGroceryListCommand(role: ActorRole, planId: string
   const response = await generateGroceryListApi(role, planId);
   await cacheSharedList({ ...response.list, pendingSync: false });
   return response;
+}
+
+// ─── Weekly View ──────────────────────────────────────────────────────────────
+
+export async function loadWeeklyView(weekStart: string): Promise<WeeklyViewResponse> {
+  if (!isOffline()) {
+    try {
+      return await fetchWeeklyView(weekStart);
+    } catch {
+      return assembleWeeklyViewFromCache(weekStart);
+    }
+  }
+  return assembleWeeklyViewFromCache(weekStart);
 }

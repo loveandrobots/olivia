@@ -782,6 +782,58 @@ export const generateGroceryListResponseSchema = z.object({
   generatedListRef: generatedListRefSchema
 });
 
+// Unified Weekly View schemas
+export const weeklyRoutineOccurrenceSchema = z.object({
+  routineId: z.string().uuid(),
+  routineTitle: z.string(),
+  owner: ownerSchema,
+  recurrenceRule: routineRecurrenceRuleSchema,
+  intervalDays: z.number().int().positive().nullable(),
+  dueDate: z.string(), // ISO date string, date only (YYYY-MM-DD)
+  dueState: routineDueStateSchema,
+  completed: z.boolean()
+});
+
+export const weeklyReminderSchema = z.object({
+  reminderId: z.string().uuid(),
+  title: z.string(),
+  owner: ownerSchema,
+  scheduledAt: z.string().datetime(),
+  dueState: reminderStateSchema
+});
+
+export const weeklyMealEntrySchema = z.object({
+  entryId: z.string().uuid(),
+  planId: z.string().uuid(),
+  planTitle: z.string(),
+  name: z.string(),
+  dayOfWeek: z.number().int().min(0).max(6), // 0=Mon, 6=Sun
+  weekStartDate: z.string() // ISO date string, date only
+});
+
+export const weeklyInboxItemSchema = z.object({
+  itemId: z.string().uuid(),
+  title: z.string(),
+  owner: ownerSchema,
+  dueAt: z.string().datetime(),
+  status: itemStatusSchema
+});
+
+export const weeklyDaySchema = z.object({
+  date: z.string(), // ISO date string, date only (YYYY-MM-DD)
+  dayOfWeek: z.number().int().min(0).max(6), // 0=Mon, 6=Sun
+  routines: z.array(weeklyRoutineOccurrenceSchema),
+  reminders: z.array(weeklyReminderSchema),
+  meals: z.array(weeklyMealEntrySchema),
+  inboxItems: z.array(weeklyInboxItemSchema)
+});
+
+export const weeklyViewResponseSchema = z.object({
+  weekStart: z.string(), // ISO date string, date only (YYYY-MM-DD)
+  weekEnd: z.string(), // ISO date string, date only (YYYY-MM-DD)
+  days: z.array(weeklyDaySchema) // always 7 entries, Mon–Sun
+});
+
 export const outboxCommandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('create'),
@@ -1116,3 +1168,11 @@ export type AddMealEntryRequest = z.infer<typeof addMealEntryRequestSchema>;
 export type UpdateMealEntryRequest = z.infer<typeof updateMealEntryRequestSchema>;
 export type DeleteMealEntryRequest = z.infer<typeof deleteMealEntryRequestSchema>;
 export type GenerateGroceryListResponse = z.infer<typeof generateGroceryListResponseSchema>;
+
+// Unified Weekly View types
+export type WeeklyRoutineOccurrence = z.infer<typeof weeklyRoutineOccurrenceSchema>;
+export type WeeklyReminder = z.infer<typeof weeklyReminderSchema>;
+export type WeeklyMealEntry = z.infer<typeof weeklyMealEntrySchema>;
+export type WeeklyInboxItem = z.infer<typeof weeklyInboxItemSchema>;
+export type WeeklyDayView = z.infer<typeof weeklyDaySchema>;
+export type WeeklyViewResponse = z.infer<typeof weeklyViewResponseSchema>;

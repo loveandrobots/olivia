@@ -3,7 +3,7 @@ import Database from 'better-sqlite3';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { addHours, addMinutes, addDays, subDays } from 'date-fns';
+import { addHours, addMinutes, addDays, subDays, format, startOfWeek, endOfWeek } from 'date-fns';
 import { buildApp } from '../src/app';
 import type { AppConfig } from '../src/config';
 import { createDatabase } from '../src/db/client';
@@ -1138,5 +1138,338 @@ describe('recurring routines api', () => {
 
     await app.close();
     rmSync(directory, { recursive: true, force: true });
+  });
+});
+
+describe('unified weekly view api', () => {
+  function makeDir() {
+    return mkdtempSync(join(tmpdir(), 'olivia-weekly-'));
+  }
+
+  // Returns the ISO date string for the Monday of this calendar week (local time)
+  function thisWeekMonday(): string {
+    return format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  }
+
+  it('returns 7 days with empty arrays for an empty household', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const res = await app.inject({ method: 'GET', url: '/api/weekly-view' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.days).toHaveLength(7);
+    for (const day of body.days) {
+      expect(day.routines).toHaveLength(0);
+      expect(day.reminders).toHaveLength(0);
+      expect(day.meals).toHaveLength(0);
+      expect(day.inboxItems).toHaveLength(0);
+    }
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('places a reminder scheduled this week into the correct day', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    // Schedule reminder on Thursday of this week at noon
+    const thisWeekThursday = startOfWeek(new Date(), { weekStartsOn: 1 });
+    thisWeekThursday.setDate(thisWeekThursday.getDate() + 3);
+    thisWeekThursday.setHours(12, 0, 0, 0);
+
+    await createReminderViaApi(app, { scheduledAt: thisWeekThursday.toISOString() });
+
+    const res = await app.inject({ method: 'GET', url: '/api/weekly-view' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    const thursdayDay = body.days[3]; // dayIndex 3 = Thursday
+    expect(thursdayDay.reminders).toHaveLength(1);
+    expect(thursdayDay.reminders[0].dueState).toBeDefined();
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('projects a daily routine occurrence into every day section of the week', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const mondayNoon = startOfWeek(new Date(), { weekStartsOn: 1 });
+    mondayNoon.setHours(12, 0, 0, 0);
+
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/routines',
+      payload: {
+        actorRole: 'stakeholder',
+        title: 'Daily vitamins',
+        owner: 'stakeholder',
+        recurrenceRule: 'daily',
+        firstDueDate: mondayNoon.toISOString()
+      }
+    });
+    expect(createRes.statusCode).toBe(201);
+
+    const res = await app.inject({ method: 'GET', url: '/api/weekly-view' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    for (const day of body.days) {
+      expect(day.routines).toHaveLength(1);
+      expect(day.routines[0].routineTitle).toBe('Daily vitamins');
+    }
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('projects a weekly routine due Thursday only into Thursday', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const thursday = startOfWeek(new Date(), { weekStartsOn: 1 });
+    thursday.setDate(thursday.getDate() + 3);
+    thursday.setHours(12, 0, 0, 0);
+
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/routines',
+      payload: {
+        actorRole: 'stakeholder',
+        title: 'Watering plants',
+        owner: 'stakeholder',
+        recurrenceRule: 'weekly',
+        firstDueDate: thursday.toISOString()
+      }
+    });
+    expect(createRes.statusCode).toBe(201);
+
+    const res = await app.inject({ method: 'GET', url: '/api/weekly-view' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    const thursdayDay = body.days[3];
+    expect(thursdayDay.routines).toHaveLength(1);
+    for (let i = 0; i < 7; i++) {
+      if (i !== 3) expect(body.days[i].routines).toHaveLength(0);
+    }
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('places meal entries in the correct day sections when a meal plan exists for the week', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const weekStart = thisWeekMonday();
+
+    const planRes = await app.inject({
+      method: 'POST',
+      url: '/api/meal-plans',
+      payload: { actorRole: 'stakeholder', title: 'Week of meals', weekStartDate: weekStart }
+    });
+    expect(planRes.statusCode).toBe(201);
+    const { plan: savedPlan } = planRes.json();
+
+    await app.inject({
+      method: 'POST',
+      url: `/api/meal-plans/${savedPlan.id}/entries`,
+      payload: { actorRole: 'stakeholder', dayOfWeek: 2, name: 'Pasta' }
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/weekly-view' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    const wednesdayDay = body.days[2];
+    expect(wednesdayDay.meals).toHaveLength(1);
+    expect(wednesdayDay.meals[0].name).toBe('Pasta');
+    for (let i = 0; i < 7; i++) {
+      if (i !== 2) expect(body.days[i].meals).toHaveLength(0);
+    }
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('returns empty meal arrays when no active meal plan exists', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const res = await app.inject({ method: 'GET', url: '/api/weekly-view' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    for (const day of body.days) {
+      expect(day.meals).toHaveLength(0);
+    }
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('places an inbox item due this week in the correct day section', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const tuesday = startOfWeek(new Date(), { weekStartsOn: 1 });
+    tuesday.setDate(tuesday.getDate() + 1);
+    tuesday.setHours(12, 0, 0, 0);
+
+    await createInboxItemViaApi(app, 'Call the vet');
+    const allRes = await app.inject({ method: 'GET', url: '/api/inbox/items?actorRole=stakeholder&view=all' });
+    const item = allRes.json().itemsByStatus.open[0];
+    await app.inject({
+      method: 'POST',
+      url: '/api/inbox/items/confirm-update',
+      payload: {
+        actorRole: 'stakeholder',
+        itemId: item.id,
+        expectedVersion: item.version,
+        approved: true,
+        proposedChange: { dueAt: tuesday.toISOString() }
+      }
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/weekly-view' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.days[1].inboxItems).toHaveLength(1);
+    expect(body.days[1].inboxItems[0].title).toBe('Call the vet');
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('does not include inbox items due last week', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    await createInboxItemViaApi(app, 'Old task');
+    const allRes = await app.inject({ method: 'GET', url: '/api/inbox/items?actorRole=stakeholder&view=all' });
+    const item = allRes.json().itemsByStatus.open[0];
+    await app.inject({
+      method: 'POST',
+      url: '/api/inbox/items/confirm-update',
+      payload: {
+        actorRole: 'stakeholder',
+        itemId: item.id,
+        expectedVersion: item.version,
+        approved: true,
+        proposedChange: { dueAt: subDays(new Date(), 8).toISOString() }
+      }
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/weekly-view' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    for (const day of body.days) {
+      expect(day.inboxItems).toHaveLength(0);
+    }
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('shared list items do not appear in any day section', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const listRes = await app.inject({
+      method: 'POST',
+      url: '/api/lists',
+      payload: { actorRole: 'stakeholder', title: 'Grocery list' }
+    });
+    expect(listRes.statusCode).toBe(201);
+    const list = listRes.json().savedList;
+    await app.inject({
+      method: 'POST',
+      url: `/api/lists/${list.id}/items`,
+      payload: { actorRole: 'stakeholder', body: 'Milk' }
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/weekly-view' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    for (const day of body.days) {
+      expect((day as Record<string, unknown>).lists).toBeUndefined();
+    }
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('accepts a specific weekStart query param and returns that week', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const weekStart = thisWeekMonday();
+    const res = await app.inject({ method: 'GET', url: `/api/weekly-view?weekStart=${weekStart}` });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.weekStart).toBe(weekStart);
+    expect(body.days).toHaveLength(7);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('returns 400 for invalid weekStart format', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const res = await app.inject({ method: 'GET', url: '/api/weekly-view?weekStart=not-a-date' });
+    expect(res.statusCode).toBe(400);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('returns 400 when weekStart is not a Monday', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const sunday = format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    const res = await app.inject({ method: 'GET', url: `/api/weekly-view?weekStart=${sunday}` });
+    expect(res.statusCode).toBe(400);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('does not show paused routines in any day', async () => {
+    const dir = makeDir();
+    const app = await buildApp({ config: createConfig(join(dir, 'test.sqlite')) });
+
+    const mondayNoon = startOfWeek(new Date(), { weekStartsOn: 1 });
+    mondayNoon.setHours(12, 0, 0, 0);
+
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/routines',
+      payload: {
+        actorRole: 'stakeholder',
+        title: 'Paused routine',
+        owner: 'stakeholder',
+        recurrenceRule: 'daily',
+        firstDueDate: mondayNoon.toISOString()
+      }
+    });
+    const { savedRoutine } = createRes.json();
+
+    await app.inject({
+      method: 'POST',
+      url: `/api/routines/${savedRoutine.id}/pause`,
+      payload: { actorRole: 'stakeholder', expectedVersion: savedRoutine.version, confirmed: true }
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/weekly-view' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    for (const day of body.days) {
+      expect(day.routines).toHaveLength(0);
+    }
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
   });
 });

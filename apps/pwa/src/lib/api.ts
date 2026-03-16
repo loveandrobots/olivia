@@ -1,4 +1,6 @@
 import {
+  weeklyViewResponseSchema,
+  type WeeklyViewResponse,
   activeListIndexResponseSchema,
   activeRoutineIndexResponseSchema,
   archivedListIndexResponseSchema,
@@ -579,5 +581,13 @@ export async function generateGroceryList(role: ActorRole, planId: string): Prom
       method: 'POST',
       body: JSON.stringify({ actorRole: role })
     })
+  );
+}
+
+// ─── Weekly View API client ───────────────────────────────────────────────────
+
+export async function fetchWeeklyView(weekStart: string): Promise<WeeklyViewResponse> {
+  return weeklyViewResponseSchema.parse(
+    await request<WeeklyViewResponse>(`/api/weekly-view?weekStart=${weekStart}`)
   );
 }

@@ -289,7 +289,7 @@ Evidence of completion:
 Progress notes:
 - Implementation plan ready (OLI-42): `docs/plans/unified-weekly-view-implementation-plan.md`
 - Visual spec ready (OLI-40): `docs/plans/unified-weekly-view-visual-implementation-spec.md`
-- Build not yet started
+- Implementation complete (OLI-45): all six phases delivered. Contract schemas, domain helpers (getWeekBounds, getRoutineOccurrenceDatesForWeek, getRoutineOccurrenceStatusForDate), API endpoint GET /api/weekly-view, PWA api/sync/offline assembly, and weekly view home screen (home-page.tsx). 154 tests passing (122 domain + 32 API). Typecheck clean across all packages.
 
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:

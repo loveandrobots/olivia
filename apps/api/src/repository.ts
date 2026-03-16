@@ -1067,6 +1067,59 @@ export class InboxRepository {
     return result.changes > 0;
   }
 
+  getWeeklyViewData(weekStart: Date, weekEnd: Date): {
+    reminders: Reminder[];
+    routines: Routine[];
+    routineOccurrences: Map<string, RoutineOccurrence[]>;
+    activeMealPlan: MealPlan | null;
+    mealEntries: MealEntry[];
+    inboxItems: InboxItem[];
+  } {
+    const weekStartIso = weekStart.toISOString();
+    const weekEndIso = weekEnd.toISOString();
+
+    // Reminders scheduled within the week window
+    const reminderRows = this.db
+      .prepare(`${REMINDER_SELECT} WHERE reminders.scheduled_at >= ? AND reminders.scheduled_at <= ? ORDER BY reminders.scheduled_at ASC`)
+      .all(weekStartIso, weekEndIso) as Record<string, unknown>[];
+    const reminders = reminderRows.map((row) => mapReminderRow(row, weekStart));
+
+    // All active routines (projection happens in route handler)
+    const routines = this.listActiveAndPausedRoutines();
+
+    // Batch-fetch occurrences for all active routines (date range: 1 month before weekStart to weekEnd)
+    // Using date-only prefix comparison to handle timezone-safe date matching
+    const weekStartDate = weekStart.toISOString().split('T')[0];
+    const weekEndDate = weekEnd.toISOString().split('T')[0];
+    const occurrenceRows = routines.length > 0
+      ? this.db
+          .prepare(`SELECT * FROM routine_occurrences WHERE date(due_date) >= ? AND date(due_date) <= ? ORDER BY due_date DESC`)
+          .all(weekStartDate, weekEndDate) as Record<string, unknown>[]
+      : [];
+    const routineOccurrences = new Map<string, RoutineOccurrence[]>();
+    for (const row of occurrenceRows) {
+      const occ = this.mapRoutineOccurrenceRow(row);
+      const existing = routineOccurrences.get(occ.routineId) ?? [];
+      existing.push(occ);
+      routineOccurrences.set(occ.routineId, existing);
+    }
+
+    // Active meal plan whose week_start_date matches weekStart (date-only comparison)
+    const mealPlanRow = this.db
+      .prepare(`SELECT * FROM meal_plans WHERE status = 'active' AND week_start_date = ? LIMIT 1`)
+      .get(weekStartDate) as Record<string, unknown> | undefined;
+    const activeMealPlan = mealPlanRow ? this.mapMealPlanRow(mealPlanRow) : null;
+    const mealEntries = activeMealPlan ? this.getMealEntries(activeMealPlan.id) : [];
+
+    // Inbox items with dueAt within the week window
+    const inboxRows = this.db
+      .prepare(`SELECT * FROM inbox_items WHERE due_at >= ? AND due_at <= ? ORDER BY due_at ASC`)
+      .all(weekStartIso, weekEndIso) as Record<string, unknown>[];
+    const inboxItems = inboxRows.map(mapItemRow);
+
+    return { reminders, routines, routineOccurrences, activeMealPlan, mealEntries, inboxItems };
+  }
+
   exportSnapshot(): {
     items: InboxItem[];
     history: HistoryEntry[];

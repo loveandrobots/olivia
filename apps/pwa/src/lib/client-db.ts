@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
-import { buildSuggestions, groupItems, groupReminders } from '@olivia/domain';
+import { addDays, format, isSameDay, parseISO, startOfWeek, endOfWeek } from 'date-fns';
+import { buildSuggestions, groupItems, groupReminders, getRoutineOccurrenceDatesForWeek, getRoutineOccurrenceStatusForDate } from '@olivia/domain';
 import type {
   ActiveListIndexResponse,
   ActiveRoutineIndexResponse,
@@ -26,7 +27,8 @@ import type {
   Routine,
   RoutineDetailResponse,
   RoutineOccurrence,
-  SharedList
+  SharedList,
+  WeeklyViewResponse
 } from '@olivia/contracts';
 
 type MetaRecord = { key: string; value: string };
@@ -424,4 +426,103 @@ export async function removeMealPlanFromCache(planId: string) {
 
 export async function removeMealEntryFromCache(entryId: string) {
   await clientDb.mealEntries.delete(entryId);
+}
+
+// ─── Weekly View offline assembly ─────────────────────────────────────────────
+
+export async function assembleWeeklyViewFromCache(weekStartStr: string): Promise<WeeklyViewResponse> {
+  const weekStart = startOfWeek(parseISO(weekStartStr), { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+  const weekStartDate = format(weekStart, 'yyyy-MM-dd');
+  const weekEndDate = format(weekEnd, 'yyyy-MM-dd');
+
+  const [reminders, routines, routineOccurrences, mealPlans, mealEntries, inboxItems] = await Promise.all([
+    clientDb.reminders.toArray(),
+    clientDb.routines.toArray(),
+    clientDb.routineOccurrences.toArray(),
+    clientDb.mealPlans.toArray(),
+    clientDb.mealEntries.toArray(),
+    clientDb.items.toArray()
+  ]);
+
+  const weekReminders = reminders.filter((r) => {
+    const d = r.scheduledAt;
+    return d >= weekStartDate && d <= weekEnd.toISOString();
+  });
+
+  const activePlan = mealPlans.find((p) => p.status === 'active' && p.weekStartDate === weekStartDate) ?? null;
+  const weekMealEntries = activePlan ? mealEntries.filter((e) => e.planId === activePlan.id) : [];
+
+  const weekInboxItems = inboxItems.filter((item) => {
+    if (!item.dueAt) return false;
+    return item.dueAt >= weekStart.toISOString() && item.dueAt <= weekEnd.toISOString();
+  });
+
+  const now = new Date();
+  const activeRoutines = routines.filter((r) => r.status === 'active');
+
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const day = addDays(weekStart, i);
+    const dayDate = format(day, 'yyyy-MM-dd');
+
+    const dayReminders = weekReminders
+      .filter((r) => isSameDay(parseISO(r.scheduledAt), day))
+      .map((r) => ({
+        reminderId: r.id,
+        title: r.title,
+        owner: r.owner,
+        scheduledAt: r.scheduledAt,
+        dueState: r.state
+      }));
+
+    const dayRoutines = activeRoutines.flatMap((routine) => {
+      const occurrenceDates = getRoutineOccurrenceDatesForWeek(routine, weekStart, weekEnd);
+      const matchDate = occurrenceDates.find((d) => isSameDay(d, day));
+      if (!matchDate) return [];
+      const relevantOccurrences = routineOccurrences.filter((o) => o.routineId === routine.id);
+      const dueState = getRoutineOccurrenceStatusForDate(routine, relevantOccurrences, matchDate, now);
+      return [{
+        routineId: routine.id,
+        routineTitle: routine.title,
+        owner: routine.owner,
+        recurrenceRule: routine.recurrenceRule,
+        intervalDays: routine.intervalDays,
+        dueDate: dayDate,
+        dueState,
+        completed: dueState === 'completed'
+      }];
+    });
+
+    const dayMeals = weekMealEntries
+      .filter((e) => e.dayOfWeek === i)
+      .map((e) => ({
+        entryId: e.id,
+        planId: e.planId,
+        planTitle: activePlan?.title ?? '',
+        name: e.name,
+        dayOfWeek: e.dayOfWeek,
+        weekStartDate: weekStartDate
+      }));
+
+    const dayInboxItems = weekInboxItems
+      .filter((item) => item.dueAt && isSameDay(parseISO(item.dueAt), day))
+      .map((item) => ({
+        itemId: item.id,
+        title: item.title,
+        owner: item.owner,
+        dueAt: item.dueAt!,
+        status: item.status
+      }));
+
+    return {
+      date: dayDate,
+      dayOfWeek: i,
+      routines: dayRoutines,
+      reminders: dayReminders,
+      meals: dayMeals,
+      inboxItems: dayInboxItems
+    };
+  });
+
+  return { weekStart: weekStartDate, weekEnd: weekEndDate, days };
 }

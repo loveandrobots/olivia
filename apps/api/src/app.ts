@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { format, isSameDay, parseISO, startOfDay } from 'date-fns';
 import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import {
@@ -71,11 +72,17 @@ import {
   updateMealEntryRequestSchema,
   updateMealPlanTitleRequestSchema,
   updateRoutineRequestSchema,
+  weeklyViewResponseSchema,
   type ActorRole,
   type DraftItem,
   type DraftReminder,
   type ReminderUpdateChange,
-  type UpdateChange
+  type UpdateChange,
+  type WeeklyDayView,
+  type WeeklyInboxItem,
+  type WeeklyMealEntry,
+  type WeeklyReminder,
+  type WeeklyRoutineOccurrence
 } from '@olivia/contracts';
 import {
   DEFAULT_DUE_SOON_DAYS,
@@ -128,7 +135,10 @@ import {
   updateMealEntryName,
   updateMealPlanTitle,
   updateReminder,
-  updateRoutine
+  updateRoutine,
+  getWeekBounds,
+  getRoutineOccurrenceDatesForWeek,
+  getRoutineOccurrenceStatusForDate
 } from '@olivia/domain';
 import { DisabledAiProvider } from './ai';
 import type { AppConfig } from './config';
@@ -1440,6 +1450,124 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     const savedList = { ...list, ...summary };
     request.log.info({ planId: params.planId, listId: list.id }, 'grocery list generated');
     return reply.status(201).send(generateGroceryListResponseSchema.parse({ list: savedList, generatedListRef: ref }));
+  });
+
+  // ─── Unified Weekly View ────────────────────────────────────────────────────
+  app.get('/api/weekly-view', async (request, reply) => {
+    const query = request.query as Record<string, unknown>;
+    const now = new Date();
+
+    let weekStart: Date;
+    let weekEnd: Date;
+
+    if (query.weekStart) {
+      const weekStartStr = String(query.weekStart);
+      // Validate YYYY-MM-DD format
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(weekStartStr)) {
+        return reply.status(400).send({ code: 'INVALID_WEEK_START', message: 'weekStart must be in YYYY-MM-DD format.' });
+      }
+      const parsed = parseISO(weekStartStr);
+      if (isNaN(parsed.getTime())) {
+        return reply.status(400).send({ code: 'INVALID_WEEK_START', message: 'weekStart is not a valid date.' });
+      }
+      // Validate that it's a Monday (day 1)
+      if (parsed.getDay() !== 1) {
+        return reply.status(400).send({ code: 'INVALID_WEEK_START', message: 'weekStart must be a Monday.' });
+      }
+      weekStart = startOfDay(parsed);
+      const bounds = getWeekBounds(weekStart);
+      weekEnd = bounds.weekEnd;
+    } else {
+      const bounds = getWeekBounds(now);
+      weekStart = bounds.weekStart;
+      weekEnd = bounds.weekEnd;
+    }
+
+    const weekStartDateStr = format(weekStart, 'yyyy-MM-dd');
+    const weekEndDateStr = format(weekEnd, 'yyyy-MM-dd');
+
+    const data = repository.getWeeklyViewData(weekStart, weekEnd);
+
+    // Build 7 day entries (Mon=0 through Sun=6 relative to weekStart)
+    const days: WeeklyDayView[] = [];
+    for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+      const dayDate = new Date(weekStart);
+      dayDate.setDate(weekStart.getDate() + dayIndex);
+      const dayMidnight = startOfDay(dayDate);
+      const dayDateStr = format(dayMidnight, 'yyyy-MM-dd');
+
+      // Reminders for this day (date-only comparison)
+      const dayReminders: WeeklyReminder[] = data.reminders
+        .filter((r) => isSameDay(parseISO(r.scheduledAt.split('T')[0] + 'T00:00:00'), dayMidnight))
+        .map((r) => ({
+          reminderId: r.id,
+          title: r.title,
+          owner: r.owner,
+          scheduledAt: r.scheduledAt,
+          dueState: r.state
+        }));
+
+      // Routine occurrences for this day
+      const dayRoutines: WeeklyRoutineOccurrence[] = [];
+      for (const routine of data.routines) {
+        const occurrenceDates = getRoutineOccurrenceDatesForWeek(routine, weekStart, weekEnd);
+        const matchesThisDay = occurrenceDates.some((d) => isSameDay(d, dayMidnight));
+        if (matchesThisDay) {
+          const routineOccs = data.routineOccurrences.get(routine.id) ?? [];
+          const dueState = getRoutineOccurrenceStatusForDate(routine, routineOccs, dayMidnight, now);
+          dayRoutines.push({
+            routineId: routine.id,
+            routineTitle: routine.title,
+            owner: routine.owner,
+            recurrenceRule: routine.recurrenceRule,
+            intervalDays: routine.intervalDays ?? null,
+            dueDate: dayDateStr,
+            dueState,
+            completed: dueState === 'completed'
+          });
+        }
+      }
+
+      // Meal entries for this day (dayOfWeek: 0=Mon, 6=Sun matches our dayIndex)
+      const dayMeals: WeeklyMealEntry[] = data.activeMealPlan
+        ? data.mealEntries
+            .filter((e) => e.dayOfWeek === dayIndex)
+            .map((e) => ({
+              entryId: e.id,
+              planId: e.planId,
+              planTitle: data.activeMealPlan!.title,
+              name: e.name,
+              dayOfWeek: e.dayOfWeek,
+              weekStartDate: weekStartDateStr
+            }))
+        : [];
+
+      // Inbox items for this day (date-only comparison using dueAt)
+      const dayInboxItems: WeeklyInboxItem[] = data.inboxItems
+        .filter((item) => item.dueAt && isSameDay(parseISO(item.dueAt.split('T')[0] + 'T00:00:00'), dayMidnight))
+        .map((item) => ({
+          itemId: item.id,
+          title: item.title,
+          owner: item.owner,
+          dueAt: item.dueAt!,
+          status: item.status
+        }));
+
+      days.push({
+        date: dayDateStr,
+        dayOfWeek: dayIndex,
+        routines: dayRoutines,
+        reminders: dayReminders,
+        meals: dayMeals,
+        inboxItems: dayInboxItems
+      });
+    }
+
+    return reply.send(weeklyViewResponseSchema.parse({
+      weekStart: weekStartDateStr,
+      weekEnd: weekEndDateStr,
+      days
+    }));
   });
 
   app.get('/api/admin/export', async () => repository.exportSnapshot());
