@@ -38,7 +38,7 @@ export type MemoryCategory = {
 /** The active Olivia nudge for the demo state. */
 export const DEMO_NUDGE = {
   message: '"The plumber hasn\'t replied in 3 days. Want me to draft a follow-up for you?"',
-  primaryCta: '✍️ Yes, draft it',
+  primaryCta: 'Yes, draft it',
   secondaryCta: 'Later',
 } as const;
 
@@ -206,23 +206,23 @@ export const DEMO_COMPLETED_TASKS = [
 
 /** Initial Olivia chat message. Pre-loaded with nudge context. */
 export const DEMO_INITIAL_MESSAGE =
-  "Hey Lexi! 👋 I noticed the plumber (Mike's Plumbing) hasn't responded to your quote request from 3 days ago. Want me to write a follow-up for you?";
+  "The plumber (Mike's Plumbing) hasn't responded to your quote request from 3 days ago. Want me to draft a follow-up?";
 
 /** Rotational Olivia reply pool. */
 export const OLIVIA_REPLIES = [
-  "On it! Let me look at what's coming up for you this week… 🗓️",
-  "Great question. Based on your household notes, here's what I found:",
-  "I'll add that to your memory so you don't have to remember it yourself! 💡",
+  "Let me look at what's coming up for you this week.",
+  "Based on your household notes, here's what I found:",
+  "I'll add that to your memory so you don't have to track it yourself.",
   "Noted — want me to set a reminder for this? I can nudge you at the right time.",
-  "I can help with that! Give me a second to check your recent context…",
-  "Done! Here's what I found — let me know if you'd like to dig deeper.",
+  "Give me a second to check your recent context.",
+  "Here's what I found — let me know if you'd like to dig deeper.",
 ];
 
 export const QUICK_CHIPS = [
-  '📅 What\'s this week?',
-  '🛠️ Home maintenance due',
-  '👤 What\'s Christian working on?',
-  '💡 What should I remember?',
+  'What\'s this week?',
+  'Home maintenance due',
+  'What\'s Christian working on?',
+  'What should I remember?',
 ];
 
 /** Map internal role to display name. */

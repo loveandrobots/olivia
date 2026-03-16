@@ -5,12 +5,12 @@ const DRAFT_PREVIEW =
   "Hi Mike, just checking in on the quote from earlier this week — we're keen to get the bathroom project moving and would love to hear back when you have a moment. Any update on timing? Thanks!";
 
 const DEFAULT_REPLIES = [
-  "On it! Let me look at what's coming up for you this week… 🗓️",
-  "Great question. Based on your household notes, here's what I found:",
-  "I'll add that to your memory so you don't have to remember it yourself! 💡",
+  "Let me look at what's coming up for you this week.",
+  "Based on your household notes, here's what I found:",
+  "I'll add that to your memory so you don't have to track it yourself.",
   "Noted — want me to set a reminder for this? I can nudge you at the right time.",
-  "I can help with that! Give me a second to check your recent context…",
-  "Done! Here's what I found — let me know if you'd like to dig deeper.",
+  "Give me a second to check your recent context.",
+  "Here's what I found — let me know if you'd like to dig deeper.",
 ];
 
 export type OliviaViewProps = {
@@ -63,7 +63,7 @@ export function OliviaView({
 
       setTimeout(() => {
         const oliviaMsg: ChatMessage = isYesDraft
-          ? { id: `olivia-${Date.now()}`, role: 'olivia', text: "Done! Here's a draft — feel free to edit before sending:", showDraftCard: true }
+          ? { id: `olivia-${Date.now()}`, role: 'olivia', text: "Here's a draft — feel free to edit before sending:", showDraftCard: true }
           : { id: `olivia-${Date.now()}`, role: 'olivia', text: replies[replyIndex % replies.length] };
 
         setMessages((prev) => [...prev, oliviaMsg]);
@@ -76,13 +76,13 @@ export function OliviaView({
 
   const handleSendDraft = () => {
     setDraftSent(true);
-    const sentMsg: ChatMessage = { id: `user-sent-${Date.now()}`, role: 'user', text: 'Sent! ✅' };
+    const sentMsg: ChatMessage = { id: `user-sent-${Date.now()}`, role: 'user', text: 'Sent.' };
     setMessages((prev) => [...prev, sentMsg]);
     setTimeout(() => {
       const confirmMsg: ChatMessage = {
         id: `olivia-confirm-${Date.now()}`,
         role: 'olivia',
-        text: "Perfect, I'll mark the plumber task as waiting on reply and remind you if there's no response in 2 days. 🎉",
+        text: "I'll mark the plumber task as waiting on reply and remind you if there's no response in 2 days.",
       };
       setMessages((prev) => [...prev, confirmMsg]);
       scrollToBottom();
@@ -128,7 +128,7 @@ export function OliviaView({
               {msg.text}
               {msg.showDraftCard && !draftSent && (
                 <div className="olivia-action-card">
-                  <div className="oa-label">✉️ Draft message</div>
+                  <div className="oa-label">Draft message</div>
                   <div className="oa-preview">{DRAFT_PREVIEW}</div>
                   <div className="oa-buttons">
                     <button type="button" className="oa-btn oa-btn-send" onClick={handleSendDraft}>Send it ✓</button>
