@@ -18,6 +18,36 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-032: Planning ritual support spec approved by CEO — M13 complete
+- Date: 2026-03-16
+- Area: delivery planning / roadmap progression
+- Decision: Approve `docs/specs/planning-ritual-support.md` for implementation planning. The spec is complete, correctly scoped, and properly aligned with prior H4 architectural decisions. Simultaneously advance M13 (Horizon 4 Third Workflow Build Readiness) to complete — all required artifacts exist and all exit criteria are met.
+- Rationale: The spec meets all quality gates — full template coverage, correct trust model application (D-002, D-010), 18 concrete acceptance criteria, clean reuse of recurring routines infrastructure and activity history / unified weekly view data contracts, appropriate scope boundaries. The visual spec (OLI-51) resolves all seven designer decisions deferred from the feature spec (OQ-3, OQ-5, ritual card affordance, review flow layout, review record detail, activity history entry, weekly view card, overdue UX). The implementation plan (OLI-51) covers seven phases with minimal new storage (review_records table only). L-016 and L-017 (written during OLI-51) provide the M13 learnings required by the milestone gate. All five open questions from the spec are either resolved (OQ-1, OQ-3, OQ-4, OQ-5 by visual spec) or correctly deferred to the Founding Engineer (draft-save, OQ-2). The temporal layer rationale (L-017: weekly view + activity history + planning ritual = past/present/synthesis) provides the architectural coherence needed for the implementation phase.
+- Alternatives considered: requesting additional clarity on the review record detail screen design — not needed, resolved by the visual spec. Waiting for Founding Engineer review of implementation plan before approving — not required by M13 gate.
+- Trade-offs: approving now makes M14 (Horizon 4 Third Workflow Build) the active milestone and unblocks the Founding Engineer to begin planning ritual support implementation.
+- Status: active
+- Related docs: `docs/specs/planning-ritual-support.md`, `docs/roadmap/milestones.md` (M13), `docs/plans/planning-ritual-support-visual-implementation-spec.md`, `docs/plans/planning-ritual-support-implementation-plan.md`, D-025, D-030, D-031, L-013, L-016, L-017
+
+### D-030: M12 is complete — Horizon 4 second workflow built
+- Date: 2026-03-16
+- Area: roadmap progression
+- Decision: Advance M12 (Horizon 4 Second Workflow Build) to complete based on implementation evidence from OLI-50. All six M12 exit criteria satisfied: activity history screen available at `/history` via Memory tab; 30-day reverse-chronological view across all five H3/H2 data sources; no new entity types; "View history →" footer link added to home screen; all 20 acceptance criteria confirmed with 187 tests passing; OQ-4 (timestamp availability) fully resolved.
+- Rationale: Implementation completeness following the M4, M7, M10 precedent. All timestamp sources confirmed: `completedAt` on RoutineOccurrence; `completedAt`/`cancelledAt` on Reminder; date derived from `weekStartDate + dayOfWeek` for meal entries; `lastStatusChangedAt` on InboxItem; `checkedAt` on ListItem. The temporal query pattern mirrors the weekly view architecture backward in time (L-015), completing the H4 temporal pair (L-014). One implementation refinement: Reminder state is computed from `completedAt`/`cancelledAt` rather than a `state` column — this is a minor field-naming difference resolved during implementation.
+- Alternatives considered: Waiting for household usage observations — not required by M12 gate; implementation completeness is sufficient per M4/M7/M10 precedent.
+- Trade-offs: Advancing now makes M13 the active milestone immediately. OQ-4 resolution is documented and validates the five H3 timestamp fields assumed in the activity history spec.
+- Status: active
+- Related docs: `docs/roadmap/milestones.md` (M12), `docs/specs/activity-history.md`, `docs/plans/activity-history-implementation-plan.md`, D-029, L-014, L-015
+
+### D-031: M13 defined — Horizon 4 third workflow build readiness
+- Date: 2026-03-16
+- Area: roadmap progression
+- Decision: Define M13 (Horizon 4 Third Workflow Build Readiness) as the active milestone following M12. M13 requires: CEO-approved planning ritual support spec, visual spec, implementation plan, and updated learnings from M12 build outcomes. The visual spec and implementation plan are now complete (OLI-51). M13 is active; CEO approval of the feature spec is the remaining gate condition for full readiness.
+- Rationale: Planning ritual support is the third and final H4 workflow, completing the temporal layer: weekly view (present/future) + activity history (past) + planning ritual (synthesis). The build readiness artifacts follow the same pattern established by M9 (unified weekly view) and M11 (activity history): feature spec → visual spec → implementation plan → CEO approval → implementation. All product and technical ambiguity is now resolved in the spec and plan documents.
+- Alternatives considered: Waiting for M12 to complete before defining M13 — rejected because build readiness artifacts are independent of M12 completion and the Founding Engineer benefits from having the planning ritual spec package ready as M12 finishes.
+- Trade-offs: Defining M13 now keeps the product roadmap flowing without blocking on M12 completion. The CEO approval gate on the feature spec (D-025 records the spec as drafted; formal approval is pending) remains the last step before implementation can begin.
+- Status: active
+- Related docs: `docs/roadmap/milestones.md` (M13), `docs/specs/planning-ritual-support.md`, `docs/plans/planning-ritual-support-visual-implementation-spec.md`, `docs/plans/planning-ritual-support-implementation-plan.md`, D-025, D-030
+
 ### D-029: M11 is complete — Horizon 4 second workflow build readiness achieved
 - Date: 2026-03-16
 - Area: roadmap progression

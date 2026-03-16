@@ -143,6 +143,33 @@ Use this structure for future entries:
 - Source: activity history feature spec (OLI-41, 2026-03-16)
 - Related docs: `docs/specs/activity-history.md`, `docs/specs/unified-weekly-view.md`, `docs/roadmap/roadmap.md`
 
+### L-016: Review mode and recall mode require fundamentally different display patterns — grouped-by-type vs. reverse-chronological
+- Date: 2026-03-16
+- Area: product architecture / design system
+- Learning: Activity history uses reverse-chronological interleaving within each day section because its purpose is recall ("what happened at 9am?"). The planning ritual review flow uses grouped-by-type display within each review section because its purpose is review-mode orientation ("how many routines did we complete last week?"). These are not stylistic choices — they reflect a fundamental UX difference between recall (timeline answers the question) and review (type-grouping answers the question).
+- Why it matters: future features that surface household history should explicitly choose between recall mode and review mode, not default to one pattern for all contexts. Mixing the two patterns within a single screen creates cognitive friction.
+- Implication: if future H4 surfaces (e.g., AI summaries, review analytics) present assembled household history, they should decide upfront whether they are a recall surface (reverse-chronological) or a review surface (grouped by type). The planning ritual review flow is the first review-mode surface; activity history is the first recall-mode surface. The two should not be treated as equivalent.
+- Source: planning ritual support visual spec (OLI-51), activity history visual spec (OLI-48)
+- Related docs: `docs/plans/planning-ritual-support-visual-implementation-spec.md`, `docs/plans/activity-history-visual-implementation-spec.md`
+
+### L-017: The planning ritual closes the Horizon 4 temporal loop — past, present, and synthesis are now all defined
+- Date: 2026-03-16
+- Area: product architecture
+- Learning: The three H4 workflows together create a complete temporal architecture: the unified weekly view covers the present and near future (current week), activity history covers the recent past (last 30 days), and the planning ritual creates a structured synthesis moment (review prior week, acknowledge current week, record carry-forward notes). No new entity type is needed for the synthesis layer — it reuses the recurring routines infrastructure for scheduling and the activity history / weekly view data contracts for content.
+- Why it matters: the H4 temporal loop is complete. Future work can build AI-generated narrative or trend analysis on top of this foundation, but the structural layer is closed. Phase 2 H4 extensions (AI summaries, carry-forward conversion, shared spouse review) are now clearly additive, not foundational.
+- Implication: new work post-M13 should be evaluated as Phase 2 additions to the existing temporal layer, not as new architecture. The right question is: "how does this compound on the weekly view + activity history + planning ritual foundation?" — not "what new surface does Olivia need?"
+- Source: planning ritual support spec (OLI-43), implementation plan (OLI-51), D-025, D-022
+- Related docs: `docs/specs/planning-ritual-support.md`, `docs/specs/activity-history.md`, `docs/specs/unified-weekly-view.md`
+
+### L-018: OQ-4 resolved — all five H3/H2 timestamp sources are confirmed and the temporal query pattern is validated
+- Date: 2026-03-16
+- Area: product architecture / implementation validation
+- Learning: The activity history build (OLI-50) fully resolved OQ-4 (timestamp availability) and confirmed the L-015 prediction that the weekly view's temporal query pattern transfers directly backward in time. All five timestamp sources are confirmed: `completedAt` on RoutineOccurrence; `completedAt`/`cancelledAt` on Reminder (state computed from these fields, not a separate `state` column — one implementation fix required); date derived from `weekStartDate + dayOfWeek` for meal entries; `lastStatusChangedAt` on InboxItem; `checkedAt` on ListItem. The domain helpers `getActivityHistoryWindow` and `groupActivityHistoryByDay` parallel `getWeekBounds` and related weekly view helpers exactly.
+- Why it matters: the planning ritual support implementation can now use both `GET /api/weekly-view` and `GET /api/activity-history` as stable, confirmed data sources. There are no remaining timestamp availability questions for Phase 1 of any H4 workflow.
+- Implication: future implementations that query household completion state should model their domain helpers and API endpoints after the activity history and weekly view patterns. The one structural note to carry forward: Reminder has no `state` column — completion state must be inferred from `completedAt`/`cancelledAt` fields.
+- Source: activity history implementation (OLI-50, 2026-03-16)
+- Related docs: `docs/specs/activity-history.md`, `docs/plans/activity-history-implementation-plan.md`, L-015, L-014
+
 ### L-013: The unified weekly view is the natural first Horizon 4 surface — cross-workflow temporal context was the missing layer after four H3 workflows
 - Date: 2026-03-16
 - Area: product architecture

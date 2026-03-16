@@ -328,7 +328,7 @@ Completion note:
 ## M12: Horizon 4 Second Workflow Build
 Objective: deliver the activity history workflow so the household gains backward-looking recall of what was accomplished across all five H3/H2 data sources.
 
-Status: active
+Status: complete
 
 Required artifacts:
 - built activity history — all seven phases of the implementation plan executed (`docs/plans/activity-history-implementation-plan.md`)
@@ -351,6 +351,67 @@ Evidence of completion:
 Progress notes:
 - Implementation plan ready (OLI-49): `docs/plans/activity-history-implementation-plan.md`
 - Visual spec ready (OLI-48): `docs/plans/activity-history-visual-implementation-spec.md`
+- Implementation complete (OLI-50): all seven phases delivered. Contracts (`ActivityHistoryItem` discriminated union, 5 types: routine, reminder, meal, inbox, listItem), domain helpers (`getActivityHistoryWindow`, `groupActivityHistoryByDay`), API (`GET /api/activity-history`, 5-table repository query, 13 new integration tests — 45 total passing), PWA (`/history` route, Memory tab nav updated, "View history →" footer link on home screen, `HistoryPage` with all 5 item row types, spouse banner, all screen states, deep-link navigation). 187 tests passing (132 domain + 45 API + 10 PWA sync). Typecheck clean. OQ-4 resolved: all five timestamp sources confirmed (`completedAt` on RoutineOccurrence; `completedAt`/`cancelledAt` on Reminder with state computed from these fields; date derived from `weekStartDate + dayOfWeek` for meal entries; `lastStatusChangedAt` on InboxItem; `checkedAt` on ListItem).
+
+Completion note:
+- Advanced to complete based on implementation evidence from OLI-50. All six M12 exit criteria satisfied: (1) activity history screen available at `/history` and accessible via Memory tab — all seven phases delivered; (2) screen shows last 30 days grouped by day in reverse-chronological order across all five H3/H2 data sources; (3) no new entity types — pure read-only aggregation over existing completion state; (4) "View history →" footer link added to `home-page.tsx`; (5) all 20 acceptance criteria confirmed — 187 tests passing, typecheck clean; (6) OQ-4 fully resolved with all five timestamp sources confirmed (including one implementation fix: Reminder state computed from `completedAt`/`cancelledAt` rather than a `state` column). The temporal query pattern mirrors the weekly view architecture exactly backward in time, confirming L-015 and completing the H4 temporal pair described in L-014. Decision recorded as D-030 (2026-03-16). M13 (Horizon 4 Third Workflow Build Readiness) is now the active milestone.
+
+## M13: Horizon 4 Third Workflow Build Readiness
+Objective: prepare the planning ritual support workflow for implementation so the household can gain a structured weekly review ritual that synthesizes activity history and the unified weekly view into a periodic household review moment.
+
+Status: complete
+
+Required artifacts:
+- CEO-approved planning ritual support spec (`docs/specs/planning-ritual-support.md` — approved, D-032)
+- Visual spec for planning ritual support (`docs/plans/planning-ritual-support-visual-implementation-spec.md`)
+- Implementation plan for planning ritual support (`docs/plans/planning-ritual-support-implementation-plan.md`)
+- Updated learnings and decisions based on M12 build outcomes (L-016, L-017, L-018; D-030, D-031)
+
+Exit criteria:
+- the planning ritual support spec is approved and is concrete enough for implementation without major product ambiguity
+- the visual spec resolves all designer decisions deferred from the feature spec: ritual card affordance (OQ-3), review flow layout, review record detail design (OQ-5), activity history ritual entry treatment, weekly view ritual card, multiple overdue occurrences UX
+- the implementation plan covers all seven phases with no new entity types beyond the `review_records` table (which is the minimal new storage required for a ritual completion record)
+- the five open questions in the visual spec (Founding Engineer decisions) are either resolved during implementation or explicitly deferred with rationale
+
+Evidence of completion:
+- an implementation plan can be generated for planning ritual support without rediscovering the product model
+- the implementation agent has clear acceptance criteria, a visual reference, and bounded engineering decisions
+
+Progress notes:
+- Feature spec written (OLI-43): `docs/specs/planning-ritual-support.md` — D-025; approved by CEO (D-032, 2026-03-16)
+- Visual spec complete (OLI-51): `docs/plans/planning-ritual-support-visual-implementation-spec.md` — resolves all 7 designer decisions (OQ-3, OQ-5, ritual card, review flow layout, review record detail, activity history entry, weekly view card, overdue UX)
+- Implementation plan complete (OLI-51): `docs/plans/planning-ritual-support-implementation-plan.md` — 7-phase plan, minimal new storage (review_records table only), builds on existing recurring routines and H4 data sources
+- M12 build outcomes captured: L-016 (review mode vs. recall mode display patterns), L-017 (H4 temporal loop closed), L-018 (OQ-4 resolved — all five timestamp sources confirmed)
+
+Completion note:
+- Advanced to complete following CEO approval of the planning ritual support spec (D-032, 2026-03-16). All four M13 required artifacts are in place. Exit criteria met: (1) spec is CEO-approved with 18 acceptance criteria — execution-ready without product ambiguity; (2) visual spec (OLI-51) resolves all designer decisions deferred from the feature spec; (3) implementation plan (OLI-51) covers seven phases with minimal new storage (review_records table only); (4) open questions are either resolved by the visual spec or explicitly deferred to the Founding Engineer with rationale. M12 build outcomes are captured in L-016, L-017, and L-018. M14 (Horizon 4 Third Workflow Build) is now the active milestone.
+
+## M14: Horizon 4 Third Workflow Build
+Objective: deliver the planning ritual support workflow so the household gains a structured weekly review ritual that synthesizes activity history and the unified weekly view into a periodic review moment.
+
+Status: active
+
+Required artifacts:
+- built planning ritual support — all seven phases of the implementation plan executed (`docs/plans/planning-ritual-support-implementation-plan.md`)
+- PWA review flow screen accessible from the routine index and the unified weekly view
+- review record detail screen accessible from activity history
+- updated learnings and decision history based on planning ritual support build outcomes
+- evidence of how the planning ritual integrates with the recurring routines infrastructure and the two H4 data sources (activity history + weekly view)
+
+Exit criteria:
+- a planning ritual can be created as a recurring routine variant and appears in the routine index with a visual affordance that distinguishes it from standard routines
+- tapping the planning ritual occurrence opens the structured three-section review flow (last week recap, coming week overview, carry-forward notes)
+- completing the review saves a review record and advances the occurrence to the next scheduled date
+- completed ritual occurrences appear in activity history with a planning ritual visual indicator; tapping opens the review record detail
+- no new workflow primitives introduced beyond the `review_records` table — reuses recurring routines, activity history, and weekly view infrastructure
+- the implementation agent has confirmed all 18 acceptance criteria from `docs/specs/planning-ritual-support.md` are met
+
+Evidence of completion:
+- the project can point to a working weekly review ritual, confirmed navigation from routine index and activity history, and build-phase learnings that inform Phase 2 H4 extensions
+
+Progress notes:
+- Implementation plan ready (OLI-51): `docs/plans/planning-ritual-support-implementation-plan.md`
+- Visual spec ready (OLI-51): `docs/plans/planning-ritual-support-visual-implementation-spec.md`
 
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:

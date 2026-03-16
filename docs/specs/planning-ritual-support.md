@@ -1,7 +1,7 @@
 # Feature Spec: Planning Ritual Support
 
 ## Status
-- Draft
+- Approved by CEO (D-032, 2026-03-16)
 
 ## Summary
 
