@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { addHours } from 'date-fns';
+import { ArrowsClockwise } from '@phosphor-icons/react';
 import type { Nudge, ActorRole } from '@olivia/contracts';
 import { NUDGE_MAX_DISPLAY_COUNT, NUDGE_SNOOZE_INTERVAL_HOURS } from '@olivia/contracts';
 import {
@@ -108,7 +109,7 @@ function NudgeCard({ nudge, isSpouse, onDismiss, onDone, onSkip, onSnooze, onSta
         <div className="nudge-card__body">
           <div className="nudge-card__header">
             <div className="nudge-card__icon-wrap nudge-card__icon-wrap--mint" aria-hidden="true">
-              <span className="nudge-card__icon">↻</span>
+              <span className="nudge-card__icon"><ArrowsClockwise size={18} /></span>
             </div>
             <div className="nudge-card__text">
               <div className="nudge-card__name">{nudge.entityName}</div>

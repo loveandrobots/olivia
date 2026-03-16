@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { MealPlan } from '@olivia/contracts';
 import { useRole } from '../lib/role';
+import { ForkKnife, Plus } from '@phosphor-icons/react';
 import {
   loadActiveMealPlanIndex,
   loadArchivedMealPlanIndex,
@@ -71,7 +72,7 @@ export function MealsPage() {
     try {
       const plan = await createMealPlanCommand(role, title, weekStartDate);
       await invalidate();
-      showBanner('✓ Plan created', 'mint');
+      showBanner('Plan created', 'mint');
       void navigate({ to: '/meals/$planId', params: { planId: plan.id } });
     } finally {
       setBusy(false);
@@ -85,7 +86,7 @@ export function MealsPage() {
     try {
       await updateMealPlanTitleCommand(role, editTitleTarget.id, editTitleTarget.version, newTitle);
       await invalidate();
-      showBanner('✓ Renamed', 'mint');
+      showBanner('Renamed', 'mint');
     } finally {
       setBusy(false);
     }
@@ -98,7 +99,7 @@ export function MealsPage() {
     try {
       await archiveMealPlanCommand(role, archiveTarget.id, archiveTarget.version);
       await invalidate();
-      showBanner('✓ Archived', 'sky');
+      showBanner('Archived', 'sky');
     } finally {
       setBusy(false);
     }
@@ -109,7 +110,7 @@ export function MealsPage() {
     try {
       await restoreMealPlanCommand(role, plan.id, plan.version);
       await invalidate();
-      showBanner('✓ Restored', 'mint');
+      showBanner('Restored', 'mint');
     } finally {
       setBusy(false);
     }
@@ -197,7 +198,7 @@ export function MealsPage() {
                 style={{ width: '100%' }}
                 disabled={busy}
               >
-                <span className="add-icon">＋</span>
+                <span className="add-icon"><Plus size={20} /></span>
                 <span className="add-label">New meal plan…</span>
               </button>
             </div>
@@ -219,7 +220,7 @@ export function MealsPage() {
 
           {isEmpty && filter === 'active' && (
             <div className="rem-empty">
-              <div className="rem-empty-icon">🍽️</div>
+              <div className="rem-empty-icon"><ForkKnife size={48} weight="bold" /></div>
               <div className="rem-empty-title">No meal plans yet</div>
               <div className="rem-empty-sub">Plan your meals for the week and generate grocery lists automatically.</div>
               {!isSpouse && (
@@ -230,7 +231,7 @@ export function MealsPage() {
                     onClick={() => setShowCreateSheet(true)}
                     style={{ width: '100%' }}
                   >
-                    <span className="add-icon">＋</span>
+                    <span className="add-icon"><Plus size={20} /></span>
                     <span className="add-label">New meal plan…</span>
                   </button>
                 </div>

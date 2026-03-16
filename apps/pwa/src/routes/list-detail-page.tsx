@@ -79,7 +79,7 @@ export function ListDetailPage() {
     try {
       await updateListTitleCommand(role, list.id, list.version, newTitle);
       await invalidate();
-      showBanner('✓ Renamed', 'mint');
+      showBanner('Renamed', 'mint');
     } finally {
       setBusy(false);
     }
@@ -136,7 +136,7 @@ export function ListDetailPage() {
     try {
       await updateListItemBodyCommand(role, list.id, editItemTarget.id, editItemTarget.version, newBody);
       await invalidate();
-      showBanner('✓ Updated', 'mint');
+      showBanner('Updated', 'mint');
     } finally {
       setBusy(false);
     }

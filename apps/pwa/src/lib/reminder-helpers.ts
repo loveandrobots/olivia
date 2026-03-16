@@ -124,9 +124,9 @@ export function formatScheduledLabel(dateStr: string): string {
 
 export function formatRecurrenceLabel(cadence: RecurrenceCadence): string {
   switch (cadence) {
-    case 'daily': return '↻ Daily';
-    case 'weekly': return '↻ Weekly';
-    case 'monthly': return '↻ Monthly';
+    case 'daily': return 'Daily';
+    case 'weekly': return 'Weekly';
+    case 'monthly': return 'Monthly';
     default: return 'One-time';
   }
 }

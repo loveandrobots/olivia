@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SharedList } from '@olivia/contracts';
 import { useRole } from '../lib/role';
+import { Plus } from '@phosphor-icons/react';
 import {
   loadActiveListIndex,
   loadArchivedListIndex,
@@ -70,7 +71,7 @@ export function ListsPage() {
     setShowCreateSheet(false);
     const newList = await createListCommand(role, title);
     await invalidate();
-    showBanner('✓ List created', 'mint');
+    showBanner('List created', 'mint');
     void navigate({ to: '/lists/$listId', params: { listId: newList.id } });
   }, [role, invalidate, showBanner, navigate]);
 
@@ -81,7 +82,7 @@ export function ListsPage() {
     try {
       await updateListTitleCommand(role, editTitleTarget.id, editTitleTarget.version, newTitle);
       await invalidate();
-      showBanner('✓ Renamed', 'mint');
+      showBanner('Renamed', 'mint');
     } finally {
       setBusy(false);
     }
@@ -105,7 +106,7 @@ export function ListsPage() {
     try {
       await restoreListCommand(role, list.id, list.version);
       await invalidate();
-      showBanner('↩ Restored to active lists', 'mint');
+      showBanner('Restored to active lists', 'mint');
     } finally {
       setBusy(false);
     }
@@ -190,7 +191,7 @@ export function ListsPage() {
               className="list-new-btn"
               onClick={() => setShowCreateSheet(true)}
             >
-              <div className="list-new-btn-icon">＋</div>
+              <div className="list-new-btn-icon"><Plus size={20} /></div>
               <span className="list-new-btn-label">New list</span>
             </button>
           )}

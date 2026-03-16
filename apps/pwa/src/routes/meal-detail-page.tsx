@@ -74,7 +74,7 @@ export function MealDetailPage() {
     try {
       await updateMealPlanTitleCommand(role, plan.id, plan.version, newTitle);
       await invalidate();
-      showBanner('✓ Renamed', 'mint');
+      showBanner('Renamed', 'mint');
     } finally {
       setBusy(false);
     }
@@ -87,7 +87,7 @@ export function MealDetailPage() {
     try {
       await archiveMealPlanCommand(role, plan.id, plan.version);
       await invalidate();
-      showBanner('✓ Archived', 'sky');
+      showBanner('Archived', 'sky');
     } finally {
       setBusy(false);
     }

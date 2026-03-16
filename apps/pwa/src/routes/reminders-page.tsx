@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { DraftReminder, Reminder, ReminderState } from '@olivia/contracts';
 import { computeReminderState } from '@olivia/domain';
+import { Bell, Plus } from '@phosphor-icons/react';
 import { useRole } from '../lib/role';
 import {
   loadReminderView,
@@ -111,7 +112,7 @@ export function RemindersPage() {
     setShowCreateSheet(false);
     await confirmCreateReminderCommand(role, draft);
     await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
-    setBanner({ message: '✓ Reminder created', variant: 'mint' });
+    setBanner({ message: 'Reminder created', variant: 'mint' });
     setTimeout(() => setBanner(null), 5000);
   }, [role, queryClient]);
 
@@ -120,7 +121,7 @@ export function RemindersPage() {
     setSnoozeTarget(null);
     await snoozeReminderCommand(role, snoozeTarget.id, snoozeTarget.version, isoString);
     await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
-    setBanner({ message: `😴 Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, variant: 'sky' });
+    setBanner({ message: `Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, variant: 'sky' });
     setTimeout(() => setBanner(null), 5000);
   }, [snoozeTarget, role, queryClient]);
 
@@ -167,7 +168,7 @@ export function RemindersPage() {
             <div style={{ marginBottom: 20 }}>
               <AddReminderButton
                 label="Add a reminder…"
-                icon="＋"
+                icon={<Plus size={20} />}
                 onClick={() => setShowCreateSheet(true)}
               />
             </div>
@@ -189,7 +190,7 @@ export function RemindersPage() {
 
           {isEmpty && activeFilter === 'all' && (
             <div className="rem-empty">
-              <div className="rem-empty-icon">🔔</div>
+              <div className="rem-empty-icon"><Bell size={48} weight="bold" /></div>
               <div className="rem-empty-title">Reminders</div>
               <div className="rem-empty-sub">No reminders yet</div>
               <OliviaMessage
@@ -199,7 +200,7 @@ export function RemindersPage() {
                 <div style={{ marginTop: 16, width: '100%' }}>
                   <AddReminderButton
                     label="Add a reminder…"
-                    icon="＋"
+                    icon={<Plus size={20} />}
                     onClick={() => setShowCreateSheet(true)}
                   />
                 </div>

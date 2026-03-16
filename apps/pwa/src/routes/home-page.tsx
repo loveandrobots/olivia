@@ -1,7 +1,9 @@
 import { useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import type { ReactNode } from 'react';
 import { format } from 'date-fns';
+import { ArrowsClockwise, Bell, ForkKnife, Tray, GearSix, CalendarBlank } from '@phosphor-icons/react';
 import { computeReminderState, rankRemindersForSurfacing } from '@olivia/domain';
 import { getWeekBounds, formatWeekLabel, formatDayLabel } from '@olivia/domain';
 import type { Reminder, DraftReminder, WeeklyDayView, WeeklyRoutineOccurrence, WeeklyReminder, WeeklyMealEntry, WeeklyInboxItem } from '@olivia/contracts';
@@ -44,7 +46,7 @@ function StatusBadge({ variant }: { variant: BadgeVariant }) {
 // ─── Item card ────────────────────────────────────────────────────────────────
 
 interface WeekItemCardProps {
-  icon: string;
+  icon: ReactNode;
   accentColor: 'mint' | 'peach' | 'rose' | 'sky';
   title: string;
   completed?: boolean;
@@ -84,7 +86,7 @@ function RoutineCard({ item, onClick }: { item: WeeklyRoutineOccurrence; onClick
   else if (item.dueState === 'upcoming') badge = 'upcoming';
   return (
     <WeekItemCard
-      icon="↻"
+      icon={<ArrowsClockwise size={18} />}
       accentColor="mint"
       title={item.routineTitle}
       completed={isCompleted}
@@ -109,7 +111,7 @@ function ReminderCard({ item, onClick }: { item: WeeklyReminder; onClick: () => 
   else badge = 'upcoming';
   return (
     <WeekItemCard
-      icon="🔔"
+      icon={<Bell size={18} />}
       accentColor="peach"
       title={item.title}
       overdue={isOverdue}
@@ -126,7 +128,7 @@ function ReminderCard({ item, onClick }: { item: WeeklyReminder; onClick: () => 
 function MealCard({ item, onClick }: { item: WeeklyMealEntry; onClick: () => void }) {
   return (
     <WeekItemCard
-      icon="◆"
+      icon={<ForkKnife size={18} />}
       accentColor="rose"
       title={item.name}
       metadata={item.planTitle}
@@ -141,7 +143,7 @@ function InboxItemCard({ item, onClick }: { item: WeeklyInboxItem; onClick: () =
   const isDone = item.status === 'done';
   return (
     <WeekItemCard
-      icon="▷"
+      icon={<Tray size={18} />}
       accentColor="sky"
       title={item.title}
       completed={isDone}
@@ -157,7 +159,7 @@ function InboxItemCard({ item, onClick }: { item: WeeklyInboxItem; onClick: () =
 function EmptyMealSlot({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" className="wv-empty-meal-slot" onClick={onClick}>
-      <span className="wv-empty-meal-slot-icon">◆</span>
+      <span className="wv-empty-meal-slot-icon"><ForkKnife size={18} /></span>
       <em className="wv-empty-meal-text">No meal planned yet — add in Meals →</em>
     </button>
   );
@@ -293,7 +295,7 @@ export function HomePage() {
     if (dueWithLinkedTask) {
       nudgeData = {
         message: `"The plumber hasn't replied in 3 days. Want me to draft a follow-up for you?"`,
-        primaryCta: '✍️ Yes, draft it',
+        primaryCta: 'Yes, draft it',
         secondaryCta: 'Later'
       };
     } else if (byState.due.length > 0) {
@@ -317,7 +319,7 @@ export function HomePage() {
     setShowCreateSheet(false);
     await confirmCreateReminderCommand(role, draft);
     await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
-    setBanner({ message: '✓ Reminder created', variant: 'mint' });
+    setBanner({ message: 'Reminder created', variant: 'mint' });
     setTimeout(() => setBanner(null), 5000);
   }, [role, queryClient]);
 
@@ -326,7 +328,7 @@ export function HomePage() {
     setSnoozeTarget(null);
     await snoozeReminderCommand(role, snoozeTarget.id, snoozeTarget.version, isoString);
     await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
-    setBanner({ message: `😴 Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, variant: 'sky' });
+    setBanner({ message: `Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, variant: 'sky' });
     setTimeout(() => setBanner(null), 5000);
   }, [snoozeTarget, role, queryClient]);
 
@@ -351,10 +353,7 @@ export function HomePage() {
               aria-label="Settings"
               onClick={() => void navigate({ to: '/settings' })}
             >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M10 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M17.2 10c0-.4 0-.8-.1-1.2l1.7-1.3a.4.4 0 0 0 .1-.5l-1.6-2.8a.4.4 0 0 0-.5-.2l-2 .8a6 6 0 0 0-1-.6L13.5 2a.4.4 0 0 0-.4-.3h-3.2a.4.4 0 0 0-.4.3l-.3 2.2a6 6 0 0 0-1 .6l-2-.8a.4.4 0 0 0-.5.2L4.1 6.9a.4.4 0 0 0 .1.5l1.7 1.3A6.4 6.4 0 0 0 5.8 10c0 .4 0 .8.1 1.2L4.2 12.5a.4.4 0 0 0-.1.5l1.6 2.8c.1.2.3.2.5.2l2-.8c.3.2.6.4 1 .6l.3 2.2c.1.2.2.3.4.3h3.2c.2 0 .4-.1.4-.3l.3-2.2c.4-.2.7-.4 1-.6l2 .8c.2.1.4 0 .5-.2l1.6-2.8a.4.4 0 0 0-.1-.5l-1.7-1.3c.1-.4.1-.8.1-1.2Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              <GearSix size={20} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -441,7 +440,7 @@ export function HomePage() {
         {/* Empty week state (WEEK-2) */}
         {weeklyQuery.data && allEmpty && (
           <div className="wv-empty-week" role="status">
-            <div className="wv-empty-week-icon" aria-hidden="true">📅</div>
+            <div className="wv-empty-week-icon" aria-hidden="true"><CalendarBlank size={48} weight="bold" /></div>
             <p className="wv-empty-week-msg">
               Nothing on the books this week. Add a meal plan, set a reminder, or check the Household tab to get started.
             </p>

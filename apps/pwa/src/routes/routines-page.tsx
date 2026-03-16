@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, isToday, isTomorrow } from 'date-fns';
 import type { Owner, Routine, RoutineDueState, RoutineRecurrenceRule } from '@olivia/contracts';
 import { computeRoutineDueState as computeDueState } from '@olivia/domain';
+import { ArrowsClockwise, Plus } from '@phosphor-icons/react';
 import { useRole } from '../lib/role';
 import {
   loadActiveRoutineIndex,
@@ -71,7 +72,7 @@ function RitualCard({ routine, dueState, onStartReview, isSpouse }: {
       onKeyDown={canStart ? (e) => e.key === 'Enter' && onStartReview() : undefined}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: canStart ? 10 : 0 }}>
-        <span style={{ fontSize: 16, color: 'var(--mint)', flexShrink: 0 }}>↻</span>
+        <span style={{ fontSize: 16, color: 'var(--mint)', flexShrink: 0 }}><ArrowsClockwise size={18} /></span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="list-card-title" style={{ fontWeight: 600 }}>{routine.title}</div>
           <div className="list-card-meta" style={{ color: 'var(--ink-3)', fontSize: 12, marginTop: 2 }}>
@@ -247,7 +248,7 @@ export function RoutinesPage() {
     try {
       await completeRoutineOccurrenceCommand(role, routine.id, routine.version);
       await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
-      showBanner('✓ Marked complete', 'mint');
+      showBanner('Marked complete', 'mint');
     } finally {
       setBusyId(null);
     }
@@ -269,7 +270,7 @@ export function RoutinesPage() {
     await createRoutineCommand(role, form.title.trim(), form.owner, form.recurrenceRule, firstDueDateIso, intervalDays);
     await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
     setForm({ title: '', owner: 'stakeholder', recurrenceRule: '', intervalDays: '7', firstDueDate: todayIso() });
-    showBanner('✓ Routine created', 'mint');
+    showBanner('Routine created', 'mint');
   }, [form, role, queryClient, showBanner]);
 
   const isSpouse = role === 'spouse';
@@ -338,7 +339,7 @@ export function RoutinesPage() {
                 onClick={() => setShowCreateSheet(true)}
                 style={{ width: '100%' }}
               >
-                <span className="add-icon">＋</span>
+                <span className="add-icon"><Plus size={20} /></span>
                 <span className="add-label">New routine…</span>
               </button>
             </div>
@@ -360,7 +361,7 @@ export function RoutinesPage() {
 
           {isEmpty && activeTab === 'active' && (
             <div className="rem-empty">
-              <div className="rem-empty-icon">🔁</div>
+              <div className="rem-empty-icon"><ArrowsClockwise size={48} weight="bold" /></div>
               <div className="rem-empty-title">No routines yet</div>
               <div className="rem-empty-sub">Add a recurring routine to track household tasks on a regular schedule.</div>
               {!isSpouse && (
@@ -371,7 +372,7 @@ export function RoutinesPage() {
                     onClick={() => setShowCreateSheet(true)}
                     style={{ width: '100%' }}
                   >
-                    <span className="add-icon">＋</span>
+                    <span className="add-icon"><Plus size={20} /></span>
                     <span className="add-label">New routine…</span>
                   </button>
                 </div>

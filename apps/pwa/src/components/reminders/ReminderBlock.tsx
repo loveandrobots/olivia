@@ -1,5 +1,6 @@
 import type { Reminder } from '@olivia/contracts';
 import { computeReminderState } from '@olivia/domain';
+import { Bell, Check, Moon, PencilSimple, X } from '@phosphor-icons/react';
 import { getReminderDueDisplay, formatScheduledLabel, formatRecurrenceLabel } from '../../lib/reminder-helpers';
 
 type ReminderBlockProps = {
@@ -27,7 +28,7 @@ export function ReminderBlock({
   return (
     <div className={`rem-block${isSubdued ? ' rem-block-subdued' : ''}`}>
       <div className="rem-block-header">
-        <span className="rem-block-label">🔔 Reminder</span>
+        <span className="rem-block-label"><Bell size={14} style={{ marginRight: 4, verticalAlign: -2 }} /> Reminder</span>
         <button
           type="button"
           className={`rem-badge ${display.badgeClass}`}
@@ -40,20 +41,20 @@ export function ReminderBlock({
       <div className="rem-block-title">{reminder.title}</div>
       <div className="rem-block-meta">
         {formatScheduledLabel(reminder.scheduledAt)}
-        {reminder.recurrenceCadence !== 'none' && ` · ${formatRecurrenceLabel(reminder.recurrenceCadence).replace('↻ ', '')}`}
+        {reminder.recurrenceCadence !== 'none' && ` · ${formatRecurrenceLabel(reminder.recurrenceCadence)}`}
       </div>
       <div className="rem-block-actions">
         {isDueOrOverdue && (
           <>
-            <button type="button" className="rem-btn rem-btn-done" onClick={onDone}>✓ Done</button>
-            <button type="button" className="rem-btn rem-btn-secondary" onClick={onSnooze}>😴 Snooze</button>
-            <button type="button" className="rem-btn rem-btn-ghost" onClick={onEdit}>✏️ Edit</button>
+            <button type="button" className="rem-btn rem-btn-done" onClick={onDone}><Check size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Done</button>
+            <button type="button" className="rem-btn rem-btn-secondary" onClick={onSnooze}><Moon size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Snooze</button>
+            <button type="button" className="rem-btn rem-btn-ghost" onClick={onEdit}><PencilSimple size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Edit</button>
           </>
         )}
         {!isDueOrOverdue && (
           <>
-            <button type="button" className="rem-btn rem-btn-ghost" onClick={onEdit}>✏️ Edit</button>
-            <button type="button" className="rem-btn rem-btn-danger-text" onClick={onRemove}>✕ Remove</button>
+            <button type="button" className="rem-btn rem-btn-ghost" onClick={onEdit}><PencilSimple size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Edit</button>
+            <button type="button" className="rem-btn rem-btn-danger-text" onClick={onRemove}><X size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Remove</button>
           </>
         )}
       </div>

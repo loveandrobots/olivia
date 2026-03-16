@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -8,6 +9,7 @@ import type {
   WeeklyViewResponse,
 } from '@olivia/contracts';
 import { getReviewWindowsForOccurrence, formatReviewWindowAsDateStrings } from '@olivia/domain';
+import { ArrowsClockwise, Bell, ForkKnife, Tray, Check } from '@phosphor-icons/react';
 import { useRole } from '../lib/role';
 import { loadRoutineDetail, loadActivityHistory, loadWeeklyView, submitRitualCompletion, loadRitualSummaries } from '../lib/sync';
 
@@ -21,13 +23,13 @@ function formatDateRange(start: string, end: string): string {
   return `${formatShortDate(start)} – ${formatShortDate(end)}`;
 }
 
-function itemIcon(type: ActivityHistoryItem['type']): string {
+function itemIcon(type: ActivityHistoryItem['type']): ReactNode {
   switch (type) {
-    case 'routine': return '↻';
-    case 'reminder': return '🔔';
-    case 'meal': return '◆';
-    case 'inbox': return '▷';
-    case 'listItem': return '✓';
+    case 'routine': return <ArrowsClockwise size={18} />;
+    case 'reminder': return <Bell size={18} />;
+    case 'meal': return <ForkKnife size={18} />;
+    case 'inbox': return <Tray size={18} />;
+    case 'listItem': return <Check size={18} />;
   }
 }
 

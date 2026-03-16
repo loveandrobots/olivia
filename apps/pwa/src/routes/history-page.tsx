@@ -1,5 +1,7 @@
+import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
+import { ArrowsClockwise, Bell, ForkKnife, Tray, Check } from '@phosphor-icons/react';
 import { BottomNav } from '../components/bottom-nav';
 import { useRole } from '../lib/role';
 import { loadActivityHistory } from '../lib/sync';
@@ -32,13 +34,13 @@ function itemDeepLinkPath(item: ActivityHistoryItem): string {
   }
 }
 
-function itemIcon(type: ActivityHistoryItem['type']): string {
+function itemIcon(type: ActivityHistoryItem['type']): ReactNode {
   switch (type) {
-    case 'routine': return '↻';
-    case 'reminder': return '🔔';
-    case 'meal': return '◆';
-    case 'inbox': return '▷';
-    case 'listItem': return '✓';
+    case 'routine': return <ArrowsClockwise size={18} />;
+    case 'reminder': return <Bell size={18} />;
+    case 'meal': return <ForkKnife size={18} />;
+    case 'inbox': return <Tray size={18} />;
+    case 'listItem': return <Check size={18} />;
   }
 }
 

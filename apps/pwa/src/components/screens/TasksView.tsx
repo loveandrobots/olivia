@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Plus } from '@phosphor-icons/react';
 import type { AddTaskPreview, CompletedTask, FullTask } from '../../types/display';
 
 export type FilterTab = 'All' | 'Mine' | 'Shared' | 'Needs attention' | 'Snoozed';
@@ -107,7 +108,7 @@ export function TasksView({
           onClick={() => setShowAddForm(true)}
           aria-label="Add a new task"
         >
-          <div className="add-icon" aria-hidden="true">+</div>
+          <div className="add-icon" aria-hidden="true"><Plus size={20} /></div>
           <div className="add-label">Add a new task…</div>
         </button>
       )}

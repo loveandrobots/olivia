@@ -1,5 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import type { ReactNode } from 'react';
+import { CalendarBlank, Wrench, User, Lightbulb } from '@phosphor-icons/react';
 import type { ChatMessage, QuickChip } from '../../types/display';
+
+const CHIP_ICONS: Record<string, ReactNode> = {
+  "What's this week?": <CalendarBlank size={16} />,
+  'Home maintenance due': <Wrench size={16} />,
+  "What's Christian working on?": <User size={16} />,
+  'What should I remember?': <Lightbulb size={16} />,
+};
 
 const DRAFT_PREVIEW =
   "Hi Mike, just checking in on the quote from earlier this week — we're keen to get the bathroom project moving and would love to hear back when you have a moment. Any update on timing? Thanks!";
@@ -151,9 +160,10 @@ export function OliviaView({
                 type="button"
                 className="quick-chip"
                 role="listitem"
-                onClick={() => { setInputValue(chip.replace(/^[^\w]*/, '').trim()); textareaRef.current?.focus(); }}
+                onClick={() => { setInputValue(chip.trim()); textareaRef.current?.focus(); }}
                 aria-label={`Suggest: ${chip}`}
               >
+                {CHIP_ICONS[chip] && <span className="quick-chip-icon" aria-hidden="true">{CHIP_ICONS[chip]}</span>}
                 {chip}
               </button>
             ))}

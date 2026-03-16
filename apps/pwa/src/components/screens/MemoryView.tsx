@@ -1,5 +1,19 @@
 import { useState, useMemo } from 'react';
+import type { ReactNode } from 'react';
+import { MagnifyingGlass, Palette, Wrench, AddressBook, Notebook, Snowflake } from '@phosphor-icons/react';
 import type { MemoryCategory } from '../../types/display';
+
+const MEMORY_ICON_MAP: Record<string, ReactNode> = {
+  '🎨': <Palette size={20} />,
+  '🏡': <Wrench size={20} />,
+  '🔧': <Wrench size={20} />,
+  '❄️': <Snowflake size={20} />,
+  '🔑': <AddressBook size={20} />,
+};
+
+function memoryIcon(icon: string): ReactNode {
+  return MEMORY_ICON_MAP[icon] ?? <Notebook size={20} />;
+}
 
 export type MemoryViewProps = {
   categories: MemoryCategory[];
@@ -33,7 +47,7 @@ export function MemoryView({ categories }: MemoryViewProps) {
 
       {/* Search */}
       <div className="memory-search" role="search">
-        <span className="search-icon" aria-hidden="true">🔍</span>
+        <span className="search-icon" aria-hidden="true"><MagnifyingGlass size={20} /></span>
         <input
           type="search"
           className="search-input"
@@ -53,7 +67,7 @@ export function MemoryView({ categories }: MemoryViewProps) {
               {cat.entries.map((entry) => (
                 <div key={entry.id} className="mem-card" role="listitem">
                   <div className={`mem-icon ${entry.iconColor}`} aria-hidden="true">
-                    {entry.icon}
+                    {memoryIcon(entry.icon)}
                   </div>
                   <div className="mem-body">
                     <div className="mem-title">{entry.title}</div>

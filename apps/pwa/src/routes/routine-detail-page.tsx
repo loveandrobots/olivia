@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import type { RoutineDueState, RoutineRecurrenceRule } from '@olivia/contracts';
 import { computeRoutineDueState as computeDueState } from '@olivia/domain';
+import { Check } from '@phosphor-icons/react';
 import { useRole } from '../lib/role';
 import {
   loadRoutineDetail,
@@ -86,7 +87,7 @@ export function RoutineDetailPage() {
     try {
       await completeRoutineOccurrenceCommand(role, routine.id, routine.version);
       await invalidateAndRefresh();
-      showBanner('✓ Marked complete', 'mint');
+      showBanner('Marked complete', 'mint');
     } finally {
       setBusy(false);
     }
@@ -245,14 +246,14 @@ export function RoutineDetailPage() {
                         disabled={busy}
                         onClick={() => void handleComplete()}
                       >
-                        ✓ Mark complete
+                        <Check size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Mark complete
                       </button>
                     </div>
                   )}
 
                   {dueState === 'completed' && (
                     <div className="rem-status-banner rem-status-banner-mint" style={{ marginBottom: 16 }}>
-                      ✓ Completed this cycle — next due {format(new Date(routine.currentDueDate), 'MMM d')}
+                      <Check size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Completed this cycle — next due {format(new Date(routine.currentDueDate), 'MMM d')}
                     </div>
                   )}
 

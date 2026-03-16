@@ -1,4 +1,5 @@
 import type { SharedList } from '@olivia/contracts';
+import { Check } from '@phosphor-icons/react';
 import { formatRelativeTime } from '../../lib/format-helpers';
 
 type ListCardProps = {
@@ -47,7 +48,7 @@ export function ListCard({ list, onClick, onOverflow, showOverflow = true }: Lis
 
       <div className="list-card-meta-row">
         {allChecked && totalItems > 0 ? (
-          <span className="list-all-done-badge">✓ All done</span>
+          <span className="list-all-done-badge"><Check size={14} style={{ marginRight: 3, verticalAlign: -2 }} /> All done</span>
         ) : (
           <span className="list-card-count">{countLabel}</span>
         )}
