@@ -124,3 +124,12 @@ Use this structure for future entries:
 - Implication: the household command center is now validated as a product frame across four distinct workflow types. Post-M7 prioritization should identify adjacent planning and coordination problems that compound on these primitives — not new categories that would fragment the platform model.
 - Source: meal planning spec (OLI-28), visual spec (OLI-32), implementation plan (OLI-33), full implementation (OLI-34)
 - Related docs: `docs/specs/meal-planning.md`, `docs/plans/meal-planning-visual-implementation-spec.md`
+
+### L-013: The unified weekly view is the natural first Horizon 4 surface — cross-workflow temporal context was the missing layer after four H3 workflows
+- Date: 2026-03-16
+- Area: product architecture
+- Learning: After four Horizon 3 workflows (reminders, shared lists, recurring routines, meal planning), each operating in its own dedicated screen, the most immediately valuable Horizon 4 contribution is not a new entity type or AI capability — it is a unified temporal view that assembles existing H3 entities into a day-by-day picture of the household's week. The unified weekly view introduces no new data entities; it surfaces existing scheduled state in a cross-workflow context.
+- Why it matters: this confirms that Olivia's H4 layer should start by synthesizing what already exists, not by introducing new primitives. The weekly view has clear value without AI — its value comes from aggregation and temporal context, not inference.
+- Implication: future H4 specs (activity history, planning ritual support) should follow the same pattern: synthesize and surface existing H3 state before adding AI-generated narrative or new entity types. AI enhancement is a Phase 2 addition, not a Phase 1 requirement.
+- Source: unified weekly view spec (OLI-38), D-022, D-024
+- Related docs: `docs/specs/unified-weekly-view.md`, `docs/roadmap/roadmap.md`

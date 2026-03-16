@@ -208,7 +208,7 @@ Completion note:
 ## M8: Horizon 4 Scoping
 Objective: define the product shape of the household memory and planning layer well enough that future planning compounds on the Horizon 3 coordination layer rather than drifting away from it.
 
-Status: active
+Status: complete
 
 Required artifacts:
 - updated `docs/roadmap/roadmap.md` with concrete Horizon 4 scope
@@ -225,8 +225,39 @@ Evidence of completion:
 - a new agent can identify what Olivia should build next in Horizon 4, why it matters, and what should remain deferred
 
 Progress notes:
-- M7 advancement pending stakeholder decision (assessment captured in M7 progress notes, 2026-03-15)
+- M7 advanced to complete (D-023, 2026-03-16)
 - Horizon 4 roadmap sharpened with concrete first workflow targets: unified weekly view → activity history → planning ritual support (OLI-36, 2026-03-15)
+- Unified weekly view feature spec written and complete (OLI-38, 2026-03-16)
+- Glossary updated with Unified Weekly View term; learnings updated with L-013 (OLI-39, 2026-03-16)
+
+Completion note:
+- All four M8 required artifacts are in place. Exit criteria met: (1) H4 direction is concrete — three workflow targets documented in roadmap, first spec written; (2) the relationship between H3 workflows and the H4 temporal/memory layer is explained in the unified weekly view spec and D-022; (3) the first H4 workflow area has a complete feature spec with acceptance criteria. Decision recorded as D-024 (2026-03-16).
+
+## M9: Horizon 4 Build Readiness
+Objective: prepare the first Horizon 4 workflow for implementation planning so the household memory and planning layer can begin construction.
+
+Status: active
+
+Required artifacts:
+- implementation-ready feature spec for the unified weekly view (exists: `docs/specs/unified-weekly-view.md`)
+- visual spec for the unified weekly view (`docs/plans/unified-weekly-view-visual-implementation-spec.md`)
+- implementation plan for the unified weekly view
+- updated assumptions, decisions, and open questions tied to the H4 build phase
+- feature spec for activity history (the second H4 target) — may be written in parallel with or after the unified weekly view implementation cycle
+
+Exit criteria:
+- the unified weekly view spec is concrete enough that an implementation agent can execute without major product ambiguity
+- the visual spec resolves all designer decisions deferred from the feature spec (navigation entry point, day-section density, workflow-type visual differentiation)
+- the implementation plan is scoped to the existing H3 data model — no new entity types introduced in Phase 1
+- open questions from the unified weekly view spec are either resolved or explicitly deferred with rationale
+
+Evidence of completion:
+- an implementation plan can be generated for the unified weekly view without rediscovering the product model
+- the implementation agent has clear acceptance criteria, a visual reference, and bounded engineering decisions
+
+Progress notes:
+- Feature spec complete (OLI-38)
+- Visual spec and implementation plan pending
 
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:

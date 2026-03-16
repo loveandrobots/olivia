@@ -228,6 +228,16 @@ Use this structure for future entries:
 - Status: active
 - Related docs: `docs/roadmap/roadmap.md`, `docs/roadmap/milestones.md`, `docs/learnings/learnings-log.md` (L-011, L-012)
 
+### D-024: M8 is complete — Horizon 4 scoping achieved with unified weekly view spec and H4 roadmap
+- Date: 2026-03-16
+- Area: roadmap progression
+- Decision: Advance M8 (Horizon 4 Scoping) to complete. All required artifacts exist and all exit criteria are met. The H4 roadmap defines three workflow targets (unified weekly view → activity history → planning ritual support). The first H4 feature spec is written and approved. M9 (Horizon 4 Build Readiness) is now the active milestone.
+- Rationale: (1) The H4 roadmap is documented and concrete — sequencing and rationale are in `docs/roadmap/roadmap.md` and D-022. (2) The relationship between the H3 coordination layer and the H4 memory/planning layer is described in both the roadmap and the unified weekly view spec. (3) The next workflow area (unified weekly view) is specific enough to enter implementation planning without ambiguity — the spec exists and acceptance criteria are written. L-013 captures the architectural learning that H4 should synthesize existing H3 state before introducing new primitives or AI.
+- Alternatives considered: waiting for household usage data before closing M8; requiring a second H4 spec before advancing.
+- Trade-offs: advancing now enables M9 build readiness to begin immediately; activity history and planning ritual support specs remain as pending M9 work.
+- Status: active
+- Related docs: `docs/roadmap/milestones.md`, `docs/specs/unified-weekly-view.md`, `docs/learnings/learnings-log.md` (L-013), D-022, D-023
+
 ### D-023: M7 is complete — coordination layer advanced based on implementation completeness
 - Date: 2026-03-16
 - Area: roadmap progression

@@ -89,6 +89,9 @@ The person providing product direction and decision authority for Olivia. In the
 ### Trust Model
 The set of rules defining what Olivia may do, what requires approval, and what the system must not do automatically.
 
+### Unified Weekly View
+The first Horizon 4 surface in Olivia: a single read-only screen that assembles the household's scheduled and due items from all four Horizon 3 workflow types (reminders, recurring routines, meal plans, inbox items) into a day-by-day picture of the current calendar week (Monday through Sunday). Introduces no new entities — it surfaces existing H3 state in a cross-workflow temporal context.
+
 ### User Action
 An action explicitly and directly commanded by the user. Non-destructive user actions execute immediately — no confirmation step is needed, since they can be reversed through the normal UI (e.g., status changed again, ownership reassigned). Destructive user actions (archive, permanent delete) always require explicit confirmation regardless of source.
 
