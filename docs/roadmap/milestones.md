@@ -325,6 +325,33 @@ Progress notes:
 Completion note:
 - All M11 required artifacts are in place. Exit criteria met: (1) activity history spec has CEO approval (D-028) and is execution-ready with 20 acceptance criteria; (2) the visual spec resolves all seven designer decisions deferred from the feature spec — navigation entry point (Memory tab primary + weekly view footer link secondary), day-section ordering (chronological interleave, no sub-headers), workflow-type differentiation (5-type system with shared list items as fifth), completed-item treatment (full opacity, no strikethrough), day header labeling (Today/Yesterday/older), shared list item volume (individual items in Phase 1), and dismissed-reminder visual treatment (OQ-2); (3) the implementation plan builds on existing H3 completion-state data — no new entity types introduced in Phase 1, pure read-only aggregation layer; (4) all four open questions from the feature spec are either resolved in the visual spec or explicitly deferred to the Founding Engineer (timestamp availability, OQ-4). Decision recorded as D-029 (2026-03-16).
 
+## M12: Horizon 4 Second Workflow Build
+Objective: deliver the activity history workflow so the household gains backward-looking recall of what was accomplished across all five H3/H2 data sources.
+
+Status: active
+
+Required artifacts:
+- built activity history — all seven phases of the implementation plan executed (`docs/plans/activity-history-implementation-plan.md`)
+- PWA `/history` route serving the activity history screen via the Memory tab (Tab 5)
+- weekly view footer link ("View history →") added to `home-page.tsx`
+- updated learnings and decision history based on activity history build outcomes
+- evidence of how the activity history screen integrates with the five H3/H2 data sources
+
+Exit criteria:
+- the activity history screen is available in the PWA at `/history` and the Memory tab navigates to it
+- the screen shows the last 30 days of completed/resolved activity — routines, reminders, meal entries, inbox items, and checked-off list items — grouped by day in reverse-chronological order
+- no new entity types were introduced — the view draws entirely from existing H3/H2 completion state
+- the weekly view home screen has a "View history →" footer link that navigates to `/history`
+- the implementation agent has confirmed all 20 acceptance criteria from `docs/specs/activity-history.md` are met
+- OQ-4 (timestamp availability) is resolved during implementation and documented
+
+Evidence of completion:
+- the project can point to a working backward-looking temporal view, a confirmed Memory tab navigation entry, and build-phase learnings that sharpen the planning ritual support spec
+
+Progress notes:
+- Implementation plan ready (OLI-49): `docs/plans/activity-history-implementation-plan.md`
+- Visual spec ready (OLI-48): `docs/plans/activity-history-visual-implementation-spec.md`
+
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:
 - Do the docs make the current phase legible to a new agent?
