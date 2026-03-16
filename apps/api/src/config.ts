@@ -23,6 +23,7 @@ export type AppConfig = {
   notificationIntervalMs: number;
   nudgePushIntervalMs: number;
   pwaOrigin: string;
+  householdTimezone: string;
 };
 
 export function loadConfig(): AppConfig {
@@ -44,6 +45,8 @@ export function loadConfig(): AppConfig {
     },
     notificationIntervalMs: Number(process.env.OLIVIA_NOTIFICATION_INTERVAL_MS ?? 3_600_000),
     nudgePushIntervalMs: Number(process.env.OLIVIA_NUDGE_PUSH_INTERVAL_MS ?? 1_800_000),
-    pwaOrigin: process.env.OLIVIA_PWA_ORIGIN ?? 'http://localhost:4173'
+    pwaOrigin: process.env.OLIVIA_PWA_ORIGIN ?? 'http://localhost:4173',
+    householdTimezone: process.env.OLIVIA_HOUSEHOLD_TIMEZONE
+      ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
   };
 }

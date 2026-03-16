@@ -1539,6 +1539,24 @@ export class InboxRepository {
     return nudges;
   }
 
+  /**
+   * Returns the last N completedAt timestamps for a routine, ordered newest-first.
+   * Excludes skipped occurrences and null completedAt values.
+   */
+  getRoutineCompletionTimestamps(routineId: string, limit: number): string[] {
+    const rows = this.db.prepare(`
+      SELECT completed_at
+      FROM routine_occurrences
+      WHERE routine_id = ?
+        AND completed_at IS NOT NULL
+        AND skipped = 0
+      ORDER BY completed_at DESC
+      LIMIT ?
+    `).all(routineId, limit) as Array<{ completed_at: string }>;
+
+    return rows.map((r) => r.completed_at);
+  }
+
   // ─── Push Subscriptions (H5 nudge push) ──────────────────────────────────────
 
   savePushSubscription(endpoint: string, p256dh: string, auth: string, userId?: string): PushSubscriptionRecord {

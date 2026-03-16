@@ -1365,3 +1365,17 @@ export const skipRoutineOccurrenceResponseSchema = z.object({
 
 export type SkipRoutineOccurrenceRequest = z.infer<typeof skipRoutineOccurrenceRequestSchema>;
 export type SkipRoutineOccurrenceResponse = z.infer<typeof skipRoutineOccurrenceResponseSchema>;
+
+// ─── Completion Window Constants (H5 Phase 2 Layer 1) ────────────────────────
+export const COMPLETION_WINDOW_MIN_OCCURRENCES = 4;
+export const COMPLETION_WINDOW_SAMPLE_SIZE = 8;
+export const COMPLETION_WINDOW_LEAD_BUFFER_HOURS = 1;
+export const COMPLETION_WINDOW_VARIANCE_THRESHOLD_HOURS = 6;
+export const COMPLETION_WINDOW_MAX_HOLD_DAYS = 2;
+
+export const completionWindowResultSchema = z.discriminatedUnion('decision', [
+  z.object({ decision: z.literal('hold'), windowStartHour: z.number(), windowEndHour: z.number() }),
+  z.object({ decision: z.literal('deliver'), windowStartHour: z.number(), windowEndHour: z.number() }),
+  z.object({ decision: z.literal('no_window'), reason: z.enum(['insufficient_data', 'high_variance']) }),
+]);
+export type CompletionWindowResult = z.infer<typeof completionWindowResultSchema>;

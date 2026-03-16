@@ -1,5 +1,6 @@
 import type { FastifyBaseLogger } from 'fastify';
-import { buildSuggestions, groupReminders, rankRemindersForSurfacing, sortNudgesByPriority } from '@olivia/domain';
+import { buildSuggestions, computeCompletionWindow, getCurrentLocalHour, groupReminders, rankRemindersForSurfacing, sortNudgesByPriority } from '@olivia/domain';
+import { COMPLETION_WINDOW_MAX_HOLD_DAYS, COMPLETION_WINDOW_SAMPLE_SIZE } from '@olivia/contracts';
 import type { Nudge, Reminder } from '@olivia/contracts';
 import type { AppConfig } from './config';
 import type { PushProvider, NotificationPayload, PushSubscriptionPayload } from './push';
@@ -357,6 +358,32 @@ export async function evaluateNudgePushRule(
         subscription.id, nudge.entityType, nudge.entityId, DEDUP_WINDOW_MS, now
       );
       if (alreadySent) continue;
+
+      // ─── Completion window evaluation (routine nudges only) ──────────────
+      if (nudge.entityType === 'routine') {
+        const maxHoldMs = COMPLETION_WINDOW_MAX_HOLD_DAYS * 24 * 60 * 60 * 1000;
+        const overdueSinceDate = nudge.overdueSince ? new Date(nudge.overdueSince) : null;
+        const overdueAge = overdueSinceDate ? now.getTime() - overdueSinceDate.getTime() : 0;
+        const bypassWindow = overdueAge > maxHoldMs;
+
+        if (!bypassWindow) {
+          const timestamps = repository.getRoutineCompletionTimestamps(
+            nudge.entityId, COMPLETION_WINDOW_SAMPLE_SIZE
+          );
+          const currentHour = getCurrentLocalHour(now, config.householdTimezone);
+          const windowResult = computeCompletionWindow(timestamps, config.householdTimezone, currentHour);
+
+          if (windowResult.decision === 'hold') {
+            logger.debug({
+              entityId: nudge.entityId,
+              windowStart: windowResult.windowStartHour,
+              currentHour,
+            }, 'nudge push held: before completion window');
+            continue;
+          }
+        }
+      }
+      // ─── End completion window evaluation ────────────────────────────────
 
       const notification = buildNudgeNotification(nudge, config.pwaOrigin);
       try {

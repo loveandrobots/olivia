@@ -22,7 +22,8 @@ const createConfig = (dbPath: string): AppConfig => ({
   notificationRules: { dueSoonEnabled: false, staleItemEnabled: false, digestEnabled: false },
   notificationIntervalMs: 3_600_000,
   nudgePushIntervalMs: 1_800_000,
-  pwaOrigin: 'http://localhost:4173'
+  pwaOrigin: 'http://localhost:4173',
+  householdTimezone: 'UTC'
 });
 
 const makeLogger = () =>
@@ -255,5 +256,154 @@ describe('evaluateNudgePushRule', () => {
     // Old entry should be purged
     const countAfter = (db.prepare("SELECT COUNT(*) as cnt FROM push_notification_log WHERE entity_id = 'r-old'").get() as { cnt: number }).cnt;
     expect(countAfter).toBe(0);
+  });
+});
+
+// ─── Completion Window Push Timing (H5 Phase 2 Layer 1) ─────────────────────
+
+function insertCompletedOccurrences(
+  db: ReturnType<typeof createDatabase>,
+  routineId: string,
+  completedAtTimes: string[]
+) {
+  for (const completedAt of completedAtTimes) {
+    const id = crypto.randomUUID();
+    db.prepare(`
+      INSERT INTO routine_occurrences (id, routine_id, due_date, completed_at, completed_by, skipped, created_at)
+      VALUES (?, ?, ?, ?, 'stakeholder', 0, datetime('now'))
+    `).run(id, routineId, completedAt.slice(0, 10), completedAt);
+  }
+}
+
+describe('completion window push timing', () => {
+  let directory: string;
+  let db: ReturnType<typeof createDatabase>;
+  let repository: InboxRepository;
+  let config: AppConfig;
+
+  beforeEach(() => {
+    directory = mkdtempSync(join(tmpdir(), 'olivia-cw-push-'));
+    const dbPath = join(directory, 'test.sqlite');
+    db = createDatabase(dbPath);
+    repository = new InboxRepository(db);
+    config = createConfig(dbPath);
+  });
+
+  afterEach(() => {
+    db.close();
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('holds push when current time is before completion window', async () => {
+    const push = createMockPush();
+    const now = new Date('2026-03-15T10:00:00Z'); // 10am UTC — well before evening window
+    insertOverdueRoutine(db, 'r1', 'Evening cleanup', '2026-03-14T08:00:00Z');
+    insertCompletedOccurrences(db, 'r1', [
+      '2026-03-07T19:00:00Z', '2026-03-08T19:30:00Z',
+      '2026-03-09T20:00:00Z', '2026-03-10T20:15:00Z',
+      '2026-03-11T20:30:00Z', '2026-03-12T21:00:00Z',
+      '2026-03-06T21:00:00Z', '2026-03-05T22:00:00Z',
+    ]);
+    repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
+
+    await evaluateNudgePushRule(repository, push, config, makeLogger(), now);
+    expect(push.sends).toHaveLength(0);
+  });
+
+  it('delivers push when current time is within completion window', async () => {
+    const push = createMockPush();
+    const now = new Date('2026-03-15T19:30:00Z'); // 7:30pm UTC — within window
+    insertOverdueRoutine(db, 'r1', 'Evening cleanup', '2026-03-14T08:00:00Z');
+    insertCompletedOccurrences(db, 'r1', [
+      '2026-03-07T19:00:00Z', '2026-03-08T19:30:00Z',
+      '2026-03-09T20:00:00Z', '2026-03-10T20:15:00Z',
+      '2026-03-11T20:30:00Z', '2026-03-12T21:00:00Z',
+      '2026-03-06T21:00:00Z', '2026-03-05T22:00:00Z',
+    ]);
+    repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
+
+    await evaluateNudgePushRule(repository, push, config, makeLogger(), now);
+    expect(push.sends).toHaveLength(1);
+  });
+
+  it('delivers immediately when routine has fewer than 4 completions', async () => {
+    const push = createMockPush();
+    const now = new Date('2026-03-15T06:00:00Z'); // 6am — would be held if window existed
+    insertOverdueRoutine(db, 'r1', 'New routine', '2026-03-14T08:00:00Z');
+    insertCompletedOccurrences(db, 'r1', [
+      '2026-03-07T20:00:00Z', '2026-03-08T20:30:00Z', // only 2 completions
+    ]);
+    repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
+
+    await evaluateNudgePushRule(repository, push, config, makeLogger(), now);
+    expect(push.sends).toHaveLength(1);
+  });
+
+  it('delivers reminder nudge immediately regardless of completion windows', async () => {
+    const push = createMockPush();
+    const now = new Date('2026-03-15T06:00:00Z');
+    // Insert approaching reminder due in 2 hours
+    db.prepare(`
+      INSERT INTO reminders (id, title, owner, recurrence_cadence, scheduled_at, created_at, updated_at, version)
+      VALUES ('rem1', 'Call dentist', 'stakeholder', 'none', ?, datetime('now'), datetime('now'), 1)
+    `).run(new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString());
+    repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
+
+    await evaluateNudgePushRule(repository, push, config, makeLogger(), now);
+    expect(push.sends).toHaveLength(1);
+  });
+
+  it('bypasses window when routine overdue > 2 days', async () => {
+    const push = createMockPush();
+    const now = new Date('2026-03-15T06:00:00Z'); // 6am — before any evening window
+    // Overdue since March 12 → 3 days overdue
+    insertOverdueRoutine(db, 'r1', 'Evening cleanup', '2026-03-12T08:00:00Z');
+    insertCompletedOccurrences(db, 'r1', [
+      '2026-03-04T19:00:00Z', '2026-03-05T19:30:00Z',
+      '2026-03-06T20:00:00Z', '2026-03-07T20:15:00Z',
+      '2026-03-08T20:30:00Z', '2026-03-09T21:00:00Z',
+      '2026-03-03T21:00:00Z', '2026-03-02T22:00:00Z',
+    ]);
+    repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
+
+    await evaluateNudgePushRule(repository, push, config, makeLogger(), now);
+    expect(push.sends).toHaveLength(1);
+  });
+
+  it('does not create dedup log entry for held nudges', async () => {
+    const push = createMockPush();
+    const now = new Date('2026-03-15T10:00:00Z');
+    insertOverdueRoutine(db, 'r1', 'Evening cleanup', '2026-03-14T08:00:00Z');
+    insertCompletedOccurrences(db, 'r1', [
+      '2026-03-07T19:00:00Z', '2026-03-08T19:30:00Z',
+      '2026-03-09T20:00:00Z', '2026-03-10T20:15:00Z',
+      '2026-03-11T20:30:00Z', '2026-03-12T21:00:00Z',
+      '2026-03-06T21:00:00Z', '2026-03-05T22:00:00Z',
+    ]);
+    repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
+
+    await evaluateNudgePushRule(repository, push, config, makeLogger(), now);
+    const logCount = (db.prepare('SELECT COUNT(*) as cnt FROM push_notification_log').get() as { cnt: number }).cnt;
+    expect(logCount).toBe(0);
+  });
+
+  it('held nudge delivers on next cycle when window opens', async () => {
+    const push = createMockPush();
+    insertOverdueRoutine(db, 'r1', 'Evening cleanup', '2026-03-14T08:00:00Z');
+    insertCompletedOccurrences(db, 'r1', [
+      '2026-03-07T19:00:00Z', '2026-03-08T19:30:00Z',
+      '2026-03-09T20:00:00Z', '2026-03-10T20:15:00Z',
+      '2026-03-11T20:30:00Z', '2026-03-12T21:00:00Z',
+      '2026-03-06T21:00:00Z', '2026-03-05T22:00:00Z',
+    ]);
+    repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
+
+    // First cycle: 10am → held
+    await evaluateNudgePushRule(repository, push, config, makeLogger(), new Date('2026-03-15T10:00:00Z'));
+    expect(push.sends).toHaveLength(0);
+
+    // Second cycle: 7:30pm → within window → delivered
+    await evaluateNudgePushRule(repository, push, config, makeLogger(), new Date('2026-03-15T19:30:00Z'));
+    expect(push.sends).toHaveLength(1);
   });
 });

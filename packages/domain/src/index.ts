@@ -31,6 +31,10 @@ import {
   type ListItemHistoryEntry,
   type MealEntry,
   type MealPlan,
+  COMPLETION_WINDOW_MIN_OCCURRENCES,
+  COMPLETION_WINDOW_LEAD_BUFFER_HOURS,
+  COMPLETION_WINDOW_VARIANCE_THRESHOLD_HOURS,
+  type CompletionWindowResult,
   type Nudge,
   type Owner,
   type ParseConfidence,
@@ -1846,4 +1850,73 @@ export function sortNudgesByPriority(nudges: Nudge[]): Nudge[] {
     if (!bDate) return -1;
     return aDate < bDate ? -1 : aDate > bDate ? 1 : 0;
   });
+}
+
+// ─── Completion Window (H5 Phase 2 Layer 1) ──────────────────────────────────
+
+/** Linear interpolation percentile for a sorted array. */
+function percentile(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0;
+  if (sorted.length === 1) return sorted[0];
+  const index = p * (sorted.length - 1);
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+  if (lower === upper) return sorted[lower];
+  const fraction = index - lower;
+  return sorted[lower] + fraction * (sorted[upper] - sorted[lower]);
+}
+
+/** Extract fractional hour from a Date in the given IANA timezone. */
+function extractLocalHour(date: Date, timezone: string): number {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(date);
+  const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? 0);
+  const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? 0);
+  return hour + minute / 60;
+}
+
+/**
+ * Returns the current fractional hour in the given timezone.
+ * E.g., 18.5 for 6:30pm.
+ */
+export function getCurrentLocalHour(now: Date, timezone: string): number {
+  return extractLocalHour(now, timezone);
+}
+
+/**
+ * Computes a completion window from an array of completedAt ISO timestamps.
+ * Returns a hold/deliver/no_window decision based on the IQR of completion hours.
+ */
+export function computeCompletionWindow(
+  completedAtTimestamps: string[],
+  timezone: string,
+  currentHour: number
+): CompletionWindowResult {
+  if (completedAtTimestamps.length < COMPLETION_WINDOW_MIN_OCCURRENCES) {
+    return { decision: 'no_window', reason: 'insufficient_data' };
+  }
+
+  const hours = completedAtTimestamps.map((ts) => extractLocalHour(new Date(ts), timezone));
+  hours.sort((a, b) => a - b);
+
+  const q1 = percentile(hours, 0.25);
+  const q3 = percentile(hours, 0.75);
+  const iqrSpan = q3 - q1;
+
+  if (iqrSpan > COMPLETION_WINDOW_VARIANCE_THRESHOLD_HOURS) {
+    return { decision: 'no_window', reason: 'high_variance' };
+  }
+
+  const windowStart = q1 - COMPLETION_WINDOW_LEAD_BUFFER_HOURS;
+  const windowEnd = q3;
+
+  if (currentHour < windowStart) {
+    return { decision: 'hold', windowStartHour: windowStart, windowEndHour: windowEnd };
+  }
+  return { decision: 'deliver', windowStartHour: windowStart, windowEndHour: windowEnd };
 }

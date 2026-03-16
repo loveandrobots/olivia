@@ -18,6 +18,16 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-051: M27 complete — completion-window push timing implemented
+- Date: 2026-03-16
+- Area: build completion / H5 Phase 2 Layer 1
+- Decision: Advance M27 (AI-Enhanced Nudge Timing Build) to complete. All 7 implementation plan phases executed in OLI-81. The push notification scheduler now evaluates a completion window for routine nudges before delivery: routines with 4+ completions and the current time before the IQR-derived window are held until the window opens. All 14 acceptance criteria from the spec are verified through 10 unit tests and 7 integration tests. All 249 tests pass (158 domain + 91 API, zero regressions).
+- Rationale: implementation followed the plan exactly. No spec ambiguities or architectural surprises. The IQR algorithm, variance guard (6h), lead buffer (1h), and max hold bypass (2 days) all behave as specified. The `OLIVIA_HOUSEHOLD_TIMEZONE` env var provides correct DST-aware timezone handling via `Intl.DateTimeFormat`. No new tables, columns, or migrations were needed.
+- Alternatives considered: none — the implementation plan was detailed enough to execute directly.
+- Trade-offs: the algorithm is heuristic (Layer 1); more sophisticated timing (Layer 2 LLM-based) is deferred to Phase 3+. Completion windows are household-level, not per-member. Constants are in code, not env-var-configurable — acceptable for initial deployment, adjustable later.
+- Status: active
+- Related docs: `docs/roadmap/milestones.md` (M27), `docs/specs/completion-window-push-timing.md`, `docs/plans/completion-window-push-timing-implementation-plan.md`, D-048, D-049, D-050
+
 ### D-050: M26 complete — completion-window push timing build readiness achieved; M27 activated
 - Date: 2026-03-16
 - Area: delivery planning / roadmap progression / H5 Phase 2 Layer 1

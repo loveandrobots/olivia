@@ -766,7 +766,17 @@ Completion note:
 ## M27: AI-Enhanced Nudge Timing Build
 Objective: implement completion-window-based push timing so the push notification scheduler delivers routine nudges at times historically associated with household completion rather than immediately on detection.
 
-Status: active
+Status: complete
+
+Progress notes:
+- All 7 implementation plan phases executed (OLI-81, 2026-03-16)
+- Phase 1: Constants (`COMPLETION_WINDOW_*`) and `CompletionWindowResult` type in `@olivia/contracts`; `householdTimezone` in `AppConfig`
+- Phase 2: `computeCompletionWindow` + `getCurrentLocalHour` in `@olivia/domain` — IQR algorithm with variance guard and lead buffer
+- Phase 3: `getRoutineCompletionTimestamps` repository method in `InboxRepository`
+- Phase 4: Completion window evaluation step in `evaluateNudgePushRule` — hold/deliver/no_window/max-hold-bypass logic
+- Phase 5: 10 unit tests in `nudges-domain.test.ts` — spec example, threshold, variance, timezone, edge cases
+- Phase 6: 7 integration tests in `push.test.ts` — hold, deliver, insufficient data, reminder bypass, max hold bypass, no dedup on hold, cross-cycle delivery
+- Phase 7: All 14 acceptance criteria verified; all 249 tests pass (158 domain + 91 API)
 
 Required artifacts:
 - built completion-window-based push timing — all seven phases of the implementation plan executed (`docs/plans/completion-window-push-timing-implementation-plan.md`)
