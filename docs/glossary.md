@@ -89,6 +89,9 @@ The person providing product direction and decision authority for Olivia. In the
 ### Trust Model
 The set of rules defining what Olivia may do, what requires approval, and what the system must not do automatically.
 
+### Activity History
+A reverse-chronological log of completed and resolved household activity across all four Horizon 3 workflow types (completed routines, resolved reminders, past meal plan entries, closed inbox items, and checked-off shared list items). The second Horizon 4 surface; pairs with the Unified Weekly View to form Olivia's temporal layer — the weekly view shows the present and near future, activity history shows the recent past.
+
 ### Unified Weekly View
 The first Horizon 4 surface in Olivia: a single read-only screen that assembles the household's scheduled and due items from all four Horizon 3 workflow types (reminders, recurring routines, meal plans, inbox items) into a day-by-day picture of the current calendar week (Monday through Sunday). Introduces no new entities — it surfaces existing H3 state in a cross-workflow temporal context.
 

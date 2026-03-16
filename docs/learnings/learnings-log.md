@@ -125,6 +125,15 @@ Use this structure for future entries:
 - Source: meal planning spec (OLI-28), visual spec (OLI-32), implementation plan (OLI-33), full implementation (OLI-34)
 - Related docs: `docs/specs/meal-planning.md`, `docs/plans/meal-planning-visual-implementation-spec.md`
 
+### L-014: Activity history and the unified weekly view form a complete temporal pair for Olivia's H4 layer
+- Date: 2026-03-16
+- Area: product architecture
+- Learning: The unified weekly view (forward-looking: current week) and activity history (backward-looking: last 30 days) together provide continuous household time coverage without gaps or overlap. This temporal pair is the defining architectural pattern for Horizon 4's memory layer — present and future in one surface, recent past in the other.
+- Why it matters: future H4 work (planning ritual support, AI summaries) should treat this pair as the foundation, not as two isolated features. Planning ritual support in particular will draw on activity history data to auto-populate weekly review content.
+- Implication: the planning ritual support spec (the third H4 target) should explicitly reference activity history as its data source rather than re-deriving a separate history model. The data contract between the two should be defined in the planning ritual spec.
+- Source: activity history feature spec (OLI-41, 2026-03-16)
+- Related docs: `docs/specs/activity-history.md`, `docs/specs/unified-weekly-view.md`, `docs/roadmap/roadmap.md`
+
 ### L-013: The unified weekly view is the natural first Horizon 4 surface — cross-workflow temporal context was the missing layer after four H3 workflows
 - Date: 2026-03-16
 - Area: product architecture

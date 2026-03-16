@@ -257,7 +257,9 @@ Evidence of completion:
 
 Progress notes:
 - Feature spec complete (OLI-38)
-- Visual spec and implementation plan pending
+- Visual spec in progress (OLI-40, assigned to Designer)
+- Implementation plan pending (OLI-42, assigned to Founding Engineer — awaiting visual spec)
+- Activity history feature spec drafted (OLI-41, `docs/specs/activity-history.md`, 2026-03-16) — pending CEO review
 
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:
