@@ -20,6 +20,7 @@ import { WeekPage } from './routes/week-page';
 import { ReviewFlowPage } from './routes/review-flow-page';
 import { ReviewRecordDetailPage } from './routes/review-record-detail-page';
 import { OnboardingPage } from './routes/onboarding-page';
+import { HealthCheckPage } from './routes/health-check-page';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -60,6 +61,7 @@ const reEntryRoute = createRoute({
 });
 const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/settings', component: SettingsPage });
 const onboardingRoute = createRoute({ getParentRoute: () => rootRoute, path: '/onboarding', component: OnboardingPage });
+const healthCheckRoute = createRoute({ getParentRoute: () => rootRoute, path: '/health-check', component: HealthCheckPage });
 
 // ── Legacy redirects (old routes → new primary nav) ──────────────────────────
 const addRedirectRoute = createRoute({
@@ -91,6 +93,7 @@ const routeTree = rootRoute.addChildren([
   reEntryRoute,
   settingsRoute,
   onboardingRoute,
+  healthCheckRoute,
   addRedirectRoute,
 ]);
 

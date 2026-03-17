@@ -17,7 +17,8 @@ import { SnoozeSheet } from '../components/reminders/SnoozeSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
 import { SpouseBanner } from '../components/lists/SpouseBanner';
 import type { NudgeData } from '../types/display';
-import { fetchOnboardingState, startOnboarding, finishOnboarding, type OnboardingState } from '../lib/api';
+import { fetchOnboardingState, startOnboarding, finishOnboarding, fetchHealthCheckState, dismissHealthCheck, type OnboardingState, type HealthCheckState } from '../lib/api';
+import { getHealthCheckProgress } from '../lib/client-db';
 
 // ─── Status badge helpers ─────────────────────────────────────────────────────
 
@@ -413,6 +414,20 @@ export function HomePage() {
   });
   const onboardingState: OnboardingState | undefined = onboardingQuery.data;
 
+  const healthCheckQuery = useQuery({
+    queryKey: ['health-check-state'],
+    queryFn: fetchHealthCheckState,
+  });
+  const healthCheckState: HealthCheckState | undefined = healthCheckQuery.data;
+
+  const [healthCheckProgressCount, setHealthCheckProgressCount] = useState<number | null>(null);
+  // Check for partial progress on mount
+  useState(() => {
+    void getHealthCheckProgress().then((p) => {
+      if (p) setHealthCheckProgressCount(p.reviewedItemIds.length);
+    });
+  });
+
   const { weekStart } = useMemo(() => getWeekBounds(new Date()), []);
   const weekStartString = useMemo(() => weekStart.toISOString().split('T')[0], [weekStart]);
 
@@ -639,6 +654,42 @@ export function HomePage() {
                 }}
               >
                 I{'\u2019'}m good {'\u2713'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Health Check Card (data freshness — monthly prompt) */}
+        {healthCheckState?.shouldShow && (
+          <div className="health-check-card" role="region" aria-label="Monthly health check">
+            <div className="health-check-card__eyebrow">{'\u2726'} Monthly check-up</div>
+            <div className="health-check-card__body">
+              {healthCheckProgressCount && healthCheckProgressCount > 0
+                ? `${healthCheckProgressCount} item${healthCheckProgressCount === 1 ? '' : 's'} reviewed \u2014 pick up where you left off?`
+                : `Want to make sure everything\u2019s still accurate?`
+              }
+            </div>
+            <div className="health-check-card__actions">
+              <button
+                type="button"
+                className="btn-primary health-check-card__btn"
+                onClick={() => void navigate({ to: '/health-check' })}
+              >
+                Review {'\u2192'}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary health-check-card__btn"
+                onClick={async () => {
+                  try {
+                    await dismissHealthCheck();
+                    void queryClient.invalidateQueries({ queryKey: ['health-check-state'] });
+                  } catch {
+                    // ignore
+                  }
+                }}
+              >
+                Not now
               </button>
             </div>
           </div>

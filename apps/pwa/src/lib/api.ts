@@ -841,3 +841,64 @@ export async function advanceOnboardingTopic(): Promise<{
 export async function finishOnboarding(): Promise<{ session: OnboardingSession }> {
   return request<{ session: OnboardingSession }>('/api/onboarding/finish', { method: 'POST' });
 }
+
+// ─── Data Freshness API (OLI-125) ──────────────────────────────────────────
+
+export type StaleItem = {
+  entityType: 'inbox' | 'routine' | 'reminder' | 'list' | 'mealPlan';
+  entityId: string;
+  entityName: string;
+  lastActivityAt: string;
+  lastActivityDescription: string;
+};
+
+export type StaleItemsResponse = {
+  items: StaleItem[];
+  totalStaleCount: number;
+};
+
+export type HealthCheckState = {
+  lastCompletedAt: string | null;
+  lastDismissedAt: string | null;
+  shouldShow: boolean;
+};
+
+export async function fetchStaleItems(): Promise<StaleItemsResponse> {
+  return request<StaleItemsResponse>('/api/freshness/stale-items');
+}
+
+export async function confirmFreshness(
+  entityType: string,
+  entityId: string,
+  actorRole: ActorRole,
+  expectedVersion: number
+): Promise<{ newVersion: number }> {
+  return request<{ newVersion: number }>('/api/freshness/confirm', {
+    method: 'POST',
+    body: JSON.stringify({ entityType, entityId, actorRole, expectedVersion })
+  });
+}
+
+export async function archiveFreshnessEntity(
+  entityType: string,
+  entityId: string,
+  actorRole: ActorRole,
+  expectedVersion: number
+): Promise<{ newVersion: number }> {
+  return request<{ newVersion: number }>('/api/freshness/archive', {
+    method: 'POST',
+    body: JSON.stringify({ entityType, entityId, actorRole, expectedVersion })
+  });
+}
+
+export async function fetchHealthCheckState(): Promise<HealthCheckState> {
+  return request<HealthCheckState>('/api/freshness/health-check-state');
+}
+
+export async function completeHealthCheck(): Promise<{ success: boolean }> {
+  return request<{ success: boolean }>('/api/freshness/health-check-complete', { method: 'POST' });
+}
+
+export async function dismissHealthCheck(): Promise<{ success: boolean }> {
+  return request<{ success: boolean }>('/api/freshness/health-check-dismiss', { method: 'POST' });
+}
