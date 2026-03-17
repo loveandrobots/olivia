@@ -42,6 +42,9 @@
   --ink-3: rgba(26,16,51,0.3);
   --ink-4: rgba(26,16,51,0.15);
 
+  --violet-text: #6C5CE7;
+  --violet-border: rgba(108,92,231,0.3);
+
   --shadow-sm: 0 2px 8px rgba(26,16,51,0.06);
   --shadow-md: 0 4px 20px rgba(26,16,51,0.08);
   --shadow-lg: 0 8px 32px rgba(26,16,51,0.10);
@@ -80,6 +83,9 @@
   --ink-3: rgba(237,233,255,0.35);
   --ink-4: rgba(237,233,255,0.1);
 
+  --violet-text: #9D93F7;
+  --violet-border: rgba(157,147,247,0.3);
+
   --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
   --shadow-md: 0 4px 20px rgba(0,0,0,0.4);
   --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
@@ -107,6 +113,8 @@
     --ink-2: rgba(237,233,255,0.6);
     --ink-3: rgba(237,233,255,0.35);
     --ink-4: rgba(237,233,255,0.1);
+    --violet-text: #9D93F7;
+    --violet-border: rgba(157,147,247,0.3);
     --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
     --shadow-md: 0 4px 20px rgba(0,0,0,0.4);
     --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
@@ -3916,4 +3924,263 @@ textarea:focus, input:focus, select:focus {
   font-weight: 600;
   color: var(--violet);
   text-decoration: none;
+}
+
+/* ── HOME: TODAY-FORWARD LAYOUT ──────────────────────── */
+
+/* Today section header */
+.home-today {
+  padding: 0 16px 8px;
+  margin: 0 8px;
+}
+
+.home-today-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.home-today-badge {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--violet-text);
+  letter-spacing: 1.4px;
+}
+
+.home-today-date {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.home-today-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.home-today-content .wv-item-card {
+  animation: taskIn 0.35s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+.home-today-content .wv-workflow-section:nth-child(1) .wv-item-card:nth-child(2) { animation-delay: 0.05s; }
+.home-today-content .wv-workflow-section:nth-child(1) .wv-item-card:nth-child(3) { animation-delay: 0.10s; }
+.home-today-content .wv-workflow-section:nth-child(1) .wv-item-card:nth-child(4) { animation-delay: 0.15s; }
+.home-today-content .wv-workflow-section:nth-child(1) .wv-item-card:nth-child(5) { animation-delay: 0.20s; }
+.home-today-content .wv-workflow-section:nth-child(2) .wv-item-card { animation-delay: 0.15s; }
+.home-today-content .wv-workflow-section:nth-child(3) .wv-item-card { animation-delay: 0.25s; }
+.home-today-content .wv-workflow-section:nth-child(4) .wv-item-card { animation-delay: 0.35s; }
+
+/* "N more" link */
+.home-more-link {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--violet-text);
+  text-decoration: none;
+  padding: 4px 2px;
+  display: inline-block;
+}
+
+.home-more-link:hover {
+  text-decoration: underline;
+}
+
+/* Empty today message */
+.home-empty-today {
+  background: var(--surface-2);
+  border-radius: 18px;
+  padding: 16px 18px;
+}
+
+.home-empty-today-eyebrow {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--violet-text);
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  margin-bottom: 10px;
+}
+
+.home-empty-today-msg {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--ink);
+  line-height: 1.5;
+  margin-bottom: 14px;
+  white-space: pre-line;
+}
+
+.home-empty-today-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.home-empty-today-btn {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+  border-left: 2px solid var(--violet);
+  padding: 8px 0 8px 10px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.home-empty-today-btn:hover {
+  color: var(--violet);
+}
+
+/* Workflow nav row */
+.home-workflow-nav {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  flex-wrap: wrap;
+}
+
+.home-workflow-pill {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--violet-text);
+  background: transparent;
+  border: 1px solid var(--violet-border);
+  border-radius: 20px;
+  padding: 6px 14px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.home-workflow-pill:hover {
+  background: var(--violet-dim);
+  border-color: var(--violet-text);
+}
+
+.home-workflow-pill:active {
+  background: var(--violet-dim);
+}
+
+/* Upcoming preview */
+.home-upcoming {
+  padding: 0 16px 8px;
+  margin: 0 8px;
+  animation: fadeIn 0.3s ease 0.15s both;
+}
+
+.home-upcoming-label {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-2);
+  letter-spacing: 1.4px;
+  margin-bottom: 8px;
+}
+
+.home-upcoming-card {
+  background: var(--surface);
+  border-radius: 18px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.home-upcoming-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+  min-height: 44px;
+}
+
+.home-upcoming-row:hover {
+  background: var(--surface-2);
+}
+
+.home-upcoming-day {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  flex-shrink: 0;
+  min-width: 48px;
+}
+
+.home-upcoming-summary {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink);
+}
+
+.home-upcoming-divider {
+  height: 1px;
+  background: var(--ink-4);
+  margin: 0 16px;
+}
+
+.home-week-link {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--violet-text);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 0;
+  margin-top: 4px;
+}
+
+.home-week-link:hover {
+  text-decoration: underline;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Week page back button */
+.week-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: var(--ink);
+  text-decoration: none;
+  border-radius: 12px;
+  transition: background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.week-back-btn:hover {
+  background: var(--surface-2);
+}
+
+/* Reduced motion overrides for home layout */
+@media (prefers-reduced-motion: reduce) {
+  .home-today-content .wv-item-card {
+    animation: none;
+  }
+  .home-upcoming {
+    animation: none;
+  }
+  .home-empty-today {
+    animation: none;
+  }
 }

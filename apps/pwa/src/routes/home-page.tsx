@@ -1,14 +1,15 @@
 import { useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { format } from 'date-fns';
 import { ArrowsClockwise, Bell, ForkKnife, Tray, GearSix } from '@phosphor-icons/react';
 import { computeReminderState, rankRemindersForSurfacing } from '@olivia/domain';
-import { getWeekBounds, formatWeekLabel, formatDayLabel } from '@olivia/domain';
+import { getWeekBounds } from '@olivia/domain';
 import type { Reminder, DraftReminder, WeeklyDayView, WeeklyRoutineOccurrence, WeeklyReminder, WeeklyMealEntry, WeeklyInboxItem } from '@olivia/contracts';
 import { useRole } from '../lib/role';
 import { loadWeeklyView, confirmCreateReminderCommand, snoozeReminderCommand, loadReminderView } from '../lib/sync';
+import { getDisplayName } from '../lib/demo-data';
 import { BottomNav } from '../components/bottom-nav';
 import { NudgeTray, useNudges } from './nudge-tray';
 import { CreateReminderSheet } from '../components/reminders/CreateReminderSheet';
@@ -154,9 +155,9 @@ function InboxItemCard({ item, onClick }: { item: WeeklyInboxItem; onClick: () =
   );
 }
 
-// ─── Empty slot components ───────────────────────────────────────────────────
+// ─── Empty slot components (preserved for /week route) ──────────────────────
 
-function EmptyRoutineSlot({ onClick }: { onClick: () => void }) {
+export function EmptyRoutineSlot({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" className="wv-empty-routine-slot" onClick={onClick} aria-label="No routines today, browse all routines">
       <span className="wv-empty-routine-slot-icon"><ArrowsClockwise size={18} /></span>
@@ -165,7 +166,7 @@ function EmptyRoutineSlot({ onClick }: { onClick: () => void }) {
   );
 }
 
-function EmptyReminderSlot({ onClick }: { onClick: () => void }) {
+export function EmptyReminderSlot({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" className="wv-empty-reminder-slot" onClick={onClick} aria-label="No reminders today, browse all reminders">
       <span className="wv-empty-reminder-slot-icon"><Bell size={18} /></span>
@@ -174,7 +175,7 @@ function EmptyReminderSlot({ onClick }: { onClick: () => void }) {
   );
 }
 
-function EmptyMealSlot({ onClick }: { onClick: () => void }) {
+export function EmptyMealSlot({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" className="wv-empty-meal-slot" onClick={onClick}>
       <span className="wv-empty-meal-slot-icon"><ForkKnife size={18} /></span>
@@ -183,7 +184,7 @@ function EmptyMealSlot({ onClick }: { onClick: () => void }) {
   );
 }
 
-// ─── Day section ──────────────────────────────────────────────────────────────
+// ─── Day section (preserved for /week route) ────────────────────────────────
 
 interface DaySectionProps {
   day: WeeklyDayView;
@@ -198,15 +199,15 @@ interface DaySectionProps {
   onEmptyReminderClick: () => void;
 }
 
-function DaySection({ day, dayIndex, isToday, onRoutineClick, onReminderClick, onMealClick, onInboxClick, onEmptyMealClick, onEmptyRoutineClick, onEmptyReminderClick }: DaySectionProps) {
+export function DaySection({ day, dayIndex, isToday, onRoutineClick, onReminderClick, onMealClick, onInboxClick, onEmptyMealClick, onEmptyRoutineClick, onEmptyReminderClick }: DaySectionProps) {
   const date = new Date(day.date + 'T12:00:00');
-  const dayLabel = formatDayLabel(date, isToday);
+  const dayLabel = format(date, 'EEE d');
 
   return (
     <section
       className={`wv-day-section${isToday ? ' wv-day-section--today' : ''}`}
       id={isToday ? 'today-section' : undefined}
-      aria-label={dayLabel}
+      aria-label={isToday ? `Today, ${dayLabel}` : dayLabel}
     >
       <div className={`wv-day-header${isToday ? ' wv-day-header--today' : ''}`}>
         {isToday && <span className="wv-today-badge">TODAY</span>}
@@ -266,6 +267,129 @@ function DaySection({ day, dayIndex, isToday, onRoutineClick, onReminderClick, o
   );
 }
 
+// ─── Greeting logic ─────────────────────────────────────────────────────────
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour >= 4 && hour < 12) return 'Good morning,';
+  if (hour >= 12 && hour < 17) return 'Good afternoon,';
+  return 'Good evening,';
+}
+
+// ─── Today workflow section (only renders if items exist) ───────────────────
+
+interface TodayWorkflowSectionProps {
+  label: string;
+  linkTo: string;
+  linkLabel: string;
+  children: ReactNode;
+}
+
+function TodayWorkflowSection({ label, linkTo, linkLabel, children }: TodayWorkflowSectionProps) {
+  return (
+    <div className="wv-workflow-section">
+      <div className="wv-workflow-header">
+        <div className="wv-workflow-label">{label}</div>
+        <Link to={linkTo} className="wv-section-link" aria-label={linkLabel}>All →</Link>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ─── Empty today state (Olivia message) ─────────────────────────────────────
+
+function EmptyTodayMessage() {
+  return (
+    <div className="home-empty-today">
+      <div className="home-empty-today-eyebrow">OLIVIA</div>
+      <p className="home-empty-today-msg">
+        Nothing on the calendar today —{'\n'}
+        a good day to check on your routines{'\n'}
+        or plan the week ahead.
+      </p>
+      <div className="home-empty-today-actions">
+        <Link to="/routines" className="home-empty-today-btn">Browse routines →</Link>
+        <Link to="/reminders" className="home-empty-today-btn">Browse reminders →</Link>
+        <Link to="/meals" className="home-empty-today-btn">Browse meals →</Link>
+      </div>
+    </div>
+  );
+}
+
+// ─── Workflow nav row (persistent) ──────────────────────────────────────────
+
+function WorkflowNavRow() {
+  return (
+    <nav className="home-workflow-nav" aria-label="Workflows">
+      <Link to="/routines" className="home-workflow-pill">Routines</Link>
+      <Link to="/reminders" className="home-workflow-pill">Reminders</Link>
+      <Link to="/meals" className="home-workflow-pill">Meals</Link>
+      <Link to="/lists" className="home-workflow-pill">Lists</Link>
+    </nav>
+  );
+}
+
+// ─── Upcoming preview ───────────────────────────────────────────────────────
+
+interface UpcomingSummaryRow {
+  date: string;
+  dayLabel: string;
+  summaryParts: string[];
+}
+
+function buildUpcomingSummary(days: WeeklyDayView[], todayStr: string): UpcomingSummaryRow[] {
+  const rows: UpcomingSummaryRow[] = [];
+  for (const day of days) {
+    if (day.date <= todayStr) continue;
+    const parts: string[] = [];
+    if (day.routines.length > 0) parts.push(`${day.routines.length} routine${day.routines.length > 1 ? 's' : ''}`);
+    if (day.reminders.length > 0) parts.push(`${day.reminders.length} reminder${day.reminders.length > 1 ? 's' : ''}`);
+    if (day.meals.length > 0) parts.push(`${day.meals.length} meal${day.meals.length > 1 ? 's' : ''}`);
+    if (day.inboxItems.length > 0) parts.push(`${day.inboxItems.length} inbox item${day.inboxItems.length > 1 ? 's' : ''}`);
+    if (parts.length === 0) continue;
+    const d = new Date(day.date + 'T12:00:00');
+    rows.push({
+      date: day.date,
+      dayLabel: format(d, 'EEE d'),
+      summaryParts: parts
+    });
+    if (rows.length >= 3) break;
+  }
+  return rows;
+}
+
+function UpcomingPreview({ days, todayStr }: { days: WeeklyDayView[]; todayStr: string }) {
+  const rows = useMemo(() => buildUpcomingSummary(days, todayStr), [days, todayStr]);
+
+  if (rows.length === 0) return null;
+
+  return (
+    <section className="home-upcoming" aria-label="Coming up">
+      <div className="home-upcoming-label">COMING UP</div>
+      <div className="home-upcoming-card">
+        {rows.map((row, i) => (
+          <div key={row.date}>
+            <Link to="/week" className="home-upcoming-row">
+              <span className="home-upcoming-day">{row.dayLabel}</span>
+              <span className="home-upcoming-summary">
+                {row.summaryParts.map((part, j) => (
+                  <span key={j}>
+                    {j > 0 && <span aria-hidden="true"> · </span>}
+                    {part}
+                  </span>
+                ))}
+              </span>
+            </Link>
+            {i < rows.length - 1 && <div className="home-upcoming-divider" />}
+          </div>
+        ))}
+      </div>
+      <Link to="/week" className="home-week-link">This week →</Link>
+    </section>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function HomePage() {
@@ -281,9 +405,8 @@ export function HomePage() {
 
   const { nudges, dismiss: dismissNudge, removeNudge } = useNudges(role);
 
-  const { weekStart, weekEnd } = useMemo(() => getWeekBounds(new Date()), []);
+  const { weekStart } = useMemo(() => getWeekBounds(new Date()), []);
   const weekStartString = useMemo(() => weekStart.toISOString().split('T')[0], [weekStart]);
-  const weekLabel = useMemo(() => formatWeekLabel(weekStart, weekEnd), [weekStart, weekEnd]);
 
   const weeklyQuery = useQuery({
     queryKey: ['weekly-view', weekStartString],
@@ -294,13 +417,6 @@ export function HomePage() {
     queryKey: ['reminder-view', role],
     queryFn: () => loadReminderView(role)
   });
-
-  // Scroll to today's section after initial data load
-  useEffect(() => {
-    if (weeklyQuery.data) {
-      document.getElementById('today-section')?.scrollIntoView({ behavior: 'instant', block: 'start' });
-    }
-  }, [weeklyQuery.data]);
 
   // Nudge card logic (inherited from MVP home screen)
   const { nudge, dueReminders } = useMemo(() => {
@@ -338,6 +454,37 @@ export function HomePage() {
     return today.toISOString().split('T')[0];
   }, []);
 
+  // Compute today's data
+  const todayData = useMemo(() => {
+    if (!weeklyQuery.data) return null;
+    return weeklyQuery.data.days.find(d => d.date === todayStr) ?? null;
+  }, [weeklyQuery.data, todayStr]);
+
+  // Count today's items
+  const todayItemCount = useMemo(() => {
+    if (!todayData) return 0;
+    return todayData.routines.length + todayData.reminders.length + todayData.meals.length + todayData.inboxItems.length;
+  }, [todayData]);
+
+  // Check if any upcoming days have content
+  const hasUpcomingItems = useMemo(() => {
+    if (!weeklyQuery.data) return false;
+    return weeklyQuery.data.days.some(d => d.date > todayStr && (d.routines.length + d.reminders.length + d.meals.length + d.inboxItems.length) > 0);
+  }, [weeklyQuery.data, todayStr]);
+
+  // Subtitle text
+  const subtitleText = useMemo(() => {
+    const now = new Date();
+    const dayName = format(now, 'EEEE');
+    const dateStr = format(now, 'MMMM d');
+    if (todayItemCount > 0) return `${dayName}, ${dateStr} · ${todayItemCount} thing${todayItemCount > 1 ? 's' : ''} today`;
+    if (hasUpcomingItems) return `${dayName}, ${dateStr} · Nothing urgent — enjoy your day`;
+    return `${dayName}, ${dateStr} · Your week looks clear`;
+  }, [todayItemCount, hasUpcomingItems]);
+
+  const displayName = useMemo(() => getDisplayName(role), [role]);
+  const greeting = useMemo(() => getGreeting(), []);
+
   const handleCreateSave = useCallback(async (draft: DraftReminder) => {
     setShowCreateSheet(false);
     await confirmCreateReminderCommand(role, draft);
@@ -355,14 +502,15 @@ export function HomePage() {
     setTimeout(() => setBanner(null), 5000);
   }, [snoozeTarget, role, queryClient]);
 
-  // allEmpty is no longer used to hide day sections — workflow sections always render with empty slots
+  // Max items per workflow section in Today
+  const MAX_TODAY_ITEMS = 4;
 
   return (
     <div className="screen">
-      {/* Sticky header */}
-      <div className="home-header">
+      {/* Sticky header — warm time-aware greeting */}
+      <header className="home-header">
         <div className="home-header-row">
-          <div className="wordmark">olivia</div>
+          <div className="wordmark" style={{ color: 'var(--violet-text)' }}>olivia</div>
           <div className="home-header-actions">
             <div className="avatar-stack" aria-label="Household members">
               <div className="av av-l" title="Lexi">L</div>
@@ -378,15 +526,16 @@ export function HomePage() {
             </button>
           </div>
         </div>
-        <div className="wv-title">This week</div>
-        <div className="greeting-sub">{weekLabel}</div>
+        <div className="greeting">{greeting}</div>
+        <div className="greeting"><em>{displayName}.</em></div>
+        <div className="greeting-sub">{subtitleText}</div>
 
         {role === 'spouse' && (
           <div style={{ marginTop: 12 }}>
             <SpouseBanner />
           </div>
         )}
-      </div>
+      </header>
 
       <div className="screen-scroll" ref={scrollAreaRef}>
         {/* Proactive nudge tray */}
@@ -440,7 +589,6 @@ export function HomePage() {
           <div className="wv-loading" aria-live="polite">
             <div className="wv-loading-bar" />
             <div className="wv-loading-bar wv-loading-bar--short" />
-            <div className="wv-loading-bar" />
           </div>
         )}
 
@@ -458,30 +606,91 @@ export function HomePage() {
           </div>
         )}
 
-        {/* Day sections — always render with empty-state slots when no items */}
-        {weeklyQuery.data && (
-          <div className="wv-days">
-            {weeklyQuery.data.days.map((day, i) => (
-              <DaySection
-                key={day.date}
-                day={day}
-                dayIndex={i}
-                isToday={day.date === todayStr}
-                onRoutineClick={(routineId) => void navigate({ to: '/routines/$routineId', params: { routineId } })}
-                onReminderClick={(reminderId) => void navigate({ to: '/reminders/$reminderId', params: { reminderId } })}
-                onMealClick={(planId) => void navigate({ to: '/meals/$planId', params: { planId } })}
-                onInboxClick={(itemId) => void navigate({ to: '/items/$itemId', params: { itemId } })}
-                onEmptyMealClick={() => void navigate({ to: '/meals' })}
-                onEmptyRoutineClick={() => void navigate({ to: '/routines' })}
-                onEmptyReminderClick={() => void navigate({ to: '/reminders' })}
-              />
-            ))}
-          </div>
+        {/* ── Today Section (Hero Zone) ── */}
+        {weeklyQuery.data && todayData && (
+          <section className="home-today" aria-label="Today">
+            <div className="home-today-header">
+              <span className="home-today-badge">TODAY</span>
+              <span className="home-today-date">{format(new Date(todayData.date + 'T12:00:00'), 'EEEE, MMMM d')}</span>
+            </div>
+
+            {todayItemCount > 0 ? (
+              <div className="home-today-content">
+                {/* Routines — only if items exist */}
+                {todayData.routines.length > 0 && (
+                  <TodayWorkflowSection label="ROUTINES" linkTo="/routines" linkLabel="View all routines">
+                    {todayData.routines.slice(0, MAX_TODAY_ITEMS).map((r, i) => (
+                      <RoutineCard key={`${r.routineId}-today-${i}`} item={r} onClick={() => void navigate({ to: '/routines/$routineId', params: { routineId: r.routineId } })} />
+                    ))}
+                    {todayData.routines.length > MAX_TODAY_ITEMS && (
+                      <Link to="/routines" className="home-more-link">{todayData.routines.length - MAX_TODAY_ITEMS} more →</Link>
+                    )}
+                  </TodayWorkflowSection>
+                )}
+
+                {/* Reminders — only if items exist */}
+                {todayData.reminders.length > 0 && (
+                  <TodayWorkflowSection label="REMINDERS" linkTo="/reminders" linkLabel="View all reminders">
+                    {todayData.reminders.slice(0, MAX_TODAY_ITEMS).map((r) => (
+                      <ReminderCard key={r.reminderId} item={r} onClick={() => void navigate({ to: '/reminders/$reminderId', params: { reminderId: r.reminderId } })} />
+                    ))}
+                    {todayData.reminders.length > MAX_TODAY_ITEMS && (
+                      <Link to="/reminders" className="home-more-link">{todayData.reminders.length - MAX_TODAY_ITEMS} more →</Link>
+                    )}
+                  </TodayWorkflowSection>
+                )}
+
+                {/* Meals — only if items exist */}
+                {todayData.meals.length > 0 && (
+                  <TodayWorkflowSection label="MEALS" linkTo="/meals" linkLabel="View all meals">
+                    {todayData.meals.slice(0, MAX_TODAY_ITEMS).map((m) => (
+                      <MealCard key={m.entryId} item={m} onClick={() => void navigate({ to: '/meals/$planId', params: { planId: m.planId } })} />
+                    ))}
+                    {todayData.meals.length > MAX_TODAY_ITEMS && (
+                      <Link to="/meals" className="home-more-link">{todayData.meals.length - MAX_TODAY_ITEMS} more →</Link>
+                    )}
+                  </TodayWorkflowSection>
+                )}
+
+                {/* Inbox — only if items exist */}
+                {todayData.inboxItems.length > 0 && (
+                  <TodayWorkflowSection label="INBOX" linkTo="/tasks" linkLabel="View all inbox items">
+                    {todayData.inboxItems.slice(0, MAX_TODAY_ITEMS).map((item) => (
+                      <InboxItemCard key={item.itemId} item={item} onClick={() => void navigate({ to: '/items/$itemId', params: { itemId: item.itemId } })} />
+                    ))}
+                    {todayData.inboxItems.length > MAX_TODAY_ITEMS && (
+                      <Link to="/tasks" className="home-more-link">{todayData.inboxItems.length - MAX_TODAY_ITEMS} more →</Link>
+                    )}
+                  </TodayWorkflowSection>
+                )}
+              </div>
+            ) : (
+              <EmptyTodayMessage />
+            )}
+          </section>
         )}
 
-        <div className="weekly-view-footer">
-          <Link to="/history" className="view-history-link">View history →</Link>
-        </div>
+        {/* Empty data state (weeklyQuery loaded but no todayData — shouldn't happen but safeguard) */}
+        {weeklyQuery.data && !todayData && (
+          <section className="home-today" aria-label="Today">
+            <EmptyTodayMessage />
+          </section>
+        )}
+
+        {/* ── Workflow Nav Row ── */}
+        <WorkflowNavRow />
+
+        {/* ── Upcoming Preview ── */}
+        {weeklyQuery.data && (
+          <UpcomingPreview days={weeklyQuery.data.days} todayStr={todayStr} />
+        )}
+
+        {/* This week link (always visible even if no upcoming) */}
+        {weeklyQuery.data && !hasUpcomingItems && (
+          <div style={{ padding: '12px 22px' }}>
+            <Link to="/week" className="home-week-link">This week →</Link>
+          </div>
+        )}
 
         <div className="spacer-bottom" />
       </div>
