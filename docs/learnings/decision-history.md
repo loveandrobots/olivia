@@ -18,6 +18,16 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-055: Home Screen Declutter spec approved — Today-Forward layout with accessibility-compliant tokens
+- Date: 2026-03-16
+- Area: home screen / UI design
+- Decision: Approved the Home Screen Declutter visual spec replacing the 7-day weekly grid with a **Today-Forward layout**. Key decisions: (1) Today is the hero zone — only populated workflow sections render, empty sections hidden entirely. (2) Persistent workflow nav row (Routines · Reminders · Meals · Lists) preserves OLI-110 navigation intent without empty scaffolding. (3) Upcoming days collapsed to summary rows (max 3). (4) New `/week` route for the full weekly view. (5) Two new semantic tokens (`--violet-text`, `--violet-border`) for WCAG AA compliance. (6) Day expansion deferred to M29 fast-follow. (7) `prefers-reduced-motion` support required for all animations.
+- Rationale: The 7-day grid with 21+ section headers and empty-state slots violated product ethos ("reduce coordination burden, not create another dashboard"). Accessibility review identified 8 contrast/font/motion failures that were resolved before approval. The `--violet-text` token is the key systemic fix — raw `--violet` (#6C5CE7) fails AA in dark mode at 3.87:1; the new token resolves to `--violet-2` (#9D93F7) achieving 7.12:1.
+- Alternatives considered: (1) Keep 7-day grid but hide empty sections — rejected because even with hidden empties, 7 day headers create visual noise. (2) Single-day view with swipe navigation — rejected as too aggressive a departure; the upcoming preview preserves week awareness.
+- Trade-offs: Removing the weekly grid from Home means users need an extra tap to see the full week. Mitigated by "This week →" link and summary rows that surface upcoming content. The `/week` route extraction adds routing scope but preserves the existing rendering code.
+- Status: active
+- Related docs: `docs/plans/home-screen-declutter-visual-implementation-spec.md`, OLI-111, OLI-114
+
 ### D-054: M29 defined as post-chat household validation gate — restoring the observation cycle that M28 was designed to provide
 - Date: 2026-03-16
 - Area: milestone definition / product strategy
