@@ -14,6 +14,9 @@ export default defineConfig({
       ? [
           VitePWA({
             registerType: 'autoUpdate',
+            strategies: 'injectManifest',
+            srcDir: 'src',
+            filename: 'sw.ts',
             includeAssets: ['favicon.svg'],
             manifest: {
               name: 'Olivia Household Inbox',
@@ -24,7 +27,7 @@ export default defineConfig({
               start_url: '/',
               icons: [],
             },
-            workbox: {
+            injectManifest: {
               globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
             },
           }),

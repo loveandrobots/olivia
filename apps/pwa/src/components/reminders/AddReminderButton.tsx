@@ -1,13 +1,16 @@
+import type { ReactNode } from 'react';
+import { Plus } from '@phosphor-icons/react';
+
 type AddReminderButtonProps = {
   label?: string;
-  icon?: string;
+  icon?: ReactNode;
   prominent?: boolean;
   onClick?: () => void;
 };
 
 export function AddReminderButton({
   label = 'Add a reminder…',
-  icon = '🔔',
+  icon = <Plus size={20} />,
   prominent = false,
   onClick,
 }: AddReminderButtonProps) {

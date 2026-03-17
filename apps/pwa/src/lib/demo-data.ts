@@ -8,7 +8,7 @@ export type DemoTask = {
   id: string;
   title: string;
   meta: string;
-  badge: 'Overdue' | 'Soon' | 'Shared';
+  badge: 'Needs attention' | 'Soon' | 'Shared';
   accent: 'rose' | 'peach' | 'mint';
   badgeClass: 'badge-rose' | 'badge-peach' | 'badge-violet';
 };
@@ -38,7 +38,7 @@ export type MemoryCategory = {
 /** The active Olivia nudge for the demo state. */
 export const DEMO_NUDGE = {
   message: '"The plumber hasn\'t replied in 3 days. Want me to draft a follow-up for you?"',
-  primaryCta: '✍️ Yes, draft it',
+  primaryCta: 'Yes, draft it',
   secondaryCta: 'Later',
 } as const;
 
@@ -48,7 +48,7 @@ export const DEMO_TASKS: DemoTask[] = [
     id: 'demo-task-1',
     title: 'Follow up on plumber quote',
     meta: 'Added 3 days ago · no reply',
-    badge: 'Overdue',
+    badge: 'Needs attention',
     accent: 'rose',
     badgeClass: 'badge-rose',
   },
@@ -75,7 +75,7 @@ export const DEMO_EVENTS: DemoEvent[] = [
   { dateNum: '14', dateMon: 'Mar', name: 'HVAC service visit',    time: '10:00 – 12:00' },
   { dateNum: '15', dateMon: 'Mar', name: "Jordan's birthday dinner", time: '7:00 PM · River North' },
   { dateNum: '18', dateMon: 'Mar', name: 'Vet — Luna annual',     time: '2:30 PM · Dr. Patel' },
-  { dateNum: '31', dateMon: 'Mar', name: 'Car registration due',  time: "Don't forget!" },
+  { dateNum: '31', dateMon: 'Mar', name: 'Car registration due',  time: 'Renew by end of month' },
 ];
 
 /** Seeded memory categories for the Memory screen. */
@@ -149,7 +149,7 @@ export const DEMO_FULL_TASKS = [
     assignee: 'Lexi',
     assigneeInitial: 'L',
     assigneeClass: '',
-    badge: 'Overdue' as const,
+    badge: 'Needs attention' as const,
     badgeClass: 'badge-rose',
     accent: 'rose' as const,
   },
@@ -206,23 +206,23 @@ export const DEMO_COMPLETED_TASKS = [
 
 /** Initial Olivia chat message. Pre-loaded with nudge context. */
 export const DEMO_INITIAL_MESSAGE =
-  "Hey Lexi! 👋 I noticed the plumber (Mike's Plumbing) hasn't responded to your quote request from 3 days ago. Want me to write a follow-up for you?";
+  "The plumber (Mike's Plumbing) hasn't responded to your quote request from 3 days ago. Want me to draft a follow-up?";
 
 /** Rotational Olivia reply pool. */
 export const OLIVIA_REPLIES = [
-  "On it! Let me look at what's coming up for you this week… 🗓️",
-  "Great question. Based on your household notes, here's what I found:",
-  "I'll add that to your memory so you don't have to remember it yourself! 💡",
+  "Let me look at what's coming up for you this week.",
+  "Based on your household notes, here's what I found:",
+  "I'll add that to your memory so you don't have to track it yourself.",
   "Noted — want me to set a reminder for this? I can nudge you at the right time.",
-  "I can help with that! Give me a second to check your recent context…",
-  "Done! Here's what I found — let me know if you'd like to dig deeper.",
+  "Give me a second to check your recent context.",
+  "Here's what I found — let me know if you'd like to dig deeper.",
 ];
 
 export const QUICK_CHIPS = [
-  '📅 What\'s this week?',
-  '🛠️ Home maintenance due',
-  '👤 What\'s Christian working on?',
-  '💡 What should I remember?',
+  'What\'s this week?',
+  'Home maintenance due',
+  'What\'s Christian working on?',
+  'What should I remember?',
 ];
 
 /** Map internal role to display name. */

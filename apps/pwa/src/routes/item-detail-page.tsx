@@ -92,13 +92,13 @@ export function ItemDetailPage() {
     setShowCreateReminder(false);
     await confirmCreateReminderCommand(role, draft);
     await invalidateReminders();
-    showBanner('✓ Reminder created', 'mint');
+    showBanner('Reminder created', 'mint');
   }, [role, invalidateReminders, showBanner]);
 
   const handleCompleteReminder = useCallback(async (reminder: Reminder) => {
     await completeReminderCommand(role, reminder.id, reminder.version);
     await invalidateReminders();
-    showBanner('✓ Done', 'mint');
+    showBanner('Done', 'mint');
   }, [role, invalidateReminders, showBanner]);
 
   const handleSnoozeSelect = useCallback(async (isoString: string) => {
@@ -107,7 +107,7 @@ export function ItemDetailPage() {
     setSnoozeReminder(null);
     await snoozeReminderCommand(role, target.id, target.version, isoString);
     await invalidateReminders();
-    showBanner(`😴 Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, 'sky');
+    showBanner(`Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, 'sky');
   }, [snoozeReminder, role, invalidateReminders, showBanner]);
 
   const handleCancelReminder = useCallback(async () => {
@@ -124,7 +124,7 @@ export function ItemDetailPage() {
     setEditReminder(null);
     await confirmUpdateReminderCommand(role, target.id, target.version, change);
     await invalidateReminders();
-    showBanner('✓ Updated', 'mint');
+    showBanner('Updated', 'mint');
   }, [editReminder, role, invalidateReminders, showBanner]);
 
   return (

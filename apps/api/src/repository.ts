@@ -4,17 +4,37 @@ import { computeReminderState } from '@olivia/domain';
 import {
   historyEntrySchema,
   inboxItemSchema,
+  listItemHistoryEntrySchema,
+  listItemSchema,
+  mealEntrySchema,
+  mealPlanSchema,
   notificationSubscriptionSchema,
   reminderNotificationPreferencesSchema,
   reminderSchema,
   reminderTimelineEntrySchema,
+  reviewRecordSchema,
+  routineOccurrenceSchema,
+  routineSchema,
+  sharedListSchema,
+  NUDGE_APPROACHING_THRESHOLD_HOURS,
   type ActorRole,
+  type GeneratedListRef,
   type HistoryEntry,
   type InboxItem,
+  type ListItem,
+  type ListItemHistoryEntry,
+  type MealEntry,
+  type MealPlan,
   type NotificationSubscription,
+  type Nudge,
   type Reminder,
   type ReminderNotificationPreferences,
-  type ReminderTimelineEntry
+  type ReminderTimelineEntry,
+  type ReviewRecord,
+  type Routine,
+  type RoutineOccurrence,
+  type RoutineStatus,
+  type SharedList
 } from '@olivia/contracts';
 
 const DEFAULT_REMINDER_PREFERENCES_UPDATED_AT = new Date(0).toISOString();
@@ -38,6 +58,17 @@ export type NotificationDeliveryRecord = {
   reminderId: string | null;
   deliveryBucket: string;
   deliveredAt: string;
+};
+
+export type PushSubscriptionRecord = {
+  id: string;
+  household_id: string;
+  endpoint: string;
+  p256dh_key: string;
+  auth_key: string;
+  user_id: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 const parseJsonColumn = (value: unknown): unknown => (value ? JSON.parse(String(value)) : null);
@@ -125,6 +156,47 @@ const mapReminderPreferencesRow = (
     dueRemindersEnabled: row ? Boolean(row.due_reminders_enabled) : false,
     dailySummaryEnabled: row ? Boolean(row.daily_summary_enabled) : false,
     updatedAt: row?.updated_at ?? DEFAULT_REMINDER_PREFERENCES_UPDATED_AT
+  });
+
+const mapSharedListRow = (row: Record<string, unknown>): SharedList =>
+  sharedListSchema.parse({
+    id: row.id,
+    title: row.title,
+    owner: row.owner,
+    status: row.status,
+    // Summary counts are computed separately and not stored on the row; default to 0
+    activeItemCount: 0,
+    checkedItemCount: 0,
+    allChecked: false,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    archivedAt: row.archived_at ?? null,
+    version: row.version
+  });
+
+const mapListItemRow = (row: Record<string, unknown>): ListItem =>
+  listItemSchema.parse({
+    id: row.id,
+    listId: row.list_id,
+    body: row.body,
+    checked: Boolean(row.checked),
+    checkedAt: row.checked_at ?? null,
+    position: row.position,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    version: row.version
+  });
+
+const mapListItemHistoryRow = (row: Record<string, unknown>): ListItemHistoryEntry =>
+  listItemHistoryEntrySchema.parse({
+    id: row.id,
+    listId: row.list_id,
+    itemId: row.item_id ?? null,
+    actorRole: row.actor_role,
+    eventType: row.event_type,
+    fromValue: parseJsonColumn(row.from_value),
+    toValue: parseJsonColumn(row.to_value),
+    createdAt: row.created_at
   });
 
 export class InboxRepository {
@@ -528,6 +600,702 @@ export class InboxRepository {
     }));
   }
 
+  // ─── Shared List repository ───────────────────────────────────────────────
+
+  listSharedLists(status: 'active' | 'archived' = 'active'): SharedList[] {
+    const rows = this.db
+      .prepare('SELECT * FROM shared_lists WHERE status = ? ORDER BY updated_at DESC')
+      .all(status) as Record<string, unknown>[];
+    return rows.map(mapSharedListRow);
+  }
+
+  getSharedList(listId: string): SharedList | null {
+    const row = this.db
+      .prepare('SELECT * FROM shared_lists WHERE id = ?')
+      .get(listId) as Record<string, unknown> | undefined;
+    return row ? mapSharedListRow(row) : null;
+  }
+
+  getListItems(listId: string): ListItem[] {
+    const rows = this.db
+      .prepare('SELECT * FROM list_items WHERE list_id = ? ORDER BY position ASC, created_at ASC')
+      .all(listId) as Record<string, unknown>[];
+    return rows.map(mapListItemRow);
+  }
+
+  getListItemHistory(listId: string): ListItemHistoryEntry[] {
+    const rows = this.db
+      .prepare('SELECT * FROM list_item_history WHERE list_id = ? ORDER BY created_at DESC')
+      .all(listId) as Record<string, unknown>[];
+    return rows.map(mapListItemHistoryRow);
+  }
+
+  createSharedList(list: SharedList, historyEntry: ListItemHistoryEntry): void {
+    const insertList = this.db.prepare(`
+      INSERT INTO shared_lists (id, title, owner, status, created_at, updated_at, archived_at, version)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertHistory = this.db.prepare(`
+      INSERT INTO list_item_history (id, list_id, item_id, actor_role, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    this.db.transaction(() => {
+      insertList.run(
+        list.id, list.title, list.owner, list.status,
+        list.createdAt, list.updatedAt, list.archivedAt, list.version
+      );
+      insertHistory.run(
+        historyEntry.id, historyEntry.listId, historyEntry.itemId,
+        historyEntry.actorRole, historyEntry.eventType,
+        historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
+        historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
+        historyEntry.createdAt
+      );
+    })();
+  }
+
+  updateSharedList(list: SharedList, historyEntry: ListItemHistoryEntry, expectedVersion: number): boolean {
+    const updateList = this.db.prepare(`
+      UPDATE shared_lists
+      SET title = ?, status = ?, updated_at = ?, archived_at = ?, version = ?
+      WHERE id = ? AND version = ?
+    `);
+    const insertHistory = this.db.prepare(`
+      INSERT INTO list_item_history (id, list_id, item_id, actor_role, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    return this.db.transaction(() => {
+      const result = updateList.run(
+        list.title, list.status, list.updatedAt, list.archivedAt, list.version,
+        list.id, expectedVersion
+      );
+      if (result.changes === 0) {
+        return false;
+      }
+      insertHistory.run(
+        historyEntry.id, historyEntry.listId, historyEntry.itemId,
+        historyEntry.actorRole, historyEntry.eventType,
+        historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
+        historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
+        historyEntry.createdAt
+      );
+      return true;
+    })();
+  }
+
+  deleteSharedList(listId: string): void {
+    // Foreign key cascade deletes list_items and list_item_history
+    this.db.prepare('DELETE FROM shared_lists WHERE id = ?').run(listId);
+  }
+
+  addListItem(item: ListItem, historyEntry: ListItemHistoryEntry): void {
+    const insertItem = this.db.prepare(`
+      INSERT INTO list_items (id, list_id, body, checked, checked_at, position, created_at, updated_at, version)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertHistory = this.db.prepare(`
+      INSERT INTO list_item_history (id, list_id, item_id, actor_role, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    this.db.transaction(() => {
+      insertItem.run(
+        item.id, item.listId, item.body, item.checked ? 1 : 0, item.checkedAt,
+        item.position, item.createdAt, item.updatedAt, item.version
+      );
+      insertHistory.run(
+        historyEntry.id, historyEntry.listId, historyEntry.itemId,
+        historyEntry.actorRole, historyEntry.eventType,
+        historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
+        historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
+        historyEntry.createdAt
+      );
+    })();
+  }
+
+  updateListItem(item: ListItem, historyEntry: ListItemHistoryEntry, expectedVersion: number): boolean {
+    const updateItem = this.db.prepare(`
+      UPDATE list_items
+      SET body = ?, checked = ?, checked_at = ?, updated_at = ?, version = ?
+      WHERE id = ? AND version = ?
+    `);
+    const insertHistory = this.db.prepare(`
+      INSERT INTO list_item_history (id, list_id, item_id, actor_role, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    return this.db.transaction(() => {
+      const result = updateItem.run(
+        item.body, item.checked ? 1 : 0, item.checkedAt, item.updatedAt, item.version,
+        item.id, expectedVersion
+      );
+      if (result.changes === 0) {
+        return false;
+      }
+      insertHistory.run(
+        historyEntry.id, historyEntry.listId, historyEntry.itemId,
+        historyEntry.actorRole, historyEntry.eventType,
+        historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
+        historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
+        historyEntry.createdAt
+      );
+      return true;
+    })();
+  }
+
+  removeListItem(itemId: string, listId: string, historyEntry: ListItemHistoryEntry): void {
+    const deleteItem = this.db.prepare('DELETE FROM list_items WHERE id = ? AND list_id = ?');
+    const insertHistory = this.db.prepare(`
+      INSERT INTO list_item_history (id, list_id, item_id, actor_role, event_type, from_value, to_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    this.db.transaction(() => {
+      deleteItem.run(itemId, listId);
+      insertHistory.run(
+        historyEntry.id, historyEntry.listId, historyEntry.itemId,
+        historyEntry.actorRole, historyEntry.eventType,
+        historyEntry.fromValue ? JSON.stringify(historyEntry.fromValue) : null,
+        historyEntry.toValue ? JSON.stringify(historyEntry.toValue) : null,
+        historyEntry.createdAt
+      );
+    })();
+  }
+
+  getNextListItemPosition(listId: string): number {
+    const row = this.db
+      .prepare('SELECT COALESCE(MAX(position) + 1, 0) AS next_position FROM list_items WHERE list_id = ?')
+      .get(listId) as { next_position: number };
+    return row.next_position;
+  }
+
+  // ─── Routine repository ───────────────────────────────────────────────────
+
+  private mapRoutineRow(row: Record<string, unknown>): Routine {
+    const base = routineSchema.parse({
+      id: row.id,
+      title: row.title,
+      owner: row.owner,
+      recurrenceRule: row.recurrence_rule,
+      intervalDays: row.interval_days ?? null,
+      status: row.status,
+      currentDueDate: row.current_due_date,
+      ritualType: row.ritual_type ?? null,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      archivedAt: row.archived_at ?? null,
+      version: row.version
+    });
+    return base;
+  }
+
+  private mapRoutineOccurrenceRow(row: Record<string, unknown>): RoutineOccurrence {
+    return routineOccurrenceSchema.parse({
+      id: row.id,
+      routineId: row.routine_id,
+      dueDate: row.due_date,
+      completedAt: row.completed_at ?? null,
+      completedBy: row.completed_by ?? null,
+      skipped: Boolean(row.skipped),
+      reviewRecordId: row.review_record_id ?? null,
+      createdAt: row.created_at
+    });
+  }
+
+  listRoutines(status: RoutineStatus = 'active'): Routine[] {
+    const rows = this.db
+      .prepare('SELECT * FROM routines WHERE status = ? ORDER BY current_due_date ASC, updated_at DESC')
+      .all(status) as Record<string, unknown>[];
+    return rows.map((row) => this.mapRoutineRow(row));
+  }
+
+  listActiveAndPausedRoutines(): Routine[] {
+    const rows = this.db
+      .prepare("SELECT * FROM routines WHERE status IN ('active', 'paused') ORDER BY current_due_date ASC, updated_at DESC")
+      .all() as Record<string, unknown>[];
+    return rows.map((row) => this.mapRoutineRow(row));
+  }
+
+  getRoutine(routineId: string): Routine | null {
+    const row = this.db
+      .prepare('SELECT * FROM routines WHERE id = ?')
+      .get(routineId) as Record<string, unknown> | undefined;
+    return row ? this.mapRoutineRow(row) : null;
+  }
+
+  getRoutineOccurrences(routineId: string, limit?: number): RoutineOccurrence[] {
+    const sql = limit
+      ? 'SELECT * FROM routine_occurrences WHERE routine_id = ? ORDER BY due_date DESC LIMIT ?'
+      : 'SELECT * FROM routine_occurrences WHERE routine_id = ? ORDER BY due_date DESC';
+    const rows = (limit
+      ? this.db.prepare(sql).all(routineId, limit)
+      : this.db.prepare(sql).all(routineId)) as Record<string, unknown>[];
+    return rows.map((row) => this.mapRoutineOccurrenceRow(row));
+  }
+
+  getRoutineOccurrenceForDueDate(routineId: string, dueDate: string): RoutineOccurrence | null {
+    const row = this.db
+      .prepare('SELECT * FROM routine_occurrences WHERE routine_id = ? AND due_date = ?')
+      .get(routineId, dueDate) as Record<string, unknown> | undefined;
+    return row ? this.mapRoutineOccurrenceRow(row) : null;
+  }
+
+  createRoutine(routine: Routine): void {
+    this.db.prepare(`
+      INSERT INTO routines (
+        id, title, owner, recurrence_rule, interval_days, status, current_due_date,
+        ritual_type, created_at, updated_at, archived_at, version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      routine.id, routine.title, routine.owner, routine.recurrenceRule, routine.intervalDays,
+      routine.status, routine.currentDueDate, routine.ritualType ?? null,
+      routine.createdAt, routine.updatedAt, routine.archivedAt, routine.version
+    );
+  }
+
+  updateRoutine(routine: Routine, expectedVersion: number): boolean {
+    const result = this.db.prepare(`
+      UPDATE routines
+      SET title = ?, owner = ?, recurrence_rule = ?, interval_days = ?, status = ?,
+          current_due_date = ?, ritual_type = ?, updated_at = ?, archived_at = ?, version = ?
+      WHERE id = ? AND version = ?
+    `).run(
+      routine.title, routine.owner, routine.recurrenceRule, routine.intervalDays, routine.status,
+      routine.currentDueDate, routine.ritualType ?? null, routine.updatedAt, routine.archivedAt, routine.version,
+      routine.id, expectedVersion
+    );
+    return result.changes > 0;
+  }
+
+  deleteRoutine(routineId: string): void {
+    // Foreign key cascade deletes routine_occurrences
+    this.db.prepare('DELETE FROM routines WHERE id = ?').run(routineId);
+  }
+
+  /**
+   * Atomically inserts an occurrence row and advances the routine's currentDueDate.
+   * Returns false if the version check fails (stale update).
+   */
+  completeRoutineOccurrence(
+    updatedRoutine: Routine,
+    occurrence: RoutineOccurrence,
+    expectedVersion: number
+  ): boolean {
+    const insertOccurrence = this.db.prepare(`
+      INSERT INTO routine_occurrences (id, routine_id, due_date, completed_at, completed_by, skipped, review_record_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const updateRoutine = this.db.prepare(`
+      UPDATE routines
+      SET current_due_date = ?, updated_at = ?, version = ?
+      WHERE id = ? AND version = ?
+    `);
+
+    return this.db.transaction(() => {
+      const result = updateRoutine.run(
+        updatedRoutine.currentDueDate,
+        updatedRoutine.updatedAt,
+        updatedRoutine.version,
+        updatedRoutine.id,
+        expectedVersion
+      );
+      if (result.changes === 0) {
+        return false;
+      }
+      insertOccurrence.run(
+        occurrence.id,
+        occurrence.routineId,
+        occurrence.dueDate,
+        occurrence.completedAt,
+        occurrence.completedBy,
+        occurrence.skipped ? 1 : 0,
+        occurrence.reviewRecordId ?? null,
+        occurrence.createdAt
+      );
+      return true;
+    })();
+  }
+
+  // ─── Meal Plan repository ─────────────────────────────────────────────────
+
+  private mapMealPlanRow(row: Record<string, unknown>): MealPlan {
+    return mealPlanSchema.parse({
+      id: row.id,
+      title: row.title,
+      weekStartDate: row.week_start_date,
+      status: row.status,
+      generatedListRefs: JSON.parse(String(row.generated_list_refs || '[]')),
+      mealCount: 0,
+      shoppingItemCount: 0,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      archivedAt: row.archived_at ?? null,
+      version: row.version
+    });
+  }
+
+  private mapMealEntryRow(row: Record<string, unknown>): MealEntry {
+    return mealEntrySchema.parse({
+      id: row.id,
+      planId: row.plan_id,
+      dayOfWeek: row.day_of_week,
+      name: row.name,
+      shoppingItems: JSON.parse(String(row.shopping_items || '[]')),
+      position: row.position,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      version: row.version
+    });
+  }
+
+  listMealPlans(status: 'active' | 'archived' = 'active'): MealPlan[] {
+    const rows = this.db
+      .prepare('SELECT * FROM meal_plans WHERE status = ? ORDER BY updated_at DESC')
+      .all(status) as Record<string, unknown>[];
+    return rows.map((row) => {
+      const plan = this.mapMealPlanRow(row);
+      const entries = this.getMealEntries(plan.id);
+      const mealCount = entries.length;
+      const shoppingItemCount = entries.reduce((sum, e) => sum + e.shoppingItems.length, 0);
+      return { ...plan, mealCount, shoppingItemCount };
+    });
+  }
+
+  getMealPlan(planId: string): MealPlan | null {
+    const row = this.db
+      .prepare('SELECT * FROM meal_plans WHERE id = ?')
+      .get(planId) as Record<string, unknown> | undefined;
+    if (!row) return null;
+    const plan = this.mapMealPlanRow(row);
+    const entries = this.getMealEntries(planId);
+    const mealCount = entries.length;
+    const shoppingItemCount = entries.reduce((sum, e) => sum + e.shoppingItems.length, 0);
+    return { ...plan, mealCount, shoppingItemCount };
+  }
+
+  getMealEntries(planId: string): MealEntry[] {
+    const rows = this.db
+      .prepare('SELECT * FROM meal_entries WHERE plan_id = ? ORDER BY day_of_week ASC, position ASC')
+      .all(planId) as Record<string, unknown>[];
+    return rows.map((row) => this.mapMealEntryRow(row));
+  }
+
+  getNextMealEntryPosition(planId: string, dayOfWeek: number): number {
+    const row = this.db
+      .prepare('SELECT COALESCE(MAX(position) + 1, 0) AS next_position FROM meal_entries WHERE plan_id = ? AND day_of_week = ?')
+      .get(planId, dayOfWeek) as { next_position: number };
+    return row.next_position;
+  }
+
+  createMealPlan(plan: MealPlan): void {
+    this.db.prepare(`
+      INSERT INTO meal_plans (id, title, week_start_date, status, generated_list_refs, created_at, updated_at, archived_at, version)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      plan.id, plan.title, plan.weekStartDate, plan.status,
+      JSON.stringify(plan.generatedListRefs),
+      plan.createdAt, plan.updatedAt, plan.archivedAt, plan.version
+    );
+  }
+
+  updateMealPlan(id: string, changes: Partial<Pick<MealPlan, 'title' | 'status' | 'archivedAt' | 'updatedAt' | 'version' | 'generatedListRefs'>>, expectedVersion: number): boolean {
+    const current = this.db.prepare('SELECT * FROM meal_plans WHERE id = ?').get(id) as Record<string, unknown> | undefined;
+    if (!current) return false;
+    if (Number(current.version) !== expectedVersion) {
+      throw new Error(`Version conflict: expected version ${expectedVersion} but found ${current.version}.`);
+    }
+    const merged = {
+      title: changes.title ?? String(current.title),
+      status: changes.status ?? String(current.status),
+      archivedAt: 'archivedAt' in changes ? (changes.archivedAt ?? null) : (current.archived_at ? String(current.archived_at) : null),
+      updatedAt: changes.updatedAt ?? new Date().toISOString(),
+      version: changes.version ?? (Number(current.version) + 1),
+      generatedListRefs: changes.generatedListRefs !== undefined ? JSON.stringify(changes.generatedListRefs) : String(current.generated_list_refs)
+    };
+    const result = this.db.prepare(`
+      UPDATE meal_plans
+      SET title = ?, status = ?, archived_at = ?, updated_at = ?, version = ?, generated_list_refs = ?
+      WHERE id = ? AND version = ?
+    `).run(
+      merged.title, merged.status, merged.archivedAt, merged.updatedAt, merged.version, merged.generatedListRefs,
+      id, expectedVersion
+    );
+    return result.changes > 0;
+  }
+
+  deleteMealPlan(planId: string): void {
+    this.db.prepare('DELETE FROM meal_plans WHERE id = ?').run(planId);
+  }
+
+  addMealEntry(entry: MealEntry): void {
+    this.db.prepare(`
+      INSERT INTO meal_entries (id, plan_id, day_of_week, name, shopping_items, position, created_at, updated_at, version)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      entry.id, entry.planId, entry.dayOfWeek, entry.name,
+      JSON.stringify(entry.shoppingItems),
+      entry.position, entry.createdAt, entry.updatedAt, entry.version
+    );
+  }
+
+  updateMealEntry(id: string, changes: Partial<Pick<MealEntry, 'name' | 'shoppingItems' | 'updatedAt' | 'version'>>, expectedVersion: number): boolean {
+    const current = this.db.prepare('SELECT * FROM meal_entries WHERE id = ?').get(id) as Record<string, unknown> | undefined;
+    if (!current) return false;
+    if (Number(current.version) !== expectedVersion) {
+      throw new Error(`Version conflict: expected version ${expectedVersion} but found ${current.version}.`);
+    }
+    const merged = {
+      name: changes.name ?? String(current.name),
+      shoppingItems: changes.shoppingItems !== undefined ? JSON.stringify(changes.shoppingItems) : String(current.shopping_items),
+      updatedAt: changes.updatedAt ?? new Date().toISOString(),
+      version: changes.version ?? (Number(current.version) + 1)
+    };
+    const result = this.db.prepare(`
+      UPDATE meal_entries
+      SET name = ?, shopping_items = ?, updated_at = ?, version = ?
+      WHERE id = ? AND version = ?
+    `).run(
+      merged.name, merged.shoppingItems, merged.updatedAt, merged.version,
+      id, expectedVersion
+    );
+    return result.changes > 0;
+  }
+
+  deleteMealEntry(entryId: string): void {
+    this.db.prepare('DELETE FROM meal_entries WHERE id = ?').run(entryId);
+  }
+
+  addGeneratedListRef(planId: string, ref: GeneratedListRef, expectedVersion: number): boolean {
+    const current = this.db.prepare('SELECT * FROM meal_plans WHERE id = ?').get(planId) as Record<string, unknown> | undefined;
+    if (!current) return false;
+    if (Number(current.version) !== expectedVersion) {
+      throw new Error(`Version conflict: expected version ${expectedVersion} but found ${current.version}.`);
+    }
+    const existingRefs: GeneratedListRef[] = JSON.parse(String(current.generated_list_refs || '[]'));
+    const newRefs = [...existingRefs, ref];
+    const result = this.db.prepare(`
+      UPDATE meal_plans
+      SET generated_list_refs = ?, version = ?, updated_at = ?
+      WHERE id = ? AND version = ?
+    `).run(
+      JSON.stringify(newRefs), Number(current.version) + 1, new Date().toISOString(),
+      planId, expectedVersion
+    );
+    return result.changes > 0;
+  }
+
+  getWeeklyViewData(weekStart: Date, weekEnd: Date): {
+    reminders: Reminder[];
+    routines: Routine[];
+    routineOccurrences: Map<string, RoutineOccurrence[]>;
+    activeMealPlan: MealPlan | null;
+    mealEntries: MealEntry[];
+    inboxItems: InboxItem[];
+  } {
+    const weekStartIso = weekStart.toISOString();
+    const weekEndIso = weekEnd.toISOString();
+
+    // Reminders scheduled within the week window
+    const reminderRows = this.db
+      .prepare(`${REMINDER_SELECT} WHERE reminders.scheduled_at >= ? AND reminders.scheduled_at <= ? ORDER BY reminders.scheduled_at ASC`)
+      .all(weekStartIso, weekEndIso) as Record<string, unknown>[];
+    const reminders = reminderRows.map((row) => mapReminderRow(row, weekStart));
+
+    // All active routines (projection happens in route handler)
+    const routines = this.listActiveAndPausedRoutines();
+
+    // Batch-fetch occurrences for all active routines (date range: 1 month before weekStart to weekEnd)
+    // Using date-only prefix comparison to handle timezone-safe date matching
+    const weekStartDate = weekStart.toISOString().split('T')[0];
+    const weekEndDate = weekEnd.toISOString().split('T')[0];
+    const occurrenceRows = routines.length > 0
+      ? this.db
+          .prepare(`SELECT * FROM routine_occurrences WHERE date(due_date) >= ? AND date(due_date) <= ? ORDER BY due_date DESC`)
+          .all(weekStartDate, weekEndDate) as Record<string, unknown>[]
+      : [];
+    const routineOccurrences = new Map<string, RoutineOccurrence[]>();
+    for (const row of occurrenceRows) {
+      const occ = this.mapRoutineOccurrenceRow(row);
+      const existing = routineOccurrences.get(occ.routineId) ?? [];
+      existing.push(occ);
+      routineOccurrences.set(occ.routineId, existing);
+    }
+
+    // Active meal plan whose week_start_date matches weekStart (date-only comparison)
+    const mealPlanRow = this.db
+      .prepare(`SELECT * FROM meal_plans WHERE status = 'active' AND week_start_date = ? LIMIT 1`)
+      .get(weekStartDate) as Record<string, unknown> | undefined;
+    const activeMealPlan = mealPlanRow ? this.mapMealPlanRow(mealPlanRow) : null;
+    const mealEntries = activeMealPlan ? this.getMealEntries(activeMealPlan.id) : [];
+
+    // Inbox items with dueAt within the week window
+    const inboxRows = this.db
+      .prepare(`SELECT * FROM inbox_items WHERE due_at >= ? AND due_at <= ? ORDER BY due_at ASC`)
+      .all(weekStartIso, weekEndIso) as Record<string, unknown>[];
+    const inboxItems = inboxRows.map(mapItemRow);
+
+    return { reminders, routines, routineOccurrences, activeMealPlan, mealEntries, inboxItems };
+  }
+
+  getActivityHistoryData(windowStart: Date, windowEnd: Date): {
+    completedRoutineOccurrences: Array<{ routineOccurrence: RoutineOccurrence; routine: Routine }>;
+    resolvedReminders: Reminder[];
+    pastMealEntries: Array<{ entry: MealEntry; plan: MealPlan }>;
+    doneInboxItems: InboxItem[];
+    checkedListItems: Array<{ item: ListItem; listName: string }>;
+  } {
+    const windowStartDate = windowStart.toISOString().split('T')[0];
+    const windowEndDate = windowEnd.toISOString().split('T')[0];
+
+    // Completed routine occurrences within the window (joined with non-archived routines)
+    const routineOccurrenceRows = this.db.prepare(`
+      SELECT ro.*, r.title AS routine_title, r.owner AS routine_owner,
+             r.recurrence_rule, r.interval_days, r.status AS routine_status,
+             r.current_due_date, r.created_at AS routine_created_at,
+             r.updated_at AS routine_updated_at, r.archived_at AS routine_archived_at,
+             r.version AS routine_version, r.ritual_type AS routine_ritual_type
+      FROM routine_occurrences ro
+      JOIN routines r ON ro.routine_id = r.id
+      WHERE ro.completed_at IS NOT NULL
+        AND r.status != 'archived'
+        AND date(ro.due_date) >= ?
+        AND date(ro.due_date) <= ?
+      ORDER BY ro.completed_at DESC
+    `).all(windowStartDate, windowEndDate) as Record<string, unknown>[];
+
+    const completedRoutineOccurrences = routineOccurrenceRows.map((row) => {
+      const routineOccurrence = this.mapRoutineOccurrenceRow(row);
+      const routine = routineSchema.parse({
+        id: row.routine_id,
+        title: row.routine_title,
+        owner: row.routine_owner,
+        recurrenceRule: row.recurrence_rule,
+        intervalDays: row.interval_days ?? null,
+        status: row.routine_status,
+        currentDueDate: row.current_due_date,
+        ritualType: row.routine_ritual_type ?? null,
+        createdAt: row.routine_created_at,
+        updatedAt: row.routine_updated_at,
+        archivedAt: row.routine_archived_at ?? null,
+        version: row.routine_version
+      });
+      return { routineOccurrence, routine };
+    });
+
+    // Resolved reminders (completed or cancelled/dismissed) within the window
+    const reminderRows = this.db.prepare(`
+      SELECT * FROM reminders
+      WHERE (
+        (completed_at IS NOT NULL
+          AND date(completed_at) >= ? AND date(completed_at) <= ?)
+        OR
+        (cancelled_at IS NOT NULL AND completed_at IS NULL
+          AND date(cancelled_at) >= ? AND date(cancelled_at) <= ?)
+      )
+      ORDER BY COALESCE(completed_at, cancelled_at) DESC
+    `).all(windowStartDate, windowEndDate, windowStartDate, windowEndDate) as Record<string, unknown>[];
+
+    const resolvedReminders = reminderRows.map((row) => mapReminderRow(row));
+
+    // Past meal plan entries: plans starting before current Monday whose entries fall in window
+    // Add 7-day buffer to handle plans that started before window but have in-window entries
+    const windowStartMinus7 = new Date(windowStart);
+    windowStartMinus7.setDate(windowStartMinus7.getDate() - 7);
+    const windowStartMinus7Date = windowStartMinus7.toISOString().split('T')[0];
+
+    // Current Monday date string for "before current Monday" filter
+    const currentDate = new Date();
+    const dow = currentDate.getDay();
+    const diffToMonday = dow === 0 ? -6 : 1 - dow;
+    const currentMonday = new Date(currentDate);
+    currentMonday.setDate(currentDate.getDate() + diffToMonday);
+    currentMonday.setHours(0, 0, 0, 0);
+    const currentMondayDate = currentMonday.toISOString().split('T')[0];
+
+    const mealRows = this.db.prepare(`
+      SELECT mp.id AS plan_id, mp.title AS plan_title, mp.week_start_date, mp.status AS plan_status,
+             mp.generated_list_refs, mp.created_at AS plan_created_at,
+             mp.updated_at AS plan_updated_at, mp.archived_at AS plan_archived_at,
+             mp.version AS plan_version,
+             me.id AS entry_id, me.day_of_week, me.name, me.shopping_items,
+             me.position, me.created_at AS entry_created_at,
+             me.updated_at AS entry_updated_at, me.version AS entry_version
+      FROM meal_plans mp
+      JOIN meal_entries me ON me.plan_id = mp.id
+      WHERE mp.status != 'archived'
+        AND mp.week_start_date < ?
+        AND mp.week_start_date >= ?
+      ORDER BY mp.week_start_date DESC, me.day_of_week ASC
+    `).all(currentMondayDate, windowStartMinus7Date) as Record<string, unknown>[];
+
+    const pastMealEntries: Array<{ entry: MealEntry; plan: MealPlan }> = [];
+    for (const row of mealRows) {
+      // Compute entry effective date
+      const weekStart = row.week_start_date as string;
+      const dayOfWeek = Number(row.day_of_week);
+      const entryDate = new Date(weekStart + 'T00:00:00');
+      entryDate.setDate(entryDate.getDate() + dayOfWeek);
+      const entryDateStr = entryDate.toISOString().split('T')[0];
+
+      // Filter to entries within the activity window
+      if (entryDateStr < windowStartDate || entryDateStr > windowEndDate) continue;
+
+      const plan = this.mapMealPlanRow({
+        id: row.plan_id,
+        title: row.plan_title,
+        week_start_date: row.week_start_date,
+        status: row.plan_status,
+        generated_list_refs: row.generated_list_refs,
+        created_at: row.plan_created_at,
+        updated_at: row.plan_updated_at,
+        archived_at: row.plan_archived_at ?? null,
+        version: row.plan_version
+      });
+      const entry = this.mapMealEntryRow({
+        id: row.entry_id,
+        plan_id: row.plan_id,
+        day_of_week: row.day_of_week,
+        name: row.name,
+        shopping_items: row.shopping_items,
+        position: row.position,
+        created_at: row.entry_created_at,
+        updated_at: row.entry_updated_at,
+        version: row.entry_version
+      });
+      pastMealEntries.push({ entry, plan });
+    }
+
+    // Done inbox items within the window (by lastStatusChangedAt)
+    const inboxRows = this.db.prepare(`
+      SELECT * FROM inbox_items
+      WHERE status = 'done'
+        AND date(last_status_changed_at) >= ?
+        AND date(last_status_changed_at) <= ?
+      ORDER BY last_status_changed_at DESC
+    `).all(windowStartDate, windowEndDate) as Record<string, unknown>[];
+    const doneInboxItems = inboxRows.map(mapItemRow);
+
+    // Checked list items within the window (JOIN with shared_lists for list name)
+    const listItemRows = this.db.prepare(`
+      SELECT li.*, sl.title AS list_title
+      FROM list_items li
+      JOIN shared_lists sl ON li.list_id = sl.id
+      WHERE li.checked = 1
+        AND li.checked_at IS NOT NULL
+        AND date(li.checked_at) >= ?
+        AND date(li.checked_at) <= ?
+      ORDER BY li.checked_at DESC
+    `).all(windowStartDate, windowEndDate) as Record<string, unknown>[];
+    const checkedListItems = listItemRows.map((row) => ({
+      item: mapListItemRow(row),
+      listName: String(row.list_title)
+    }));
+
+    return { completedRoutineOccurrences, resolvedReminders, pastMealEntries, doneInboxItems, checkedListItems };
+  }
+
   exportSnapshot(): {
     items: InboxItem[];
     history: HistoryEntry[];
@@ -554,4 +1322,406 @@ export class InboxRepository {
       notificationDeliveries: this.listNotificationDeliveries('stakeholder')
     };
   }
+
+  // ─── Review Record repository ──────────────────────────────────────────────
+
+  private mapReviewRecordRow(row: Record<string, unknown>): ReviewRecord {
+    return reviewRecordSchema.parse({
+      id: row.id,
+      ritualOccurrenceId: row.ritual_occurrence_id,
+      reviewDate: row.review_date,
+      lastWeekWindowStart: row.last_week_window_start,
+      lastWeekWindowEnd: row.last_week_window_end,
+      currentWeekWindowStart: row.current_week_window_start,
+      currentWeekWindowEnd: row.current_week_window_end,
+      carryForwardNotes: row.carry_forward_notes ?? null,
+      completedAt: row.completed_at,
+      completedBy: row.completed_by,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      version: row.version,
+      recapNarrative: row.recap_narrative ?? null,
+      overviewNarrative: row.overview_narrative ?? null,
+      aiGenerationUsed: row.ai_generation_used === 1
+    });
+  }
+
+  createReviewRecord(record: Omit<ReviewRecord, 'createdAt' | 'updatedAt' | 'version' | 'pendingSync'>): ReviewRecord {
+    const now = new Date().toISOString();
+    const full: ReviewRecord = {
+      ...record,
+      createdAt: now,
+      updatedAt: now,
+      version: 1
+    };
+    this.db.prepare(`
+      INSERT INTO review_records (
+        id, ritual_occurrence_id, review_date,
+        last_week_window_start, last_week_window_end,
+        current_week_window_start, current_week_window_end,
+        carry_forward_notes, completed_at, completed_by,
+        created_at, updated_at, version,
+        recap_narrative, overview_narrative, ai_generation_used
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      full.id, full.ritualOccurrenceId, full.reviewDate,
+      full.lastWeekWindowStart, full.lastWeekWindowEnd,
+      full.currentWeekWindowStart, full.currentWeekWindowEnd,
+      full.carryForwardNotes, full.completedAt, full.completedBy,
+      full.createdAt, full.updatedAt, full.version,
+      full.recapNarrative ?? null, full.overviewNarrative ?? null,
+      (full.aiGenerationUsed ?? false) ? 1 : 0
+    );
+    return full;
+  }
+
+  getReviewRecord(reviewRecordId: string): ReviewRecord | null {
+    const row = this.db
+      .prepare('SELECT * FROM review_records WHERE id = ?')
+      .get(reviewRecordId) as Record<string, unknown> | undefined;
+    return row ? this.mapReviewRecordRow(row) : null;
+  }
+
+  /**
+   * Atomically marks an occurrence complete with a review record reference,
+   * and advances the routine's currentDueDate.
+   * Returns false if the routine version check fails.
+   */
+  completeRitualOccurrence(
+    updatedRoutine: Routine,
+    occurrence: RoutineOccurrence,
+    reviewRecord: ReviewRecord,
+    expectedVersion: number
+  ): boolean {
+    const insertOccurrence = this.db.prepare(`
+      INSERT INTO routine_occurrences (
+        id, routine_id, due_date, completed_at, completed_by, skipped, review_record_id, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, NULL, ?)
+    `);
+    const insertRecord = this.db.prepare(`
+      INSERT INTO review_records (
+        id, ritual_occurrence_id, review_date,
+        last_week_window_start, last_week_window_end,
+        current_week_window_start, current_week_window_end,
+        carry_forward_notes, completed_at, completed_by,
+        created_at, updated_at, version,
+        recap_narrative, overview_narrative, ai_generation_used
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const linkOccurrence = this.db.prepare(`
+      UPDATE routine_occurrences SET review_record_id = ? WHERE id = ?
+    `);
+    const updateRoutine = this.db.prepare(`
+      UPDATE routines
+      SET current_due_date = ?, updated_at = ?, version = ?
+      WHERE id = ? AND version = ?
+    `);
+
+    return this.db.transaction(() => {
+      const result = updateRoutine.run(
+        updatedRoutine.currentDueDate,
+        updatedRoutine.updatedAt,
+        updatedRoutine.version,
+        updatedRoutine.id,
+        expectedVersion
+      );
+      if (result.changes === 0) return false;
+
+      // Insert occurrence first (review_records.ritual_occurrence_id FK references it)
+      insertOccurrence.run(
+        occurrence.id,
+        occurrence.routineId,
+        occurrence.dueDate,
+        occurrence.completedAt,
+        occurrence.completedBy,
+        occurrence.skipped ? 1 : 0,
+        occurrence.createdAt
+      );
+
+      // Now insert review record (occurrence exists, FK satisfied)
+      insertRecord.run(
+        reviewRecord.id, reviewRecord.ritualOccurrenceId, reviewRecord.reviewDate,
+        reviewRecord.lastWeekWindowStart, reviewRecord.lastWeekWindowEnd,
+        reviewRecord.currentWeekWindowStart, reviewRecord.currentWeekWindowEnd,
+        reviewRecord.carryForwardNotes, reviewRecord.completedAt, reviewRecord.completedBy,
+        reviewRecord.createdAt, reviewRecord.updatedAt, reviewRecord.version,
+        reviewRecord.recapNarrative ?? null, reviewRecord.overviewNarrative ?? null,
+        (reviewRecord.aiGenerationUsed ?? false) ? 1 : 0
+      );
+
+      // Link occurrence back to the review record
+      linkOccurrence.run(reviewRecord.id, occurrence.id);
+
+      return true;
+    })();
+  }
+
+  // ─── Proactive Household Nudges ─────────────────────────────────────────────
+
+  /**
+   * Returns all active nudge payloads (unsorted). Priority sorting is done by the caller.
+   * Overdue routines/rituals + approaching/overdue reminders within the 24h threshold.
+   */
+  getNudgePayloads(now: Date): Nudge[] {
+    const thresholdDatetime = new Date(now.getTime() + NUDGE_APPROACHING_THRESHOLD_HOURS * 60 * 60 * 1000);
+    const nudges: Nudge[] = [];
+
+    // Overdue routines and planning rituals
+    const overdueRoutineRows = this.db.prepare(`
+      SELECT r.id, r.title, r.ritual_type, r.current_due_date
+      FROM routines r
+      WHERE r.status = 'active'
+        AND r.current_due_date < ?
+        AND NOT EXISTS (
+          SELECT 1 FROM routine_occurrences o
+          WHERE o.routine_id = r.id
+            AND o.due_date = r.current_due_date
+            AND o.completed_at IS NOT NULL
+        )
+    `).all(now.toISOString()) as Array<{ id: string; title: string; ritual_type: string | null; current_due_date: string }>;
+
+    for (const row of overdueRoutineRows) {
+      const entityType: Nudge['entityType'] = row.ritual_type === 'weekly_review' ? 'planningRitual' : 'routine';
+      const overdueSince = row.current_due_date.slice(0, 10);
+      const overdueDate = new Date(row.current_due_date);
+      const daysAgo = Math.floor((now.getTime() - overdueDate.getTime()) / (1000 * 60 * 60 * 24));
+      let triggerReason: string;
+      if (daysAgo <= 1) {
+        triggerReason = entityType === 'planningRitual' ? 'Weekly review · Overdue since yesterday' : 'Overdue since yesterday';
+      } else if (daysAgo <= 7) {
+        const weekday = overdueDate.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+        triggerReason = entityType === 'planningRitual' ? `Weekly review · Overdue since ${weekday}` : `Overdue since ${weekday}`;
+      } else {
+        triggerReason = entityType === 'planningRitual' ? 'Weekly review overdue' : 'Overdue — due last week';
+      }
+      nudges.push({ entityType, entityId: row.id, entityName: row.title, triggerReason, overdueSince, dueAt: null });
+    }
+
+    // Approaching and overdue reminders
+    const reminderRows = this.db.prepare(`
+      SELECT id, title, scheduled_at, snoozed_until
+      FROM reminders
+      WHERE completed_at IS NULL
+        AND cancelled_at IS NULL
+        AND COALESCE(snoozed_until, scheduled_at) <= ?
+    `).all(thresholdDatetime.toISOString()) as Array<{ id: string; title: string; scheduled_at: string; snoozed_until: string | null }>;
+
+    for (const row of reminderRows) {
+      const effectiveDueAt = row.snoozed_until ?? row.scheduled_at;
+      const dueDate = new Date(effectiveDueAt);
+      const isPast = dueDate <= now;
+      let triggerReason: string;
+      if (isPast) {
+        const dueDay = dueDate.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+        const dueHour = dueDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' });
+        triggerReason = `Overdue since ${dueDay} ${dueHour}`;
+      } else {
+        const msUntil = dueDate.getTime() - now.getTime();
+        const hoursUntil = msUntil / (1000 * 60 * 60);
+        if (hoursUntil < 1) {
+          const minutesUntil = Math.round(msUntil / (1000 * 60));
+          triggerReason = `Due in ${minutesUntil} minute${minutesUntil !== 1 ? 's' : ''}`;
+        } else {
+          const hoursRounded = Math.round(hoursUntil);
+          triggerReason = `Due in ${hoursRounded} hour${hoursRounded !== 1 ? 's' : ''}`;
+        }
+      }
+      nudges.push({
+        entityType: 'reminder',
+        entityId: row.id,
+        entityName: row.title,
+        triggerReason,
+        overdueSince: isPast ? effectiveDueAt.slice(0, 10) : null,
+        dueAt: effectiveDueAt
+      });
+    }
+
+    return nudges;
+  }
+
+  /**
+   * Returns the last N completedAt timestamps for a routine, ordered newest-first.
+   * Excludes skipped occurrences and null completedAt values.
+   */
+  getRoutineCompletionTimestamps(routineId: string, limit: number): string[] {
+    const rows = this.db.prepare(`
+      SELECT completed_at
+      FROM routine_occurrences
+      WHERE routine_id = ?
+        AND completed_at IS NOT NULL
+        AND skipped = 0
+      ORDER BY completed_at DESC
+      LIMIT ?
+    `).all(routineId, limit) as Array<{ completed_at: string }>;
+
+    return rows.map((r) => r.completed_at);
+  }
+
+  // ─── Push Subscriptions (H5 nudge push) ──────────────────────────────────────
+
+  savePushSubscription(endpoint: string, p256dh: string, auth: string, userId?: string): PushSubscriptionRecord {
+    const now = new Date().toISOString();
+    const existing = this.db.prepare('SELECT id FROM push_subscriptions WHERE endpoint = ?').get(endpoint) as { id: string } | undefined;
+    const id = existing?.id ?? randomUUID();
+
+    this.db.prepare(`
+      INSERT INTO push_subscriptions (id, household_id, endpoint, p256dh_key, auth_key, user_id, created_at, updated_at)
+      VALUES (?, 'household', ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(endpoint) DO UPDATE SET
+        p256dh_key = excluded.p256dh_key,
+        auth_key = excluded.auth_key,
+        user_id = excluded.user_id,
+        updated_at = excluded.updated_at
+    `).run(id, endpoint, p256dh, auth, userId ?? null, now, now);
+
+    return this.db.prepare('SELECT * FROM push_subscriptions WHERE id = ?').get(id) as PushSubscriptionRecord;
+  }
+
+  deletePushSubscription(endpoint: string): void {
+    this.db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').run(endpoint);
+  }
+
+  listPushSubscriptions(): PushSubscriptionRecord[] {
+    return this.db.prepare("SELECT * FROM push_subscriptions WHERE household_id = 'household'").all() as PushSubscriptionRecord[];
+  }
+
+  // ─── Push Notification Log (dedup) ───────────────────────────────────────────
+
+  hasPushNotificationLog(subscriptionId: string, entityType: string, entityId: string, windowMs: number, now: Date): boolean {
+    const cutoff = new Date(now.getTime() - windowMs).toISOString();
+    const row = this.db.prepare(`
+      SELECT COUNT(*) as cnt FROM push_notification_log
+      WHERE subscription_id = ? AND entity_type = ? AND entity_id = ? AND sent_at > ?
+    `).get(subscriptionId, entityType, entityId, cutoff) as { cnt: number };
+    return row.cnt > 0;
+  }
+
+  recordPushNotificationLog(subscriptionId: string, entityType: string, entityId: string, now: Date): void {
+    this.db.prepare(`
+      INSERT INTO push_notification_log (id, subscription_id, entity_type, entity_id, sent_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(randomUUID(), subscriptionId, entityType, entityId, now.toISOString());
+  }
+
+  purgeStalePushNotificationLog(retentionMs: number, now: Date): void {
+    const cutoff = new Date(now.getTime() - retentionMs).toISOString();
+    this.db.prepare('DELETE FROM push_notification_log WHERE sent_at < ?').run(cutoff);
+  }
+
+  // ─── Chat Conversations ────────────────────────────────────────────────────
+
+  getOrCreateConversation(now: Date): { id: string; createdAt: string; updatedAt: string } {
+    const existing = this.db.prepare('SELECT * FROM conversations ORDER BY created_at DESC LIMIT 1').get() as Record<string, unknown> | undefined;
+    if (existing) {
+      return { id: String(existing.id), createdAt: String(existing.created_at), updatedAt: String(existing.updated_at) };
+    }
+    const id = randomUUID();
+    const ts = now.toISOString();
+    this.db.prepare('INSERT INTO conversations (id, created_at, updated_at) VALUES (?, ?, ?)').run(id, ts, ts);
+    return { id, createdAt: ts, updatedAt: ts };
+  }
+
+  touchConversation(conversationId: string, now: Date): void {
+    this.db.prepare('UPDATE conversations SET updated_at = ? WHERE id = ?').run(now.toISOString(), conversationId);
+  }
+
+  addChatMessage(msg: {
+    id: string;
+    conversationId: string;
+    role: string;
+    content: string;
+    toolCalls: unknown[] | null;
+    createdAt: string;
+  }): void {
+    this.db.prepare(`
+      INSERT INTO conversation_messages (id, conversation_id, role, content, tool_calls, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(msg.id, msg.conversationId, msg.role, msg.content, msg.toolCalls ? JSON.stringify(msg.toolCalls) : null, msg.createdAt);
+  }
+
+  listChatMessages(conversationId: string, limit: number, before?: string): { messages: ChatMessageRow[]; hasMore: boolean } {
+    let rows: Record<string, unknown>[];
+    if (before) {
+      rows = this.db.prepare(`
+        SELECT * FROM conversation_messages
+        WHERE conversation_id = ? AND created_at < (SELECT created_at FROM conversation_messages WHERE id = ?)
+        ORDER BY created_at DESC LIMIT ?
+      `).all(conversationId, before, limit + 1) as Record<string, unknown>[];
+    } else {
+      rows = this.db.prepare(`
+        SELECT * FROM conversation_messages
+        WHERE conversation_id = ?
+        ORDER BY created_at DESC LIMIT ?
+      `).all(conversationId, limit + 1) as Record<string, unknown>[];
+    }
+    const hasMore = rows.length > limit;
+    const slice = hasMore ? rows.slice(0, limit) : rows;
+    return {
+      messages: slice.reverse().map(mapChatMessageRow),
+      hasMore
+    };
+  }
+
+  getRecentChatMessages(conversationId: string, limit: number): ChatMessageRow[] {
+    const rows = this.db.prepare(`
+      SELECT * FROM conversation_messages
+      WHERE conversation_id = ?
+      ORDER BY created_at DESC LIMIT ?
+    `).all(conversationId, limit) as Record<string, unknown>[];
+    return rows.reverse().map(mapChatMessageRow);
+  }
+
+  getChatMessage(messageId: string): ChatMessageRow | null {
+    const row = this.db.prepare('SELECT * FROM conversation_messages WHERE id = ?').get(messageId) as Record<string, unknown> | undefined;
+    return row ? mapChatMessageRow(row) : null;
+  }
+
+  updateToolCallStatus(messageId: string, toolCallId: string, status: string): boolean {
+    const row = this.db.prepare('SELECT tool_calls FROM conversation_messages WHERE id = ?').get(messageId) as { tool_calls: string | null } | undefined;
+    if (!row?.tool_calls) return false;
+    const toolCalls = JSON.parse(row.tool_calls) as Array<{ id: string; status: string }>;
+    const tc = toolCalls.find(t => t.id === toolCallId);
+    if (!tc) return false;
+    tc.status = status;
+    this.db.prepare('UPDATE conversation_messages SET tool_calls = ? WHERE id = ?').run(JSON.stringify(toolCalls), messageId);
+    return true;
+  }
+
+  findMessageByToolCallId(toolCallId: string): ChatMessageRow | null {
+    const rows = this.db.prepare(
+      "SELECT * FROM conversation_messages WHERE tool_calls IS NOT NULL ORDER BY created_at DESC"
+    ).all() as Record<string, unknown>[];
+    for (const row of rows) {
+      const toolCalls = JSON.parse(String(row.tool_calls)) as Array<{ id: string }>;
+      if (toolCalls.some(tc => tc.id === toolCallId)) {
+        return mapChatMessageRow(row);
+      }
+    }
+    return null;
+  }
+
+  clearConversation(conversationId: string): void {
+    this.db.transaction(() => {
+      this.db.prepare('DELETE FROM conversation_messages WHERE conversation_id = ?').run(conversationId);
+      this.db.prepare('DELETE FROM conversations WHERE id = ?').run(conversationId);
+    })();
+  }
 }
+
+export type ChatMessageRow = {
+  id: string;
+  conversationId: string;
+  role: string;
+  content: string;
+  toolCalls: Array<{ id: string; type: string; data: Record<string, unknown>; status: string }> | null;
+  createdAt: string;
+};
+
+const mapChatMessageRow = (row: Record<string, unknown>): ChatMessageRow => ({
+  id: String(row.id),
+  conversationId: String(row.conversation_id),
+  role: String(row.role),
+  content: String(row.content),
+  toolCalls: row.tool_calls ? JSON.parse(String(row.tool_calls)) : null,
+  createdAt: String(row.created_at)
+});

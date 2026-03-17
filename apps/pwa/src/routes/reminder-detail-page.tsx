@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReminderUpdateChange } from '@olivia/contracts';
 import { computeReminderState, scheduleNextOccurrence } from '@olivia/domain';
 import { format } from 'date-fns';
+import { Check, Moon, PencilSimple, X, ArrowCounterClockwise, ArrowsClockwise, LinkSimple } from '@phosphor-icons/react';
 import { useRole } from '../lib/role';
 import {
   loadReminderDetail,
@@ -71,7 +72,7 @@ export function ReminderDetailPage() {
     try {
       await completeReminderCommand(role, reminder.id, reminder.version);
       await invalidateAndRefresh();
-      showBanner('✓ Done', 'mint');
+      showBanner('Done', 'mint');
     } finally {
       setBusy(false);
     }
@@ -84,7 +85,7 @@ export function ReminderDetailPage() {
     try {
       await snoozeReminderCommand(role, reminder.id, reminder.version, isoString);
       await invalidateAndRefresh();
-      showBanner(`😴 Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, 'sky');
+      showBanner(`Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, 'sky');
     } finally {
       setBusy(false);
     }
@@ -109,12 +110,13 @@ export function ReminderDetailPage() {
     try {
       await confirmUpdateReminderCommand(role, reminder.id, reminder.version, change);
       await invalidateAndRefresh();
-      showBanner('✓ Updated', 'mint');
+      showBanner('Updated', 'mint');
     } finally {
       setBusy(false);
     }
   }, [reminder, role, invalidateAndRefresh, showBanner]);
 
+  const isSpouse = role === 'spouse';
   const isCompleted = state === 'completed';
   const isCancelled = state === 'cancelled';
   const isDueOrOverdue = state === 'due' || state === 'overdue';
@@ -154,13 +156,13 @@ export function ReminderDetailPage() {
 
               {isCompleted && (
                 <div className="rem-status-banner rem-status-banner-mint">
-                  ✓ Completed · {reminder.completedAt ? format(new Date(reminder.completedAt), 'MMM d') : ''} · by {ownerLabel(reminder.owner)}
+                  <Check size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Completed · {reminder.completedAt ? format(new Date(reminder.completedAt), 'MMM d') : ''} · by {ownerLabel(reminder.owner)}
                 </div>
               )}
 
               {isSnoozed && reminder.snoozedUntil && (
                 <div className="rem-status-banner rem-status-banner-sky">
-                  😴 Snoozed — will resurface {format(new Date(reminder.snoozedUntil), "MMM d 'at' h:mm a")}
+                  <Moon size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Snoozed — will resurface {format(new Date(reminder.snoozedUntil), "MMM d 'at' h:mm a")}
                 </div>
               )}
 
@@ -169,11 +171,11 @@ export function ReminderDetailPage() {
                   className="linked-task-card"
                   onClick={() => void navigate({ to: '/items/$itemId', params: { itemId: reminder.linkedInboxItem!.id } })}
                 >
-                  <div className="linked-task-card-label">🔗 Linked task</div>
+                  <div className="linked-task-card-label"><LinkSimple size={14} style={{ marginRight: 4, verticalAlign: -2 }} /> Linked task</div>
                   <div className="linked-task-card-title">{reminder.linkedInboxItem.title}</div>
                   <div className="linked-task-card-meta">
                     Owner: {ownerLabel(reminder.linkedInboxItem.owner)} · Status: {reminder.linkedInboxItem.status.replace('_', ' ')}
-                    {reminder.linkedInboxItem.status === 'open' && state === 'overdue' && ' · Overdue'}
+                    {reminder.linkedInboxItem.status === 'open' && state === 'overdue' && ' · Needs attention'}
                   </div>
                 </div>
               )}
@@ -257,69 +259,75 @@ export function ReminderDetailPage() {
                 )}
               </div>
 
+              {isSpouse && (
+                <div className="rem-status-banner rem-status-banner-sky" style={{ marginBottom: 16 }}>
+                  View only — actions are available to Lexi
+                </div>
+              )}
+
               {/* Actions — DET-1: upcoming => Edit, Snooze, Cancel */}
-              {state === 'upcoming' && (
+              {!isSpouse && state === 'upcoming' && (
                 <div className="rem-actions-row" style={{ marginBottom: 20 }}>
                   <button type="button" className="rem-btn rem-btn-ghost" disabled={busy} onClick={() => setShowEditSheet(true)}>
-                    ✏️ Edit
+                    <PencilSimple size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Edit
                   </button>
                   <button type="button" className="rem-btn rem-btn-secondary" disabled={busy} onClick={() => setShowSnoozeSheet(true)}>
-                    😴 Snooze
+                    <Moon size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Snooze
                   </button>
                   <button type="button" className="rem-btn rem-btn-danger-text" disabled={busy} onClick={() => setShowCancelSheet(true)}>
-                    ✕ Cancel
+                    <X size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Cancel
                   </button>
                 </div>
               )}
 
               {/* Actions — DET-2/DET-3: due or overdue => Done, Snooze, Edit, Cancel */}
-              {isDueOrOverdue && (
+              {!isSpouse && isDueOrOverdue && (
                 <div style={{ marginBottom: 20 }}>
                   <div className="rem-actions-row" style={{ marginBottom: 10 }}>
                     <button type="button" className="rem-btn rem-btn-done" style={{ flex: 1 }} disabled={busy} onClick={handleComplete}>
-                      ✓ Done
+                      <Check size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Done
                     </button>
                     <button type="button" className="rem-btn rem-btn-secondary" disabled={busy} onClick={() => setShowSnoozeSheet(true)}>
-                      😴 Snooze
+                      <Moon size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Snooze
                     </button>
                   </div>
                   <div className="rem-actions-row">
                     <button type="button" className="rem-btn rem-btn-ghost" disabled={busy} onClick={() => setShowEditSheet(true)}>
-                      {isRecurring ? '✏️ Edit cadence' : '✏️ Edit'}
+                      <PencilSimple size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> {isRecurring ? 'Edit cadence' : 'Edit'}
                     </button>
                     <button type="button" className="rem-btn rem-btn-danger-text" disabled={busy} onClick={() => setShowCancelSheet(true)}>
-                      {isRecurring ? '✕ Cancel series' : '✕ Cancel'}
+                      <X size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> {isRecurring ? 'Cancel series' : 'Cancel'}
                     </button>
                   </div>
                 </div>
               )}
 
               {/* Actions — ACTION-4: snoozed => Change snooze, Un-snooze, Mark done now, Cancel */}
-              {isSnoozed && (
+              {!isSpouse && isSnoozed && (
                 <div style={{ marginBottom: 20 }}>
                   <div className="rem-actions-row" style={{ marginBottom: 10 }}>
                     <button type="button" className="rem-btn rem-btn-secondary" disabled={busy} onClick={() => setShowSnoozeSheet(true)}>
-                      🔄 Change snooze
+                      <ArrowsClockwise size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Change snooze
                     </button>
                     <button type="button" className="rem-btn rem-btn-ghost" disabled={busy} onClick={() => {
                       void handleSnoozeSelect(new Date().toISOString());
                     }}>
-                      ↩ Un-snooze
+                      <ArrowCounterClockwise size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Un-snooze
                     </button>
                   </div>
                   <div className="rem-actions-row">
                     <button type="button" className="rem-btn rem-btn-done" style={{ flex: 1 }} disabled={busy} onClick={handleComplete}>
-                      ✓ Mark done now
+                      <Check size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Mark done now
                     </button>
                     <button type="button" className="rem-btn rem-btn-danger-text" disabled={busy} onClick={() => setShowCancelSheet(true)}>
-                      ✕ Cancel
+                      <X size={16} style={{ marginRight: 4, verticalAlign: -2 }} /> Cancel
                     </button>
                   </div>
                 </div>
               )}
 
               {/* Actions — DET-4: completed => Undo completion */}
-              {isCompleted && (
+              {!isSpouse && isCompleted && (
                 <div className="rem-actions-row" style={{ marginBottom: 20 }}>
                   <button type="button" className="rem-btn rem-btn-ghost" disabled={busy} onClick={() => {
                     void navigate({ to: '/reminders' });
@@ -357,7 +365,7 @@ export function ReminderDetailPage() {
 
       {banner && <ConfirmBanner message={banner.message} variant={banner.variant} />}
 
-      {reminder && (
+      {reminder && !isSpouse && (
         <>
           <EditReminderSheet
             open={showEditSheet}

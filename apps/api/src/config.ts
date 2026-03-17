@@ -13,14 +13,17 @@ export type AppConfig = {
   dbPath: string;
   staleThresholdDays: number;
   dueSoonDays: number;
-  aiProvider: 'disabled';
+  aiProvider: 'disabled' | 'claude';
+  anthropicApiKey?: string;
   notificationsEnabled: boolean;
   vapidPublicKey: string | null;
   vapidPrivateKey: string | null;
   vapidContact: string;
   notificationRules: NotificationRulesConfig;
   notificationIntervalMs: number;
+  nudgePushIntervalMs: number;
   pwaOrigin: string;
+  householdTimezone: string;
 };
 
 export function loadConfig(): AppConfig {
@@ -29,7 +32,8 @@ export function loadConfig(): AppConfig {
     dbPath: resolveDbPath(),
     staleThresholdDays: Number(process.env.OLIVIA_STALE_THRESHOLD_DAYS ?? 14),
     dueSoonDays: Number(process.env.OLIVIA_DUE_SOON_DAYS ?? 7),
-    aiProvider: 'disabled',
+    aiProvider: process.env.ANTHROPIC_API_KEY ? 'claude' : 'disabled',
+    anthropicApiKey: process.env.ANTHROPIC_API_KEY || undefined,
     notificationsEnabled: process.env.OLIVIA_NOTIFICATIONS_ENABLED === 'true',
     vapidPublicKey: process.env.OLIVIA_VAPID_PUBLIC_KEY ?? null,
     vapidPrivateKey: process.env.OLIVIA_VAPID_PRIVATE_KEY ?? null,
@@ -40,6 +44,9 @@ export function loadConfig(): AppConfig {
       digestEnabled: process.env.OLIVIA_NOTIFY_DIGEST === 'true'
     },
     notificationIntervalMs: Number(process.env.OLIVIA_NOTIFICATION_INTERVAL_MS ?? 3_600_000),
-    pwaOrigin: process.env.OLIVIA_PWA_ORIGIN ?? 'http://localhost:4173'
+    nudgePushIntervalMs: Number(process.env.OLIVIA_NUDGE_PUSH_INTERVAL_MS ?? 1_800_000),
+    pwaOrigin: process.env.OLIVIA_PWA_ORIGIN ?? 'http://localhost:4173',
+    householdTimezone: process.env.OLIVIA_HOUSEHOLD_TIMEZONE
+      ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
   };
 }

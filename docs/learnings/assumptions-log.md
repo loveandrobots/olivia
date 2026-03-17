@@ -89,22 +89,22 @@ Use this structure for future entries:
 - Date: 2026-03-13
 - Area: product strategy
 - Statement: Grocery, shopping, packing, and similar shared lists are distinct enough from inbox items that they should be treated as a separate workflow type rather than only a status or category within the inbox.
-- Confidence: medium
+- Confidence: high
 - Why it matters: this assumption shapes Horizon 3 product boundaries and determines whether Olivia extends the inbox model or introduces a sibling workflow.
-- Evidence so far: the stakeholder explicitly prioritized shared lists as a next-horizon workflow and described them as a separate household pain point.
-- Validation path: write the first shared-list spec and test whether list behavior, collaboration, and completion semantics differ enough from the inbox to justify a separate model.
-- Status: active
-- Related docs: `docs/roadmap/roadmap.md`, `docs/glossary.md`
+- Evidence so far: the spec, visual implementation, and full Phase 1 implementation confirmed that list behavior (immediate check/uncheck, no ownership or status semantics) is meaningfully different from inbox item behavior. A separate model was the right choice.
+- Validation path: completed. The shared-list spec and implementation validate this assumption.
+- Status: validated
+- Related docs: `docs/roadmap/roadmap.md`, `docs/glossary.md`, `docs/learnings/decision-history.md` (D-016)
 
 ### A-008: Recurring schedule infrastructure can be shared across multiple Horizon 3 workflows
 - Date: 2026-03-13
 - Area: product architecture
 - Statement: A shared recurrence model can support reminders, recurring routines, and later planning workflows without each workflow inventing separate scheduling primitives.
-- Confidence: medium
+- Confidence: high
 - Why it matters: this assumption affects how much shared infrastructure Horizon 3 should plan for before individual specs are written.
-- Evidence so far: the stakeholder prioritized reminders and recurring routines together, and both appear to need schedule-driven behavior.
-- Validation path: compare the first reminders and recurring-routines specs. If they share recurrence, notification, and ownership needs cleanly, treat recurrence as shared infrastructure; otherwise narrow it per workflow.
-- Status: active
+- Evidence so far: both first-class reminders and recurring routines were implemented sharing recurrence, notification, and scheduling primitives. The shared model held cleanly across both workflow types with no per-workflow scheduling re-invention.
+- Validation path: completed. The reminders and recurring-routines implementations confirm shared schedule infrastructure is viable.
+- Status: validated
 - Related docs: `docs/roadmap/roadmap.md`, `docs/strategy/system-architecture.md`
 
 ### A-009: Meal planning should remain a later Horizon 3 workflow
@@ -113,10 +113,10 @@ Use this structure for future entries:
 - Statement: Meal planning is promising, but should follow reminders, shared lists, and recurring routines rather than being one of the first Horizon 3 implementation targets.
 - Confidence: medium
 - Why it matters: this assumption protects Horizon 3 from trying to solve too many household workflow shapes at once.
-- Evidence so far: the stakeholder prioritized meal planning behind reminders and new workflow primitives such as lists and routines.
-- Validation path: revisit after the first shared-list and recurring-workflow specs exist. If meal planning depends heavily on them, keep it later; if it reveals a more urgent pain point, reorder Horizon 3 priorities.
-- Status: active
-- Related docs: `docs/roadmap/roadmap.md`, `docs/learnings/decision-history.md`
+- Evidence so far: all three predecessor workflows (reminders, shared lists, recurring routines) are now built and validated. The deferred condition is now met. CEO confirmed meal planning as the next spec target via D-019 (OLI-26).
+- Validation path: completed. The prerequisite condition is met and the decision is made. See D-019.
+- Status: validated
+- Related docs: `docs/roadmap/roadmap.md`, `docs/learnings/decision-history.md` (D-019)
 
 ### A-010: Lightweight standalone reminders will reduce pressure to misuse the inbox
 - Date: 2026-03-13
@@ -124,7 +124,7 @@ Use this structure for future entries:
 - Statement: Allowing lightweight standalone reminders alongside linked reminders will reduce the need to represent pure "surface this later" prompts as inbox work, without creating a second full task-management workflow.
 - Confidence: medium
 - Why it matters: this assumption shapes the reminder spec boundary, the relationship between reminders and inbox items, and whether Olivia can support reminder-only use cases without product drift.
-- Evidence so far: the implemented inbox already handles active work and due-state well enough to remain the foundation, while stakeholder input favored a hybrid reminder model rather than an inbox-only or standalone-only approach.
-- Validation path: observe reminder usage after implementation. If standalone reminders remain narrow and reduce inbox misuse, keep the hybrid model. If they become duplicative or confusing, narrow the workflow or push more reminder cases back toward linked reminders.
+- Evidence so far: first-class reminders are now built and available in the PWA. The hybrid model (standalone + linked) was implemented as designed. Validation of actual household impact requires real usage observations — not yet collected as of 2026-03-15.
+- Validation path: observe reminder usage after M7. If standalone reminders remain narrow and reduce inbox misuse, mark validated. If they become duplicative or confusing, narrow the workflow or push more reminder cases back toward linked reminders.
 - Status: active
 - Related docs: `docs/specs/first-class-reminders.md`, `docs/learnings/decision-history.md`

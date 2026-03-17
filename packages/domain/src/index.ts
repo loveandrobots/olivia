@@ -1,4 +1,4 @@
-import { addDays, addMonths, addWeeks, compareAsc, differenceInCalendarDays, isAfter, isBefore } from 'date-fns';
+import { addDays, addMonths, addWeeks, compareAsc, differenceInCalendarDays, endOfDay, endOfWeek, format, getDaysInMonth, isAfter, isBefore, isSameDay, setDate, startOfDay, startOfWeek, subDays, subMonths, subWeeks } from 'date-fns';
 import { parse, parseDate } from 'chrono-node';
 import {
   draftReminderSchema,
@@ -6,15 +6,36 @@ import {
   historyEntrySchema,
   inboxItemSchema,
   itemFlagsSchema,
+  listItemHistoryEntrySchema,
+  listItemSchema,
+  mealEntrySchema,
+  mealPlanSchema,
   reminderSchema,
   reminderTimelineEntrySchema,
   remindersByStateSchema,
+  routineSchema,
+  routineOccurrenceSchema,
+  sharedListSchema,
+  type ActivityHistoryDay,
+  type ActivityHistoryItem,
+  type ActorRole,
   type DraftItem,
   type DraftReminder,
+  type GeneratedListRef,
   type HistoryEntry,
   type InboxItem,
   type ItemFlags,
   type ItemsByStatus,
+  type ListEventType,
+  type ListItem,
+  type ListItemHistoryEntry,
+  type MealEntry,
+  type MealPlan,
+  COMPLETION_WINDOW_MIN_OCCURRENCES,
+  COMPLETION_WINDOW_LEAD_BUFFER_HOURS,
+  COMPLETION_WINDOW_VARIANCE_THRESHOLD_HOURS,
+  type CompletionWindowResult,
+  type Nudge,
   type Owner,
   type ParseConfidence,
   type ParserSource,
@@ -24,6 +45,11 @@ import {
   type ReminderTimelineEntry,
   type ReminderUpdateChange,
   type RemindersByState,
+  type Routine,
+  type RoutineDueState,
+  type RoutineOccurrence,
+  type RoutineRecurrenceRule,
+  type SharedList,
   type Suggestion,
   type UpdateChange
 } from '@olivia/contracts';
@@ -925,4 +951,972 @@ function reminderPriority(state: ReminderState): number {
 
 function removeMatchByIndex(value: string, index: number, length: number): string {
   return `${value.slice(0, index)} ${value.slice(index + length)}`.trim();
+}
+
+// ─── Shared List domain helpers ───────────────────────────────────────────────
+
+export type ListSummary = {
+  activeItemCount: number;
+  checkedItemCount: number;
+  allChecked: boolean;
+};
+
+export function assertStakeholderWrite(actorRole: ActorRole): void {
+  if (actorRole !== 'stakeholder') {
+    const error = new Error('spouse may view lists but may not create, edit, or remove them in this phase');
+    (error as Error & { statusCode?: number; code?: string }).statusCode = 403;
+    (error as Error & { statusCode?: number; code?: string }).code = 'ROLE_READ_ONLY';
+    throw error;
+  }
+}
+
+export function deriveListSummary(items: ListItem[]): ListSummary {
+  const activeItemCount = items.length;
+  const checkedItemCount = items.filter((item) => item.checked).length;
+  const allChecked = activeItemCount > 0 && checkedItemCount === activeItemCount;
+  return { activeItemCount, checkedItemCount, allChecked };
+}
+
+export function createSharedList(title: string, owner: ActorRole, now: Date = new Date()): SharedList {
+  const timestamp = now.toISOString();
+  return sharedListSchema.parse({
+    id: createId(),
+    title: title.trim(),
+    owner,
+    status: 'active',
+    activeItemCount: 0,
+    checkedItemCount: 0,
+    allChecked: false,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    archivedAt: null,
+    version: 1
+  });
+}
+
+export function updateListTitle(list: SharedList, newTitle: string, now: Date = new Date()): SharedList {
+  return sharedListSchema.parse({
+    ...list,
+    title: newTitle.trim(),
+    updatedAt: now.toISOString(),
+    version: list.version + 1
+  });
+}
+
+export function archiveList(list: SharedList, now: Date = new Date()): SharedList {
+  if (list.status === 'archived') {
+    throw new Error('List is already archived.');
+  }
+  const timestamp = now.toISOString();
+  return sharedListSchema.parse({
+    ...list,
+    status: 'archived',
+    archivedAt: timestamp,
+    updatedAt: timestamp,
+    version: list.version + 1
+  });
+}
+
+export function restoreList(list: SharedList, now: Date = new Date()): SharedList {
+  if (list.status !== 'archived') {
+    throw new Error('List is not archived.');
+  }
+  return sharedListSchema.parse({
+    ...list,
+    status: 'active',
+    archivedAt: null,
+    updatedAt: now.toISOString(),
+    version: list.version + 1
+  });
+}
+
+export function addListItem(listId: string, body: string, nextPosition: number, now: Date = new Date()): ListItem {
+  const timestamp = now.toISOString();
+  return listItemSchema.parse({
+    id: createId(),
+    listId,
+    body: body.trim(),
+    checked: false,
+    checkedAt: null,
+    position: nextPosition,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    version: 1
+  });
+}
+
+export function updateItemBody(item: ListItem, newBody: string, now: Date = new Date()): ListItem {
+  return listItemSchema.parse({
+    ...item,
+    body: newBody.trim(),
+    updatedAt: now.toISOString(),
+    version: item.version + 1
+  });
+}
+
+export function checkItem(item: ListItem, now: Date = new Date()): ListItem {
+  const timestamp = now.toISOString();
+  return listItemSchema.parse({
+    ...item,
+    checked: true,
+    checkedAt: timestamp,
+    updatedAt: timestamp,
+    version: item.version + 1
+  });
+}
+
+export function uncheckItem(item: ListItem, now: Date = new Date()): ListItem {
+  return listItemSchema.parse({
+    ...item,
+    checked: false,
+    checkedAt: null,
+    updatedAt: now.toISOString(),
+    version: item.version + 1
+  });
+}
+
+function createListHistoryEntry(
+  listId: string,
+  itemId: string | null,
+  actorRole: ActorRole,
+  eventType: ListEventType,
+  fromValue: unknown,
+  toValue: unknown,
+  createdAt: string
+): ListItemHistoryEntry {
+  return listItemHistoryEntrySchema.parse({
+    id: createId(),
+    listId,
+    itemId,
+    actorRole,
+    eventType,
+    fromValue,
+    toValue,
+    createdAt
+  });
+}
+
+export function createListCreatedHistoryEntry(list: SharedList, actorRole: ActorRole): ListItemHistoryEntry {
+  return createListHistoryEntry(list.id, null, actorRole, 'list_created', null, { title: list.title }, list.createdAt);
+}
+
+export function createListTitleUpdatedHistoryEntry(list: SharedList, oldTitle: string, actorRole: ActorRole): ListItemHistoryEntry {
+  return createListHistoryEntry(list.id, null, actorRole, 'list_title_updated', { title: oldTitle }, { title: list.title }, list.updatedAt);
+}
+
+export function createListArchivedHistoryEntry(list: SharedList, actorRole: ActorRole): ListItemHistoryEntry {
+  return createListHistoryEntry(list.id, null, actorRole, 'list_archived', { status: 'active' }, { status: 'archived' }, list.updatedAt);
+}
+
+export function createListRestoredHistoryEntry(list: SharedList, actorRole: ActorRole): ListItemHistoryEntry {
+  return createListHistoryEntry(list.id, null, actorRole, 'list_restored', { status: 'archived' }, { status: 'active' }, list.updatedAt);
+}
+
+export function createItemAddedHistoryEntry(item: ListItem, actorRole: ActorRole): ListItemHistoryEntry {
+  return createListHistoryEntry(item.listId, item.id, actorRole, 'item_added', null, { body: item.body }, item.createdAt);
+}
+
+export function createItemBodyUpdatedHistoryEntry(item: ListItem, oldBody: string, actorRole: ActorRole): ListItemHistoryEntry {
+  return createListHistoryEntry(item.listId, item.id, actorRole, 'item_body_updated', { body: oldBody }, { body: item.body }, item.updatedAt);
+}
+
+export function createItemCheckedHistoryEntry(item: ListItem, actorRole: ActorRole): ListItemHistoryEntry {
+  return createListHistoryEntry(item.listId, item.id, actorRole, 'item_checked', { checked: false }, { checked: true, checkedAt: item.checkedAt }, item.updatedAt);
+}
+
+export function createItemUncheckedHistoryEntry(item: ListItem, actorRole: ActorRole): ListItemHistoryEntry {
+  return createListHistoryEntry(item.listId, item.id, actorRole, 'item_unchecked', { checked: true }, { checked: false }, item.updatedAt);
+}
+
+export function createItemRemovedHistoryEntry(listId: string, item: ListItem, actorRole: ActorRole, now: Date = new Date()): ListItemHistoryEntry {
+  return createListHistoryEntry(listId, item.id, actorRole, 'item_removed', { body: item.body }, null, now.toISOString());
+}
+
+// ─── Recurring Routines domain helpers ────────────────────────────────────────
+
+/**
+ * Advance a date by a routine's recurrence rule.
+ * For `every_n_days`, intervalDays must be provided.
+ * For `monthly`, clamps to last day of month if needed.
+ */
+export function scheduleNextRoutineOccurrence(
+  fromDate: string | Date,
+  recurrenceRule: RoutineRecurrenceRule,
+  intervalDays?: number | null
+): string {
+  const from = typeof fromDate === 'string' ? new Date(fromDate) : fromDate;
+
+  switch (recurrenceRule) {
+    case 'daily':
+      return addDays(from, 1).toISOString();
+    case 'weekly':
+      return addWeeks(from, 1).toISOString();
+    case 'monthly': {
+      const targetDay = from.getDate();
+      const next = addMonths(from, 1);
+      const daysInNextMonth = getDaysInMonth(next);
+      // Clamp to last day of target month
+      const clampedDay = Math.min(targetDay, daysInNextMonth);
+      return setDate(next, clampedDay).toISOString();
+    }
+    case 'every_n_days': {
+      if (!intervalDays || intervalDays <= 0) {
+        throw new Error('intervalDays must be a positive integer for every_n_days recurrence');
+      }
+      return addDays(from, intervalDays).toISOString();
+    }
+    default:
+      throw new Error(`Unsupported recurrence rule: ${recurrenceRule as string}`);
+  }
+}
+
+/**
+ * Compute the due state for a routine at a given moment.
+ * The `currentOccurrence` is the most recent occurrence row for the current cycle
+ * (i.e., where occurrence.dueDate === routine.currentDueDate), if any.
+ */
+export function computeRoutineDueState(
+  routine: Routine,
+  currentOccurrence: RoutineOccurrence | null,
+  now: Date = new Date()
+): RoutineDueState {
+  if (routine.status === 'paused') {
+    return 'paused';
+  }
+  if (currentOccurrence && currentOccurrence.completedAt !== null) {
+    return 'completed';
+  }
+  const dueDate = new Date(routine.currentDueDate);
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  if (dueDate > now) {
+    return 'upcoming';
+  }
+  if (dueDate >= twentyFourHoursAgo) {
+    return 'due';
+  }
+  return 'overdue';
+}
+
+export function createRoutine(
+  title: string,
+  owner: Owner,
+  recurrenceRule: RoutineRecurrenceRule,
+  firstDueDate: string,
+  intervalDays?: number | null,
+  now: Date = new Date()
+): Routine {
+  if (recurrenceRule === 'every_n_days' && (!intervalDays || intervalDays <= 0)) {
+    throw new Error('intervalDays must be a positive integer when recurrenceRule is every_n_days');
+  }
+  const timestamp = now.toISOString();
+  return routineSchema.parse({
+    id: createId(),
+    title: title.trim(),
+    owner,
+    recurrenceRule,
+    intervalDays: intervalDays ?? null,
+    status: 'active',
+    currentDueDate: firstDueDate,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    archivedAt: null,
+    version: 1
+  });
+}
+
+export function updateRoutine(
+  routine: Routine,
+  changes: { title?: string; owner?: Owner; recurrenceRule?: RoutineRecurrenceRule; intervalDays?: number | null },
+  now: Date = new Date()
+): Routine {
+  const newRecurrenceRule = changes.recurrenceRule ?? routine.recurrenceRule;
+  const newIntervalDays = changes.intervalDays !== undefined ? changes.intervalDays : routine.intervalDays;
+
+  if (newRecurrenceRule === 'every_n_days' && (!newIntervalDays || newIntervalDays <= 0)) {
+    throw new Error('intervalDays must be a positive integer when recurrenceRule is every_n_days');
+  }
+
+  // currentDueDate stays unchanged — it is the anchor for the next completion advancement.
+  // Per Decision A: when the rule changes, the NEXT occurrence after completion is recalculated
+  // from the current cycle's original start (currentDueDate), using the new rule.
+  // completeRoutineOccurrence already does this correctly; no change needed here.
+
+  return routineSchema.parse({
+    ...routine,
+    title: changes.title !== undefined ? changes.title.trim() : routine.title,
+    owner: changes.owner ?? routine.owner,
+    recurrenceRule: newRecurrenceRule,
+    intervalDays: newIntervalDays,
+    updatedAt: now.toISOString(),
+    version: routine.version + 1
+  });
+}
+
+export type CompleteRoutineResult = {
+  updatedRoutine: Routine;
+  occurrence: RoutineOccurrence;
+};
+
+/**
+ * Complete the current routine occurrence.
+ * Advances currentDueDate from the ORIGINAL due date (schedule-anchored), not from now.
+ */
+export function completeRoutineOccurrence(
+  routine: Routine,
+  completedBy: Owner,
+  now: Date = new Date()
+): CompleteRoutineResult {
+  if (routine.status === 'paused') {
+    throw new Error('Cannot complete a paused routine.');
+  }
+  if (routine.status === 'archived') {
+    throw new Error('Cannot complete an archived routine.');
+  }
+
+  const timestamp = now.toISOString();
+  const originalDueDate = routine.currentDueDate;
+
+  // Schedule-anchored: advance from original due date, not from completion date
+  const nextDueDate = scheduleNextRoutineOccurrence(
+    originalDueDate,
+    routine.recurrenceRule,
+    routine.intervalDays
+  );
+
+  const occurrence = routineOccurrenceSchema.parse({
+    id: createId(),
+    routineId: routine.id,
+    dueDate: originalDueDate,
+    completedAt: timestamp,
+    completedBy,
+    skipped: false,
+    createdAt: timestamp
+  });
+
+  const updatedRoutine = routineSchema.parse({
+    ...routine,
+    currentDueDate: nextDueDate,
+    updatedAt: timestamp,
+    version: routine.version + 1
+  });
+
+  return { updatedRoutine, occurrence };
+}
+
+export function pauseRoutine(routine: Routine, now: Date = new Date()): Routine {
+  if (routine.status === 'paused') {
+    throw new Error('Routine is already paused.');
+  }
+  if (routine.status === 'archived') {
+    throw new Error('Cannot pause an archived routine.');
+  }
+  return routineSchema.parse({
+    ...routine,
+    status: 'paused',
+    updatedAt: now.toISOString(),
+    version: routine.version + 1
+  });
+}
+
+export function resumeRoutine(routine: Routine, now: Date = new Date()): Routine {
+  if (routine.status !== 'paused') {
+    throw new Error('Routine is not paused.');
+  }
+  return routineSchema.parse({
+    ...routine,
+    status: 'active',
+    updatedAt: now.toISOString(),
+    version: routine.version + 1
+  });
+}
+
+export function archiveRoutine(routine: Routine, now: Date = new Date()): Routine {
+  if (routine.status === 'archived') {
+    throw new Error('Routine is already archived.');
+  }
+  const timestamp = now.toISOString();
+  return routineSchema.parse({
+    ...routine,
+    status: 'archived',
+    archivedAt: timestamp,
+    updatedAt: timestamp,
+    version: routine.version + 1
+  });
+}
+
+export function restoreRoutine(routine: Routine, now: Date = new Date()): Routine {
+  if (routine.status !== 'archived') {
+    throw new Error('Routine is not archived.');
+  }
+  return routineSchema.parse({
+    ...routine,
+    status: 'active',
+    archivedAt: null,
+    updatedAt: now.toISOString(),
+    version: routine.version + 1
+  });
+}
+
+// ─── Meal Planning domain helpers ─────────────────────────────────────────────
+
+const MONTH_ABBREVS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * Returns the Monday of the week containing the given date.
+ * ISO week: Monday = day 1.
+ */
+export function getMondayOfWeek(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const diff = (day === 0 ? -6 : 1 - day); // shift to Monday
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/**
+ * Formats a week range like "Mar 10 – Mar 16".
+ */
+export function formatWeekRange(weekStartDate: string): string {
+  const start = new Date(weekStartDate + 'T00:00:00');
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  const fmt = (d: Date) => `${MONTH_ABBREVS[d.getMonth()]} ${d.getDate()}`;
+  return `${fmt(start)} \u2013 ${fmt(end)}`;
+}
+
+/**
+ * Creates a new MealPlan. Validates that weekStartDate is a Monday (day 1).
+ */
+export function createMealPlan(title: string, weekStartDate: string, now: Date = new Date()): MealPlan {
+  const date = new Date(weekStartDate + 'T00:00:00');
+  if (date.getDay() !== 1) {
+    throw new Error(`weekStartDate must be a Monday; got day ${date.getDay()} for "${weekStartDate}"`);
+  }
+  const timestamp = now.toISOString();
+  return mealPlanSchema.parse({
+    id: createId(),
+    title: title.trim(),
+    weekStartDate,
+    status: 'active',
+    generatedListRefs: [],
+    mealCount: 0,
+    shoppingItemCount: 0,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    archivedAt: null,
+    version: 1
+  });
+}
+
+export function updateMealPlanTitle(plan: MealPlan, newTitle: string, now: Date = new Date()): MealPlan {
+  return mealPlanSchema.parse({
+    ...plan,
+    title: newTitle.trim(),
+    updatedAt: now.toISOString(),
+    version: plan.version + 1
+  });
+}
+
+export function archiveMealPlan(plan: MealPlan, now: Date = new Date()): MealPlan {
+  if (plan.status === 'archived') {
+    throw new Error('Meal plan is already archived.');
+  }
+  const timestamp = now.toISOString();
+  return mealPlanSchema.parse({
+    ...plan,
+    status: 'archived',
+    archivedAt: timestamp,
+    updatedAt: timestamp,
+    version: plan.version + 1
+  });
+}
+
+export function restoreMealPlan(plan: MealPlan, now: Date = new Date()): MealPlan {
+  if (plan.status !== 'archived') {
+    throw new Error('Meal plan is not archived.');
+  }
+  return mealPlanSchema.parse({
+    ...plan,
+    status: 'active',
+    archivedAt: null,
+    updatedAt: now.toISOString(),
+    version: plan.version + 1
+  });
+}
+
+export function addGeneratedListRef(plan: MealPlan, ref: GeneratedListRef, now: Date = new Date()): MealPlan {
+  return mealPlanSchema.parse({
+    ...plan,
+    generatedListRefs: [...plan.generatedListRefs, ref],
+    updatedAt: now.toISOString(),
+    version: plan.version + 1
+  });
+}
+
+export function addMealEntry(planId: string, dayOfWeek: number, name: string, position: number, now: Date = new Date()): MealEntry {
+  const timestamp = now.toISOString();
+  return mealEntrySchema.parse({
+    id: createId(),
+    planId,
+    dayOfWeek,
+    name: name.trim(),
+    shoppingItems: [],
+    position,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    version: 1
+  });
+}
+
+export function updateMealEntryName(entry: MealEntry, newName: string, now: Date = new Date()): MealEntry {
+  return mealEntrySchema.parse({
+    ...entry,
+    name: newName.trim(),
+    updatedAt: now.toISOString(),
+    version: entry.version + 1
+  });
+}
+
+export function updateMealEntryItems(entry: MealEntry, shoppingItems: string[], now: Date = new Date()): MealEntry {
+  const cleaned = shoppingItems.map((s) => s.trim()).filter((s) => s.length > 0);
+  return mealEntrySchema.parse({
+    ...entry,
+    shoppingItems: cleaned,
+    updatedAt: now.toISOString(),
+    version: entry.version + 1
+  });
+}
+
+/**
+ * Parses meal entry shopping items from a raw text block.
+ * Splits on newlines or commas, trims each token, and filters empty strings.
+ */
+export function parseMealEntryItemsFromText(rawText: string): string[] {
+  return rawText
+    .split(/[\n,]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+/**
+ * Collects all grocery items from entries, in day order (0-6) then position then item order.
+ */
+export function collectGroceryItems(entries: MealEntry[]): string[] {
+  const sorted = [...entries].sort((a, b) => {
+    if (a.dayOfWeek !== b.dayOfWeek) return a.dayOfWeek - b.dayOfWeek;
+    return a.position - b.position;
+  });
+  const items: string[] = [];
+  for (const entry of sorted) {
+    items.push(...entry.shoppingItems);
+  }
+  return items;
+}
+
+export function deriveMealPlanSummary(entries: MealEntry[]): { mealCount: number; shoppingItemCount: number } {
+  const mealCount = entries.length;
+  const shoppingItemCount = entries.reduce((sum, e) => sum + e.shoppingItems.length, 0);
+  return { mealCount, shoppingItemCount };
+}
+
+// ─── Unified Weekly View domain helpers ──────────────────────────────────────
+
+/**
+ * Returns the Monday 00:00:00 and Sunday 23:59:59 (local time) of the calendar
+ * week containing `referenceDate`. Week starts on Monday (ISO week).
+ */
+export function getWeekBounds(referenceDate: Date): { weekStart: Date; weekEnd: Date } {
+  const weekStart = startOfWeek(referenceDate, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(referenceDate, { weekStartsOn: 1 });
+  return { weekStart, weekEnd };
+}
+
+/**
+ * Returns a human-readable week label like "Mon 16 – Sun 22, March".
+ */
+export function formatWeekLabel(weekStart: Date, weekEnd: Date): string {
+  const startFormatted = format(weekStart, 'EEE d');
+  const endFormatted = format(weekEnd, 'EEE d');
+  const month = format(weekEnd, 'MMMM');
+  return `${startFormatted} – ${endFormatted}, ${month}`;
+}
+
+/**
+ * Returns a short day label like "Mon 16" or "TODAY — Mon 16" (when isToday).
+ */
+export function formatDayLabel(date: Date, isToday: boolean): string {
+  const label = format(date, 'EEE d');
+  return isToday ? `TODAY — ${label}` : label;
+}
+
+/**
+ * Returns all Date objects (one per day, normalized to midnight) within
+ * [weekStart, weekEnd] on which the given routine is due.
+ * Paused and archived routines return [].
+ */
+export function getRoutineOccurrenceDatesForWeek(
+  routine: Routine,
+  weekStart: Date,
+  weekEnd: Date
+): Date[] {
+  if (routine.status === 'paused' || routine.status === 'archived') {
+    return [];
+  }
+
+  const anchor = startOfDay(new Date(routine.currentDueDate));
+
+  // Determine max backward steps to avoid infinite loops.
+  // The anchor (currentDueDate) may be up to ~1 cycle ahead of weekEnd,
+  // so we need enough steps to reach weekStart from there.
+  let maxBackward: number;
+  switch (routine.recurrenceRule) {
+    case 'daily':
+      maxBackward = 14; // anchor could be up to weekEnd+7 days ahead
+      break;
+    case 'weekly':
+      maxBackward = 3; // at most 2 weeks back from any anchor within range
+      break;
+    case 'monthly':
+      maxBackward = 3;
+      break;
+    case 'every_n_days':
+      maxBackward = Math.ceil(14 / (routine.intervalDays ?? 1)) + 1;
+      break;
+    default:
+      maxBackward = 14;
+  }
+
+  const stepBack = (d: Date): Date => {
+    switch (routine.recurrenceRule) {
+      case 'daily': return subDays(d, 1);
+      case 'weekly': return subWeeks(d, 1);
+      case 'monthly': return subMonths(d, 1);
+      case 'every_n_days': return subDays(d, routine.intervalDays ?? 1);
+    }
+  };
+
+  const stepForward = (d: Date): Date => {
+    switch (routine.recurrenceRule) {
+      case 'daily': return addDays(d, 1);
+      case 'weekly': return addWeeks(d, 1);
+      case 'monthly': return addMonths(d, 1);
+      case 'every_n_days': return addDays(d, routine.intervalDays ?? 1);
+    }
+  };
+
+  // Walk backward from anchor to find the earliest occurrence >= weekStart
+  let earliest = anchor;
+  let steps = 0;
+  while (earliest >= weekStart && steps < maxBackward) {
+    const prev = stepBack(earliest);
+    if (prev < weekStart) break;
+    earliest = prev;
+    steps++;
+  }
+  // If earliest fell below weekStart during the walk, step back up one
+  if (earliest < weekStart) {
+    earliest = stepForward(earliest);
+  }
+
+  // Walk forward collecting all dates within [weekStart, weekEnd]
+  const results: Date[] = [];
+  let current = earliest;
+  while (current <= weekEnd) {
+    if (current >= weekStart) {
+      results.push(startOfDay(current));
+    }
+    current = stepForward(current);
+  }
+
+  return results;
+}
+
+/**
+ * Returns the RoutineDueState for a specific projected occurrence date.
+ * Checks if a matching completed occurrence row exists for that date.
+ */
+export function getRoutineOccurrenceStatusForDate(
+  routine: Routine,
+  occurrences: RoutineOccurrence[],
+  targetDate: Date,
+  now: Date
+): RoutineDueState {
+  if (routine.status === 'paused') return 'paused';
+
+  const matchingOccurrence = occurrences.find((occ) =>
+    isSameDay(startOfDay(new Date(occ.dueDate)), startOfDay(targetDate))
+  );
+
+  if (matchingOccurrence && matchingOccurrence.completedAt !== null) {
+    return 'completed';
+  }
+
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const targetMidnight = startOfDay(targetDate);
+
+  if (targetMidnight > now) return 'upcoming';
+  if (targetMidnight >= twentyFourHoursAgo) return 'due';
+  return 'overdue';
+}
+
+// ─── Activity History domain helpers ─────────────────────────────────────────
+
+/**
+ * Returns the rolling 30-day window anchored to today (local time).
+ * windowStart = midnight of (today - 29 days)
+ * windowEnd   = end of day (23:59:59.999) of today
+ */
+export function getActivityHistoryWindow(today: Date): { windowStart: Date; windowEnd: Date } {
+  const windowStart = startOfDay(subDays(today, 29));
+  const windowEnd = endOfDay(today);
+  return { windowStart, windowEnd };
+}
+
+/**
+ * Returns the ISO date string (YYYY-MM-DD) representing the item's completion/resolution date.
+ */
+function getItemDate(item: ActivityHistoryItem): string {
+  switch (item.type) {
+    case 'routine': return item.completedAt.split('T')[0];
+    case 'reminder': return item.resolvedAt.split('T')[0];
+    case 'meal': return item.date;
+    case 'inbox': return item.completedAt.split('T')[0];
+    case 'listItem': return item.checkedAt.split('T')[0];
+  }
+}
+
+/**
+ * Returns a Unix millisecond timestamp for sort ordering within a day.
+ * Meal entries (date-only) use end-of-day so they sort below timed items.
+ */
+function getItemTimestamp(item: ActivityHistoryItem): number {
+  switch (item.type) {
+    case 'routine': return new Date(item.completedAt).getTime();
+    case 'reminder': return new Date(item.resolvedAt).getTime();
+    case 'meal': return new Date(item.date + 'T23:59:59').getTime();
+    case 'inbox': return new Date(item.completedAt).getTime();
+    case 'listItem': return new Date(item.checkedAt).getTime();
+  }
+}
+
+/**
+ * Groups activity history items by day, sorts days most-recent-first,
+ * and within each day sorts items reverse-chronologically.
+ * Empty days are suppressed.
+ */
+export function groupActivityHistoryByDay(
+  items: ActivityHistoryItem[]
+): ActivityHistoryDay[] {
+  if (items.length === 0) return [];
+
+  // Group by date string
+  const byDate = new Map<string, ActivityHistoryItem[]>();
+  for (const item of items) {
+    const date = getItemDate(item);
+    const bucket = byDate.get(date);
+    if (bucket) {
+      bucket.push(item);
+    } else {
+      byDate.set(date, [item]);
+    }
+  }
+
+  // Build day entries, sort items within each day reverse-chronologically
+  const days: ActivityHistoryDay[] = [];
+  for (const [date, dayItems] of byDate.entries()) {
+    if (dayItems.length === 0) continue;
+    const sorted = [...dayItems].sort((a, b) => getItemTimestamp(b) - getItemTimestamp(a));
+    days.push({ date, items: sorted });
+  }
+
+  // Sort days most-recent-first
+  days.sort((a, b) => b.date.localeCompare(a.date));
+
+  return days;
+}
+
+// ─── Planning Ritual domain helpers ───────────────────────────────────────────
+
+/**
+ * Computes the prior-calendar-week and current-calendar-week windows relative
+ * to a given anchor date (the occurrence's dueDate).
+ *
+ * Convention: weeks start on Monday (ISO week). The "current week" is the
+ * Monday–Sunday week containing anchorDate. The "last week" is the Monday–Sunday
+ * immediately before.
+ *
+ * Late-completion behaviour: pass occurrence.dueDate as anchorDate to keep
+ * each occurrence anchored to its own scheduled week, not the completion date.
+ */
+export function getReviewWindowsForOccurrence(anchorDate: Date): {
+  lastWeekStart: Date;
+  lastWeekEnd: Date;
+  currentWeekStart: Date;
+  currentWeekEnd: Date;
+} {
+  // "Current week" starts on the Monday of the ISO week that FOLLOWS the anchor's week
+  // end (i.e. after Sunday). Using addDays(anchor, 1) before startOfWeek handles the
+  // Sunday edge case: a Sunday-due ritual reviews the week just ending as "last week"
+  // and the upcoming week as "current week". Mon-Sat anchors land in the same week as
+  // the current Monday regardless.
+  const currentWeekStart = startOfDay(startOfWeek(addDays(anchorDate, 1), { weekStartsOn: 1 }));
+  const currentWeekEnd = endOfDay(addDays(currentWeekStart, 6)); // Sunday 23:59:59.999
+
+  // Prior week
+  const lastWeekStart = startOfDay(subWeeks(currentWeekStart, 1));
+  const lastWeekEnd = endOfDay(addDays(lastWeekStart, 6)); // Sunday 23:59:59.999
+
+  return { lastWeekStart, lastWeekEnd, currentWeekStart, currentWeekEnd };
+}
+
+/**
+ * Formats a review window as ISO date strings (YYYY-MM-DD).
+ */
+export function formatReviewWindowAsDateStrings(window: { start: Date; end: Date }): { start: string; end: string } {
+  return {
+    start: format(window.start, 'yyyy-MM-dd'),
+    end: format(window.end, 'yyyy-MM-dd')
+  };
+}
+
+// ─── Proactive Household Nudges ───────────────────────────────────────────────
+
+/**
+ * Skip the current routine occurrence.
+ * Advances currentDueDate from the ORIGINAL due date (schedule-anchored), not from now.
+ * Sets skipped: true on the recorded occurrence.
+ */
+export function skipRoutineOccurrence(
+  routine: Routine,
+  skippedBy: Owner,
+  now: Date = new Date()
+): CompleteRoutineResult {
+  if (routine.status === 'paused') {
+    throw new Error('Cannot skip a paused routine.');
+  }
+  if (routine.status === 'archived') {
+    throw new Error('Cannot skip an archived routine.');
+  }
+
+  const timestamp = now.toISOString();
+  const originalDueDate = routine.currentDueDate;
+
+  const nextDueDate = scheduleNextRoutineOccurrence(
+    originalDueDate,
+    routine.recurrenceRule,
+    routine.intervalDays
+  );
+
+  const occurrence = routineOccurrenceSchema.parse({
+    id: createId(),
+    routineId: routine.id,
+    dueDate: originalDueDate,
+    completedAt: timestamp,
+    completedBy: skippedBy,
+    skipped: true,
+    createdAt: timestamp
+  });
+
+  const updatedRoutine = routineSchema.parse({
+    ...routine,
+    currentDueDate: nextDueDate,
+    updatedAt: timestamp,
+    version: routine.version + 1
+  });
+
+  return { updatedRoutine, occurrence };
+}
+
+/**
+ * Sort nudges by priority:
+ * 1. planningRitual overdue
+ * 2. reminder approaching or overdue
+ * 3. routine overdue
+ * Within each tier: oldest overdue/approaching first (earliest overdueSince or dueAt).
+ */
+export function sortNudgesByPriority(nudges: Nudge[]): Nudge[] {
+  const tierOrder: Record<string, number> = { planningRitual: 0, reminder: 1, routine: 2 };
+
+  return [...nudges].sort((a, b) => {
+    const tierDiff = (tierOrder[a.entityType] ?? 99) - (tierOrder[b.entityType] ?? 99);
+    if (tierDiff !== 0) return tierDiff;
+
+    // Within tier: oldest first
+    const aDate = a.overdueSince ?? a.dueAt ?? '';
+    const bDate = b.overdueSince ?? b.dueAt ?? '';
+    if (!aDate && !bDate) return 0;
+    if (!aDate) return 1;
+    if (!bDate) return -1;
+    return aDate < bDate ? -1 : aDate > bDate ? 1 : 0;
+  });
+}
+
+// ─── Completion Window (H5 Phase 2 Layer 1) ──────────────────────────────────
+
+/** Linear interpolation percentile for a sorted array. */
+function percentile(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0;
+  if (sorted.length === 1) return sorted[0];
+  const index = p * (sorted.length - 1);
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+  if (lower === upper) return sorted[lower];
+  const fraction = index - lower;
+  return sorted[lower] + fraction * (sorted[upper] - sorted[lower]);
+}
+
+/** Extract fractional hour from a Date in the given IANA timezone. */
+function extractLocalHour(date: Date, timezone: string): number {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(date);
+  const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? 0);
+  const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? 0);
+  return hour + minute / 60;
+}
+
+/**
+ * Returns the current fractional hour in the given timezone.
+ * E.g., 18.5 for 6:30pm.
+ */
+export function getCurrentLocalHour(now: Date, timezone: string): number {
+  return extractLocalHour(now, timezone);
+}
+
+/**
+ * Computes a completion window from an array of completedAt ISO timestamps.
+ * Returns a hold/deliver/no_window decision based on the IQR of completion hours.
+ */
+export function computeCompletionWindow(
+  completedAtTimestamps: string[],
+  timezone: string,
+  currentHour: number
+): CompletionWindowResult {
+  if (completedAtTimestamps.length < COMPLETION_WINDOW_MIN_OCCURRENCES) {
+    return { decision: 'no_window', reason: 'insufficient_data' };
+  }
+
+  const hours = completedAtTimestamps.map((ts) => extractLocalHour(new Date(ts), timezone));
+  hours.sort((a, b) => a - b);
+
+  const q1 = percentile(hours, 0.25);
+  const q3 = percentile(hours, 0.75);
+  const iqrSpan = q3 - q1;
+
+  if (iqrSpan > COMPLETION_WINDOW_VARIANCE_THRESHOLD_HOURS) {
+    return { decision: 'no_window', reason: 'high_variance' };
+  }
+
+  const windowStart = q1 - COMPLETION_WINDOW_LEAD_BUFFER_HOURS;
+  const windowEnd = q3;
+
+  if (currentHour < windowStart) {
+    return { decision: 'hold', windowStartHour: windowStart, windowEndHour: windowEnd };
+  }
+  return { decision: 'deliver', windowStartHour: windowStart, windowEndHour: windowEnd };
 }

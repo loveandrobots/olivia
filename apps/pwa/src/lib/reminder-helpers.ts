@@ -25,7 +25,7 @@ export function getDueDisplayForState(
       return {
         borderClass: 'border-rose',
         dotClass: 'dot-rose',
-        badgeText: 'Overdue',
+        badgeText: 'Needs attention',
         badgeClass: 'rem-badge-rose',
         opacityClass: '',
       };
@@ -124,9 +124,9 @@ export function formatScheduledLabel(dateStr: string): string {
 
 export function formatRecurrenceLabel(cadence: RecurrenceCadence): string {
   switch (cadence) {
-    case 'daily': return '↻ Daily';
-    case 'weekly': return '↻ Weekly';
-    case 'monthly': return '↻ Monthly';
+    case 'daily': return 'Daily';
+    case 'weekly': return 'Weekly';
+    case 'monthly': return 'Monthly';
     default: return 'One-time';
   }
 }

@@ -88,3 +88,119 @@ export const schemaMigrationsTable = sqliteTable('schema_migrations', {
   filename: text('filename').primaryKey(),
   appliedAt: text('applied_at').notNull()
 });
+
+export const sharedListsTable = sqliteTable('shared_lists', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  owner: text('owner').notNull(),
+  status: text('status').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  archivedAt: text('archived_at'),
+  version: integer('version').notNull()
+});
+
+export const listItemsTable = sqliteTable('list_items', {
+  id: text('id').primaryKey(),
+  listId: text('list_id').notNull(),
+  body: text('body').notNull(),
+  checked: integer('checked', { mode: 'boolean' }).notNull(),
+  checkedAt: text('checked_at'),
+  position: integer('position').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  version: integer('version').notNull()
+});
+
+export const listItemHistoryTable = sqliteTable('list_item_history', {
+  id: text('id').primaryKey(),
+  listId: text('list_id').notNull(),
+  itemId: text('item_id'),
+  actorRole: text('actor_role').notNull(),
+  eventType: text('event_type').notNull(),
+  fromValue: text('from_value'),
+  toValue: text('to_value'),
+  createdAt: text('created_at').notNull()
+});
+
+export const routinesTable = sqliteTable('routines', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  owner: text('owner').notNull(),
+  recurrenceRule: text('recurrence_rule').notNull(),
+  intervalDays: integer('interval_days'),
+  status: text('status').notNull(),
+  currentDueDate: text('current_due_date').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  archivedAt: text('archived_at'),
+  version: integer('version').notNull()
+});
+
+export const routineOccurrencesTable = sqliteTable('routine_occurrences', {
+  id: text('id').primaryKey(),
+  routineId: text('routine_id').notNull(),
+  dueDate: text('due_date').notNull(),
+  completedAt: text('completed_at'),
+  completedBy: text('completed_by'),
+  skipped: integer('skipped', { mode: 'boolean' }).notNull(),
+  createdAt: text('created_at').notNull()
+});
+
+export const mealPlansTable = sqliteTable('meal_plans', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  weekStartDate: text('week_start_date').notNull(),
+  status: text('status').notNull(),
+  generatedListRefs: text('generated_list_refs').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  archivedAt: text('archived_at'),
+  version: integer('version').notNull()
+});
+
+export const mealEntriesTable = sqliteTable('meal_entries', {
+  id: text('id').primaryKey(),
+  planId: text('plan_id').notNull(),
+  dayOfWeek: integer('day_of_week').notNull(),
+  name: text('name').notNull(),
+  shoppingItems: text('shopping_items').notNull(),
+  position: integer('position').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  version: integer('version').notNull()
+});
+
+export const pushSubscriptionsTable = sqliteTable('push_subscriptions', {
+  id: text('id').primaryKey(),
+  householdId: text('household_id').notNull(),
+  endpoint: text('endpoint').notNull().unique(),
+  p256dhKey: text('p256dh_key').notNull(),
+  authKey: text('auth_key').notNull(),
+  userId: text('user_id'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const pushNotificationLogTable = sqliteTable('push_notification_log', {
+  id: text('id').primaryKey(),
+  subscriptionId: text('subscription_id').notNull(),
+  entityType: text('entity_type').notNull(),
+  entityId: text('entity_id').notNull(),
+  sentAt: text('sent_at').notNull(),
+});
+
+export const conversationsTable = sqliteTable('conversations', {
+  id: text('id').primaryKey(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull()
+});
+
+export const conversationMessagesTable = sqliteTable('conversation_messages', {
+  id: text('id').primaryKey(),
+  conversationId: text('conversation_id').notNull(),
+  role: text('role').notNull(),
+  content: text('content').notNull(),
+  toolCalls: text('tool_calls'),
+  createdAt: text('created_at').notNull()
+});
