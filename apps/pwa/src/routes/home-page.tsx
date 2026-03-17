@@ -203,7 +203,10 @@ function DaySection({ day, dayIndex, isToday, onRoutineClick, onReminderClick, o
         <div className="wv-day-content">
           {day.routines.length > 0 && (
             <div className="wv-workflow-section">
-              <div className="wv-workflow-label">ROUTINES</div>
+              <div className="wv-workflow-header">
+                <div className="wv-workflow-label">ROUTINES</div>
+                <Link to="/routines" className="wv-section-link" aria-label="View all routines">All →</Link>
+              </div>
               {day.routines.map((r, i) => (
                 <RoutineCard key={`${r.routineId}-${dayIndex}-${i}`} item={r} onClick={() => onRoutineClick(r.routineId)} />
               ))}
@@ -212,7 +215,10 @@ function DaySection({ day, dayIndex, isToday, onRoutineClick, onReminderClick, o
 
           {day.reminders.length > 0 && (
             <div className="wv-workflow-section">
-              <div className="wv-workflow-label">REMINDERS</div>
+              <div className="wv-workflow-header">
+                <div className="wv-workflow-label">REMINDERS</div>
+                <Link to="/reminders" className="wv-section-link" aria-label="View all reminders">All →</Link>
+              </div>
               {day.reminders.map((r) => (
                 <ReminderCard key={r.reminderId} item={r} onClick={() => onReminderClick(r.reminderId)} />
               ))}
@@ -220,7 +226,10 @@ function DaySection({ day, dayIndex, isToday, onRoutineClick, onReminderClick, o
           )}
 
           <div className="wv-workflow-section">
-            <div className="wv-workflow-label">MEALS</div>
+            <div className="wv-workflow-header">
+              <div className="wv-workflow-label">MEALS</div>
+              <Link to="/meals" className="wv-section-link" aria-label="View all meals">All →</Link>
+            </div>
             {showMealsSection
               ? day.meals.map((m) => (
                   <MealCard key={m.entryId} item={m} onClick={() => onMealClick(m.planId)} />

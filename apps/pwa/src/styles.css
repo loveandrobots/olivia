@@ -3534,6 +3534,47 @@ textarea:focus, input:focus, select:focus {
   padding: 0 2px;
 }
 
+.wv-workflow-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.wv-workflow-header .wv-workflow-label {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-3);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  padding: 0 2px;
+}
+
+.wv-workflow-header .wv-section-link {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--violet);
+  text-decoration: none;
+  padding: 8px 0 8px 16px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.wv-workflow-header .wv-section-link:hover,
+.wv-workflow-header .wv-section-link:focus-visible {
+  color: var(--violet-2);
+  text-decoration: underline;
+}
+
+.wv-workflow-header .wv-section-link:active {
+  background-color: var(--violet-dim);
+}
+
 /* Item cards */
 .wv-item-card {
   display: flex;
