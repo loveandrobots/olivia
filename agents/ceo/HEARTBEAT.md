@@ -48,7 +48,19 @@ If `PAPERCLIP_APPROVAL_ID` is set:
 3. Update `$AGENT_HOME/memory/YYYY-MM-DD.md` with timeline entries.
 4. Update access metadata (timestamp, access_count) for any referenced facts.
 
-## 8. Exit
+## 8. Doc Commit Check
+
+Before exiting, check for uncommitted documentation in the working tree:
+
+1. Run `git status --short` and look for uncommitted files in `docs/`, `agents/*/memory/`, and any other doc paths.
+2. If uncommitted docs exist, evaluate: are they durable project artifacts (specs, plans, decision history, daily logs)? If yes, commit them.
+3. Group related docs into a single commit with a descriptive message (e.g., `docs: commit specs and decisions from OLI-117 through OLI-125`).
+4. Do NOT commit work-in-progress drafts that the author hasn't finished — check file status fields or ask.
+5. Agent daily memory files (`agents/*/memory/YYYY-MM-DD.md`) should be committed — they are operational logs, not ephemeral scratch.
+
+This step prevents doc drift where specs, plans, and decisions accumulate in the working tree without being captured in version control.
+
+## 9. Exit
 
 - Comment on any in_progress work before exiting.
 - If no assignments and no valid mention-handoff, exit cleanly.
