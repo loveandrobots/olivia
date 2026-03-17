@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { format } from 'date-fns';
-import { ArrowsClockwise, Bell, ForkKnife, Tray, GearSix, CalendarBlank } from '@phosphor-icons/react';
+import { ArrowsClockwise, Bell, ForkKnife, Tray, GearSix } from '@phosphor-icons/react';
 import { computeReminderState, rankRemindersForSurfacing } from '@olivia/domain';
 import { getWeekBounds, formatWeekLabel, formatDayLabel } from '@olivia/domain';
 import type { Reminder, DraftReminder, WeeklyDayView, WeeklyRoutineOccurrence, WeeklyReminder, WeeklyMealEntry, WeeklyInboxItem } from '@olivia/contracts';
@@ -154,7 +154,25 @@ function InboxItemCard({ item, onClick }: { item: WeeklyInboxItem; onClick: () =
   );
 }
 
-// ─── Empty meal slot ──────────────────────────────────────────────────────────
+// ─── Empty slot components ───────────────────────────────────────────────────
+
+function EmptyRoutineSlot({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" className="wv-empty-routine-slot" onClick={onClick} aria-label="No routines today, browse all routines">
+      <span className="wv-empty-routine-slot-icon"><ArrowsClockwise size={18} /></span>
+      <em className="wv-empty-routine-text">No routines today — browse all →</em>
+    </button>
+  );
+}
+
+function EmptyReminderSlot({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" className="wv-empty-reminder-slot" onClick={onClick} aria-label="No reminders today, browse all reminders">
+      <span className="wv-empty-reminder-slot-icon"><Bell size={18} /></span>
+      <em className="wv-empty-reminder-text">No reminders today — browse all →</em>
+    </button>
+  );
+}
 
 function EmptyMealSlot({ onClick }: { onClick: () => void }) {
   return (
@@ -176,13 +194,13 @@ interface DaySectionProps {
   onMealClick: (planId: string) => void;
   onInboxClick: (itemId: string) => void;
   onEmptyMealClick: () => void;
+  onEmptyRoutineClick: () => void;
+  onEmptyReminderClick: () => void;
 }
 
-function DaySection({ day, dayIndex, isToday, onRoutineClick, onReminderClick, onMealClick, onInboxClick, onEmptyMealClick }: DaySectionProps) {
+function DaySection({ day, dayIndex, isToday, onRoutineClick, onReminderClick, onMealClick, onInboxClick, onEmptyMealClick, onEmptyRoutineClick, onEmptyReminderClick }: DaySectionProps) {
   const date = new Date(day.date + 'T12:00:00');
   const dayLabel = formatDayLabel(date, isToday);
-  const isEmpty = day.routines.length === 0 && day.reminders.length === 0 && day.meals.length === 0 && day.inboxItems.length === 0;
-  const showMealsSection = day.meals.length > 0;
 
   return (
     <section
@@ -195,59 +213,55 @@ function DaySection({ day, dayIndex, isToday, onRoutineClick, onReminderClick, o
         <span className="wv-day-label">{isToday ? date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' }) : dayLabel}</span>
       </div>
 
-      {isEmpty ? (
-        <div className="wv-empty-day">
-          <em className="wv-empty-day-text">Nothing scheduled</em>
-        </div>
-      ) : (
-        <div className="wv-day-content">
-          {day.routines.length > 0 && (
-            <div className="wv-workflow-section">
-              <div className="wv-workflow-header">
-                <div className="wv-workflow-label">ROUTINES</div>
-                <Link to="/routines" className="wv-section-link" aria-label="View all routines">All →</Link>
-              </div>
-              {day.routines.map((r, i) => (
-                <RoutineCard key={`${r.routineId}-${dayIndex}-${i}`} item={r} onClick={() => onRoutineClick(r.routineId)} />
-              ))}
-            </div>
-          )}
-
-          {day.reminders.length > 0 && (
-            <div className="wv-workflow-section">
-              <div className="wv-workflow-header">
-                <div className="wv-workflow-label">REMINDERS</div>
-                <Link to="/reminders" className="wv-section-link" aria-label="View all reminders">All →</Link>
-              </div>
-              {day.reminders.map((r) => (
-                <ReminderCard key={r.reminderId} item={r} onClick={() => onReminderClick(r.reminderId)} />
-              ))}
-            </div>
-          )}
-
-          <div className="wv-workflow-section">
-            <div className="wv-workflow-header">
-              <div className="wv-workflow-label">MEALS</div>
-              <Link to="/meals" className="wv-section-link" aria-label="View all meals">All →</Link>
-            </div>
-            {showMealsSection
-              ? day.meals.map((m) => (
-                  <MealCard key={m.entryId} item={m} onClick={() => onMealClick(m.planId)} />
-                ))
-              : <EmptyMealSlot onClick={onEmptyMealClick} />
-            }
+      <div className="wv-day-content">
+        <div className="wv-workflow-section">
+          <div className="wv-workflow-header">
+            <div className="wv-workflow-label">ROUTINES</div>
+            <Link to="/routines" className="wv-section-link" aria-label="View all routines">All →</Link>
           </div>
-
-          {day.inboxItems.length > 0 && (
-            <div className="wv-workflow-section">
-              <div className="wv-workflow-label">INBOX</div>
-              {day.inboxItems.map((item) => (
-                <InboxItemCard key={item.itemId} item={item} onClick={() => onInboxClick(item.itemId)} />
-              ))}
-            </div>
-          )}
+          {day.routines.length > 0
+            ? day.routines.map((r, i) => (
+                <RoutineCard key={`${r.routineId}-${dayIndex}-${i}`} item={r} onClick={() => onRoutineClick(r.routineId)} />
+              ))
+            : <EmptyRoutineSlot onClick={onEmptyRoutineClick} />
+          }
         </div>
-      )}
+
+        <div className="wv-workflow-section">
+          <div className="wv-workflow-header">
+            <div className="wv-workflow-label">REMINDERS</div>
+            <Link to="/reminders" className="wv-section-link" aria-label="View all reminders">All →</Link>
+          </div>
+          {day.reminders.length > 0
+            ? day.reminders.map((r) => (
+                <ReminderCard key={r.reminderId} item={r} onClick={() => onReminderClick(r.reminderId)} />
+              ))
+            : <EmptyReminderSlot onClick={onEmptyReminderClick} />
+          }
+        </div>
+
+        <div className="wv-workflow-section">
+          <div className="wv-workflow-header">
+            <div className="wv-workflow-label">MEALS</div>
+            <Link to="/meals" className="wv-section-link" aria-label="View all meals">All →</Link>
+          </div>
+          {day.meals.length > 0
+            ? day.meals.map((m) => (
+                <MealCard key={m.entryId} item={m} onClick={() => onMealClick(m.planId)} />
+              ))
+            : <EmptyMealSlot onClick={onEmptyMealClick} />
+          }
+        </div>
+
+        {day.inboxItems.length > 0 && (
+          <div className="wv-workflow-section">
+            <div className="wv-workflow-label">INBOX</div>
+            {day.inboxItems.map((item) => (
+              <InboxItemCard key={item.itemId} item={item} onClick={() => onInboxClick(item.itemId)} />
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   );
 }
@@ -341,9 +355,7 @@ export function HomePage() {
     setTimeout(() => setBanner(null), 5000);
   }, [snoozeTarget, role, queryClient]);
 
-  const allEmpty = weeklyQuery.data?.days.every(
-    (d) => d.routines.length === 0 && d.reminders.length === 0 && d.meals.length === 0 && d.inboxItems.length === 0
-  ) ?? false;
+  // allEmpty is no longer used to hide day sections — workflow sections always render with empty slots
 
   return (
     <div className="screen">
@@ -446,25 +458,8 @@ export function HomePage() {
           </div>
         )}
 
-        {/* Empty week state (WEEK-2) */}
-        {weeklyQuery.data && allEmpty && (
-          <div className="wv-empty-week" role="status">
-            <div className="wv-empty-week-icon" aria-hidden="true"><CalendarBlank size={48} weight="bold" /></div>
-            <p className="wv-empty-week-msg">
-              Nothing on the books this week. Add a meal plan, set a reminder, or check the Household tab to get started.
-            </p>
-            <button
-              type="button"
-              className="wv-empty-week-cta"
-              onClick={() => void navigate({ to: '/lists' })}
-            >
-              Go to Household →
-            </button>
-          </div>
-        )}
-
-        {/* Day sections */}
-        {weeklyQuery.data && !allEmpty && (
+        {/* Day sections — always render with empty-state slots when no items */}
+        {weeklyQuery.data && (
           <div className="wv-days">
             {weeklyQuery.data.days.map((day, i) => (
               <DaySection
@@ -477,6 +472,8 @@ export function HomePage() {
                 onMealClick={(planId) => void navigate({ to: '/meals/$planId', params: { planId } })}
                 onInboxClick={(itemId) => void navigate({ to: '/items/$itemId', params: { itemId } })}
                 onEmptyMealClick={() => void navigate({ to: '/meals' })}
+                onEmptyRoutineClick={() => void navigate({ to: '/routines' })}
+                onEmptyReminderClick={() => void navigate({ to: '/reminders' })}
               />
             ))}
           </div>

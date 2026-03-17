@@ -3697,6 +3697,86 @@ textarea:focus, input:focus, select:focus {
   padding: 0 8px;
 }
 
+/* Empty routine slot */
+.wv-empty-routine-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: transparent;
+  border: 1.5px dashed var(--mint);
+  border-radius: 14px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background-color 0.15s ease;
+}
+
+.wv-empty-routine-slot:hover,
+.wv-empty-routine-slot:focus-visible {
+  background: var(--mint-soft);
+}
+
+.wv-empty-routine-slot:active {
+  background: var(--mint-soft);
+  opacity: 0.8;
+}
+
+.wv-empty-routine-slot-icon {
+  color: var(--mint);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.wv-empty-routine-text {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 13px;
+  font-weight: 300;
+  color: var(--mint);
+}
+
+/* Empty reminder slot */
+.wv-empty-reminder-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: transparent;
+  border: 1.5px dashed var(--peach);
+  border-radius: 14px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background-color 0.15s ease;
+}
+
+.wv-empty-reminder-slot:hover,
+.wv-empty-reminder-slot:focus-visible {
+  background: var(--peach-soft);
+}
+
+.wv-empty-reminder-slot:active {
+  background: var(--peach-soft);
+  opacity: 0.8;
+}
+
+.wv-empty-reminder-slot-icon {
+  color: var(--peach);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.wv-empty-reminder-text {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 13px;
+  font-weight: 300;
+  color: var(--peach);
+}
+
 /* Empty meal slot */
 .wv-empty-meal-slot {
   display: flex;
