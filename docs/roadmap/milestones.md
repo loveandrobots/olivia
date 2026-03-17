@@ -836,6 +836,61 @@ Exit criteria (original, for reference):
 Evidence of completion:
 - D-053 recorded chat as Phase 3 direction (board-driven). Roadmap updated. M28 gate was bypassed, not completed through its intended process.
 
+## M29: Post-Chat Household Validation & Next-Direction Scoping
+Objective: observe real household usage of the full product surface — including the newly shipped chat interface — to produce the usage signal that M28 was designed to capture but did not, then scope the next build cycle based on that signal.
+
+Status: todo
+
+Context:
+- H5 Phases 1–3 shipped without household validation (M28 bypassed by board directive).
+- The product now includes: inbox, reminders, recurring routines, shared lists, meal planning (H3 complete except meal planning spec pending), unified weekly view, activity history, planning rituals, AI-assisted summaries, proactive nudges, push notifications, completion-window timing, and a chat interface.
+- This is a substantial feature surface. Before adding more, we need to know what the household actually uses, what it ignores, and where friction exists.
+
+Required artifacts:
+- household usage observations — qualitative notes on which features see real use, which are ignored, where friction appears, and what the household asks for or avoids. Captured in `docs/learnings/` as observations (L-series entries), not requirements.
+- chat-specific observations — how the household uses the chat surface: what kinds of questions are asked, whether draft action cards are used or dismissed, whether chat replaces screen navigation or supplements it. This is the first real AI-interactive surface and deserves specific attention.
+- updated assumptions log — validate or challenge assumptions that have been running on implementation evidence alone:
+  - A-007 (shared lists are distinct from inbox)
+  - A-008 (recurrence model is reusable)
+  - A-009 (recurring/list primitives enable meal planning)
+  - New: does the household prefer conversational interaction (chat) over structured screens for quick tasks?
+  - New: does the advisory-only trust model feel right, or does the household want Olivia to act with less friction?
+- Phase 4 direction decision (D-054+) — a decision recording what comes next and why, informed by usage observations. Candidate tracks:
+  - **Track A: Deepen the chat** — conversation summarization, proactive Olivia-initiated messages, richer multi-step tool use, spouse chat access
+  - **Track B: Broaden the household** — spouse write access across all workflows, multi-user roles and permissions
+  - **Track C: Complete H3** — meal planning (spec drafted, H3 primitives proven, last unbuilt H3 workflow)
+  - **Track D: Increase autonomy** — rule-based automation, push action buttons, Layer 2 LLM timing
+  - A new direction surfaced by usage that none of the above cover
+- updated roadmap — `docs/roadmap/roadmap.md` updated to reflect H5 Phase 3 completion and the chosen Phase 4 direction
+
+Exit criteria:
+- at least two weeks of household usage of the deployed product (including chat) have elapsed since chat deployment
+- at least 3 qualitative observations about chat usage are documented (what kinds of interactions, action card confirm/dismiss ratio, whether it supplements or replaces screen navigation)
+- at least 3 qualitative observations about the broader product surface are documented (which H2-H5 features see regular use)
+- the CEO has recorded a next-direction decision based on usage signal, not speculative sequencing
+- the next milestone (M30) is defined with clear objectives that trace back to usage observations
+
+Evidence of completion:
+- a new agent can identify what the household actually uses, what the validated direction is, and why — without re-deriving product intent from feature specs alone
+
+Notes:
+- This milestone restores the validation gate that M28 was designed to provide. Three phases of H5 shipped without household feedback. The milestone system exists to prevent building past product-market fit signals, and this is the right time to honor that.
+- The board may again choose to direct the next cycle. If so, record the bypass honestly (as with M28) and proceed. But the default posture should be: observe, then decide.
+- Meal planning (Track C) is notable because it completes H3 — it is not speculative new scope but the final planned workflow in the coordination layer. If usage signal is ambiguous on direction, completing H3 is a strong default.
+
+## M30: [Direction TBD — defined by M29 exit]
+Objective: to be scoped after M29 produces usage-informed direction signal.
+
+Status: not started
+
+This milestone is intentionally undefined. M29's purpose is to produce the signal that shapes M30. Defining M30 now would repeat the pattern of building without validation.
+
+Candidate shapes (for orientation, not commitment):
+- If Track A (deepen chat): M30 would be a chat enhancement spec + build cycle — likely conversation summarization first, then proactive messages
+- If Track B (broaden household): M30 would be multi-user scoping — roles, permissions, spouse write access across all workflows
+- If Track C (complete H3): M30 would be meal planning spec approval + build — the spec is already drafted
+- If Track D (increase autonomy): M30 would be rule-based automation scoping — requires auditability infrastructure design first
+
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:
 - Do the docs make the current phase legible to a new agent?

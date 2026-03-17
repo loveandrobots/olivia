@@ -206,6 +206,28 @@ Phase 3 direction: **chat interface** (D-053, 2026-03-16). The board directly as
 
 Note: M28 (Household Validation & Phase 3 Scoping) was effectively bypassed by board directive. The household validation gate was skipped in favor of direct board assignment. The original Phase 3 candidates (rule-based automation, per-member push targeting, push action buttons, Layer 2 LLM timing, horizontal expansion) remain available for future cycles. Future milestones should continue to follow the gate process unless the board explicitly directs otherwise.
 
+## H5 Phase 3 completion and Phase 4 direction
+
+Phase 3 is complete: the chat interface is built and deployed (OLI-95 through OLI-102, 2026-03-16).
+
+What Phase 3 delivered:
+- Chat backend API with LLM integration (OLI-100) — Fastify endpoints, context assembly from all household data sources, Claude API streaming via the D-008 adapter boundary
+- Chat frontend wired to backend (OLI-101) — real streaming responses, message persistence, conversation management
+- A functional conversational assistant surface layered on top of the full H2-H5 feature set
+
+What Phase 3 confirmed:
+- The advisory-only trust model extends naturally to conversational interaction — draft action cards in chat follow the same confirm/dismiss pattern as structured screens
+- Context assembly from existing repository queries is tractable at household scale without a separate cache layer
+- The chat surface complements rather than replaces structured workflow screens
+
+Current state: M29 (Post-Chat Household Validation & Next-Direction Scoping) is the active milestone. Three phases of H5 shipped without household validation (M28 was bypassed). M29 restores the validation gate: observe real usage across the full product surface including chat, then decide what to build next.
+
+Phase 4 candidate tracks (to be decided by M29 usage signal):
+- **Track A: Deepen the chat** — conversation summarization, proactive Olivia-initiated messages, richer tool use, spouse chat access
+- **Track B: Broaden the household** — spouse write access, multi-user roles and permissions
+- **Track C: Complete H3** — meal planning (spec drafted, H3 primitives proven)
+- **Track D: Increase autonomy** — rule-based automation, push action buttons, Layer 2 LLM timing
+
 ## Near-Term Product Bets
 - The first enduring value will come from reducing coordination overhead, not from maximizing AI novelty.
 - The inbox implementation gives Olivia a stable product center; Horizon 3 should compound on that rather than reopening the MVP wedge.

@@ -18,6 +18,16 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-054: M29 defined as post-chat household validation gate — restoring the observation cycle that M28 was designed to provide
+- Date: 2026-03-16
+- Area: milestone definition / product strategy
+- Decision: Define M29 as **Post-Chat Household Validation & Next-Direction Scoping** — a usage-observation milestone that restores the validation gate M28 was designed to provide. M29 requires at least two weeks of household usage observation (including the newly shipped chat interface), documented qualitative observations about feature usage and chat interaction patterns, assumption validation, and a usage-informed direction decision before the next build cycle begins. Four candidate tracks are outlined (deepen chat, broaden household, complete H3 with meal planning, increase autonomy) but no commitment is made until usage signal exists. M30 is intentionally left undefined — its shape depends on what M29 reveals.
+- Rationale: H5 Phases 1–3 shipped without household validation. M28 was bypassed by board directive (D-053), which was the board's prerogative, but the result is that assumptions A-007, A-008, and A-009 remain unvalidated by real usage. The product now has a substantial feature surface (inbox, reminders, recurring routines, shared lists, unified weekly view, activity history, planning rituals, AI summaries, nudges, push notifications, completion-window timing, and chat). Building more without knowing what the household actually uses risks compounding features without compounding value. The M28 bypass note explicitly states future milestones should follow the gate process. This decision honors that.
+- Alternatives considered: (1) Define M29 as a build milestone with a specific track (e.g., meal planning or chat enhancements) — rejected because choosing a direction without usage signal would repeat the M28 bypass pattern, and this time there is no board directive pushing a specific direction. (2) Skip the validation gate entirely and let the board direct the next cycle — rejected because the CEO's job is to recommend the right process, not assume the board will always bypass it. If the board wants to direct again, they can. (3) A shorter validation period (1 week) — rejected because 2 weeks is already the minimum for observing steady-state behavior rather than novelty-driven usage.
+- Trade-offs: Pausing building for 2+ weeks risks momentum loss. Mitigated by concrete exit criteria that do not require exhaustive data — 3+ qualitative chat observations and 3+ broader observations are sufficient. The team can resume quickly once M29 closes. If the board directs a specific build target before M29 completes, the bypass can be recorded honestly (as with M28) and work proceeds.
+- Status: active
+- Related docs: `docs/roadmap/milestones.md` (M29, M30), `docs/roadmap/roadmap.md` (H5 Phase 3 completion), D-053, D-052, M28
+
 ### D-053: Chat interface chosen as H5 Phase 3 direction — board directive, M28 validation gate bypassed
 - Date: 2026-03-16
 - Area: product direction / H5 Phase 3
