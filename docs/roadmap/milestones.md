@@ -808,24 +808,33 @@ Evidence of completion:
 ## M28: Household Validation & Phase 3 Scoping
 Objective: observe real household usage of H5 Phase 2 capabilities (and the full H2-H4 feature surface) to inform the direction of the next build cycle, then scope Phase 3 based on that signal.
 
-Status: active
+Status: bypassed (board directive)
 
-This is a validation milestone, not a build milestone. The deliverable is a product direction decision, not code.
+This was a validation milestone, not a build milestone. The intended deliverable was a usage-informed product direction decision.
 
-Required artifacts:
+**Bypass note (2026-03-16):** M28 was effectively bypassed by direct board assignment. The board assigned OLI-95 ("Support Olivia chat interface") as the Phase 3 direction before the M28 validation gate could complete. The Phase 3 direction decision (D-053) was made by board directive rather than by the usage-observation process M28 defined. This is a legitimate board prerogative, but the following M28 exit criteria were not met:
+- the 2-week household usage observation period did not elapse
+- qualitative usage observations were not documented
+- assumptions A-007, A-008, A-009 remain unvalidated by household usage
+
+The Phase 3 direction decision (D-053) and roadmap update are complete. The next milestone definition (M29+) will be established as part of the chat feature spec and planning process.
+
+Future milestones should continue to follow the gate process. The M28 bypass is recorded honestly so future agents understand that the chat direction was board-driven, not observation-gated.
+
+Required artifacts (original, for reference):
 - household usage observations — qualitative notes on which features are used, which are ignored, where friction appears, and what the household asks for. Captured in `docs/learnings/` as observations, not requirements.
 - updated assumptions log — validate or invalidate key assumptions that have been running on implementation-completeness evidence: A-007 (shared lists are distinct from inbox), A-008 (recurrence model is reusable), A-009 (recurring/list primitives enable meal planning). Usage data should confirm, refine, or challenge these.
 - Phase 3 direction decision (D-053+) — a decision recording what comes next and why, informed by usage observations. Options include but are not limited to: rule-based automation (the deferred Phase 2 item), per-member push targeting, push action buttons, Layer 2 LLM timing, horizontal product expansion (spouse write-access, multi-user roles), or a new direction surfaced by usage.
 - updated roadmap — `docs/roadmap/roadmap.md` updated to reflect H5 Phase 2 completion and Phase 3 direction.
 
-Exit criteria:
+Exit criteria (original, for reference):
 - at least two weeks of household usage of the deployed H5 Phase 2 product have elapsed since deployment
 - at least 3 qualitative observations are documented about which H5 Phase 2 capabilities are used and how
 - the CEO has recorded a Phase 3 direction decision based on usage signal, not speculative sequencing
 - the next milestone (M29) is defined with clear objectives that trace back to usage observations
 
 Evidence of completion:
-- the project can point to a usage-informed product direction for Phase 3 rather than a pre-determined roadmap continuation, and the next build cycle targets what matters most based on real household behavior
+- D-053 recorded chat as Phase 3 direction (board-driven). Roadmap updated. M28 gate was bypassed, not completed through its intended process.
 
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:

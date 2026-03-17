@@ -202,15 +202,9 @@ What Phase 2 confirmed:
 - Completion-window heuristics are tractable at household scale with existing data — no LLM, no new tables, no new entity types
 - The advisory-only trust model continues to hold: Phase 2 changed when and how Olivia speaks, not what Olivia can do
 
-Phase 3 direction is pending household validation. The project has shipped continuously from H2 through H5 Phase 2 without a meaningful usage feedback loop. M28 (Household Validation & Phase 3 Scoping) pauses building to observe real household usage before committing to the next cycle. Phase 3 candidates include:
-- Rule-based automation (the deferred Phase 2 item)
-- Per-member push targeting
-- Push action buttons (complete/snooze from lock screen)
-- Layer 2 LLM-based nudge timing
-- Horizontal product expansion (spouse write-access, multi-user roles)
-- A new direction surfaced by household usage
+Phase 3 direction: **chat interface** (D-053, 2026-03-16). The board directly assigned the chat feature (OLI-95), choosing a conversational assistant surface as the next build cycle. The chat interface layers on top of existing domain capabilities — users can ask Olivia about household state, request task creation, set reminders, add list items, and interact with the full H2-H5 feature surface through natural conversation. Olivia suggests and drafts but never auto-executes; all state changes require explicit user confirmation.
 
-The direction will be set by D-053+ based on usage observations, not speculative sequencing.
+Note: M28 (Household Validation & Phase 3 Scoping) was effectively bypassed by board directive. The household validation gate was skipped in favor of direct board assignment. The original Phase 3 candidates (rule-based automation, per-member push targeting, push action buttons, Layer 2 LLM timing, horizontal expansion) remain available for future cycles. Future milestones should continue to follow the gate process unless the board explicitly directs otherwise.
 
 ## Near-Term Product Bets
 - The first enduring value will come from reducing coordination overhead, not from maximizing AI novelty.

@@ -18,6 +18,16 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-053: Chat interface chosen as H5 Phase 3 direction — board directive, M28 validation gate bypassed
+- Date: 2026-03-16
+- Area: product direction / H5 Phase 3
+- Decision: The chat interface is the active Phase 3 direction for H5. The board assigned OLI-95 ("Support Olivia chat interface") directly, directing the team to build a conversational assistant surface layered on top of existing domain capabilities. The chat feature lets users interact with Olivia as a household-aware assistant that can read state, suggest actions, and draft changes with approval. This decision supersedes the open-ended Phase 3 candidate list in D-052 and sets the next build cycle direction.
+- Rationale: Board-driven decision. The app already has a chat surface (`/olivia` route) that users expect to work, but it is entirely mocked. The board determined that making this surface functional is the right next step, rather than waiting for usage observation to surface a direction organically. This is a legitimate product call — the chat interface is a high-leverage feature that connects the full H2-H5 capability surface (inbox, reminders, lists, routines, meals, planning rituals, nudges) through a single conversational entry point.
+- Alternatives considered: The M28 process would have evaluated rule-based automation, per-member push targeting, push action buttons, Layer 2 LLM timing, and horizontal product expansion as Phase 3 candidates. The board chose chat instead, which was not on the original Phase 3 candidate list.
+- Trade-offs: M28's household validation gate (2+ weeks of usage observation, 3+ qualitative observations, usage-informed direction) was effectively bypassed by direct board assignment. The validation pause that D-052 established — specifically to avoid speculative sequencing — was overridden by board authority. This is an acceptable override: the board has prerogative to direct product work, and the chat direction has clear user-facing value. However, the assumptions that M28 was designed to validate (A-007, A-008, A-009) remain unvalidated by household usage. Future milestones should still follow the gate process unless the board explicitly directs otherwise.
+- Status: active
+- Related docs: OLI-95, D-052, `docs/roadmap/roadmap.md` (H5 Phase 3), `docs/roadmap/milestones.md` (M28)
+
 ### D-052: H5 Phase 2 complete — household validation pause before Phase 3 scoping
 - Date: 2026-03-16
 - Area: roadmap progression / product strategy
