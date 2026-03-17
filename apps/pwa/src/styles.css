@@ -4436,6 +4436,47 @@ textarea:focus, input:focus, select:focus {
   border-radius: 16px;
 }
 
+/* Confidence indicators on action cards */
+.oa-confidence {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+.oa-confidence-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.oa-confidence-high .oa-confidence-dot { background: var(--mint); }
+.oa-confidence-medium .oa-confidence-dot { background: var(--peach); }
+.oa-confidence-low .oa-confidence-dot { background: var(--rose); }
+.oa-confidence-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.oa-confidence-medium .oa-confidence-label { color: var(--peach); }
+.oa-confidence-low .oa-confidence-label { color: var(--rose); }
+
+/* Topic badge on Olivia topic-intro messages */
+.onb-topic-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  background: var(--violet-dim);
+  color: var(--violet);
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-bottom: 8px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-style: normal;
+}
+
 /* Confirmed/dismissed states for action cards */
 .oa-status {
   font-size: 11px;

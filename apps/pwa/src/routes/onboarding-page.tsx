@@ -44,6 +44,24 @@ const ACTION_LABELS: Record<string, { label: string; primary: string; secondary:
   create_meal_entry: { label: 'MEAL ENTRY', primary: 'Add meal', secondary: 'Skip' },
 };
 
+function getConfidenceLevel(tc: ChatToolCall): 'high' | 'medium' | 'low' {
+  const confidence = typeof tc.data.parseConfidence === 'number' ? tc.data.parseConfidence : 1;
+  if (confidence >= 0.85) return 'high';
+  if (confidence >= 0.5) return 'medium';
+  return 'low';
+}
+
+function ConfidenceDot({ tc }: { tc: ChatToolCall }) {
+  const level = getConfidenceLevel(tc);
+  const label = level === 'high' ? 'HIGH' : level === 'medium' ? 'MED' : 'LOW';
+  return (
+    <span className={`oa-confidence oa-confidence-${level}`} aria-label={`Parse confidence: ${level}`}>
+      <span className="oa-confidence-dot" />
+      {level !== 'high' && <span className="oa-confidence-label">{label}</span>}
+    </span>
+  );
+}
+
 function formatToolCallPreview(tc: ChatToolCall): string {
   const d = tc.data;
   switch (tc.type) {
@@ -122,6 +140,7 @@ export function OnboardingPage() {
   const [streamingToolCalls, setStreamingToolCalls] = useState<ChatToolCall[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [inputValue, setInputValue] = useState('');
+  const [showExitButtons, setShowExitButtons] = useState(false);
 
   // Load onboarding state
   const stateQuery = useQuery({
@@ -140,7 +159,13 @@ export function OnboardingPage() {
   // Sync messages from query
   useEffect(() => {
     if (convQuery.data?.messages) {
-      setMessages(convQuery.data.messages.map(mapApiMessage));
+      const mapped = convQuery.data.messages.map(mapApiMessage);
+      setMessages(mapped);
+      // Show exit buttons if the last message with tool calls has all resolved
+      const lastWithTools = [...mapped].reverse().find(m => m.toolCalls && m.toolCalls.length > 0);
+      if (lastWithTools?.toolCalls?.every(tc => tc.status !== 'pending')) {
+        setShowExitButtons(true);
+      }
     }
   }, [convQuery.data]);
 
@@ -157,6 +182,7 @@ export function OnboardingPage() {
     setIsStreaming(true);
     setStreamingText('');
     setStreamingToolCalls([]);
+    setShowExitButtons(false);
 
     // Add user message optimistically
     const userMsg: ChatMessage = {
@@ -214,11 +240,19 @@ export function OnboardingPage() {
   const handleConfirm = useCallback(async (msgId: string, toolCallId: string) => {
     try {
       await confirmChatAction(toolCallId);
-      setMessages(prev => prev.map(m =>
-        m.id === msgId && m.toolCalls
-          ? { ...m, toolCalls: m.toolCalls.map(tc => tc.id === toolCallId ? { ...tc, status: 'confirmed' as const } : tc) }
-          : m
-      ));
+      setMessages(prev => {
+        const updated = prev.map(m =>
+          m.id === msgId && m.toolCalls
+            ? { ...m, toolCalls: m.toolCalls.map(tc => tc.id === toolCallId ? { ...tc, status: 'confirmed' as const } : tc) }
+            : m
+        );
+        // Show exit buttons if all tool calls in the message are resolved
+        const msg = updated.find(m => m.id === msgId);
+        if (msg?.toolCalls?.every(tc => tc.status !== 'pending')) {
+          setShowExitButtons(true);
+        }
+        return updated;
+      });
       void queryClient.invalidateQueries({ queryKey: ['onboarding-state'] });
     } catch {
       // ignore
@@ -228,11 +262,19 @@ export function OnboardingPage() {
   const handleDismiss = useCallback(async (msgId: string, toolCallId: string) => {
     try {
       await dismissChatAction(toolCallId);
-      setMessages(prev => prev.map(m =>
-        m.id === msgId && m.toolCalls
-          ? { ...m, toolCalls: m.toolCalls.map(tc => tc.id === toolCallId ? { ...tc, status: 'dismissed' as const } : tc) }
-          : m
-      ));
+      setMessages(prev => {
+        const updated = prev.map(m =>
+          m.id === msgId && m.toolCalls
+            ? { ...m, toolCalls: m.toolCalls.map(tc => tc.id === toolCallId ? { ...tc, status: 'dismissed' as const } : tc) }
+            : m
+        );
+        // Show exit buttons if all tool calls in the message are resolved
+        const msg = updated.find(m => m.id === msgId);
+        if (msg?.toolCalls?.every(tc => tc.status !== 'pending')) {
+          setShowExitButtons(true);
+        }
+        return updated;
+      });
     } catch {
       // ignore
     }
@@ -240,6 +282,7 @@ export function OnboardingPage() {
 
   const handleKeepGoing = useCallback(async () => {
     try {
+      setShowExitButtons(false);
       const result = await advanceOnboardingTopic();
       void queryClient.invalidateQueries({ queryKey: ['onboarding-state'] });
       if (result.done) {
@@ -254,6 +297,7 @@ export function OnboardingPage() {
           id: `topic-${Date.now()}`,
           role: 'olivia',
           text: result.topicPrompt,
+          topic: result.currentTopic ?? undefined,
         };
         setMessages(prev => [...prev, topicMsg]);
       }
@@ -322,6 +366,11 @@ export function OnboardingPage() {
           <div key={msg.id} className={`msg msg-${msg.role === 'user' ? 'user' : 'olivia'}`}>
             <div className="msg-label">{msg.role === 'user' ? 'YOU' : 'OLIVIA'}</div>
             <div className="msg-bubble">
+              {msg.topic && TOPIC_LABELS[msg.topic] && (
+                <div className="onb-topic-badge">
+                  {TOPIC_LABELS[msg.topic].emoji} {TOPIC_LABELS[msg.topic].label}
+                </div>
+              )}
               {msg.text && <p>{msg.text}</p>}
               {msg.toolCalls?.map(tc => {
                 const labels = ACTION_LABELS[tc.type] ?? { label: tc.type.toUpperCase(), primary: 'Confirm', secondary: 'Skip' };
@@ -330,7 +379,10 @@ export function OnboardingPage() {
                     key={tc.id}
                     className={`olivia-action-card ${tc.status !== 'pending' ? `oa-${tc.status}` : ''}`}
                   >
-                    <div className="oa-label">{labels.label}</div>
+                    <div className="oa-label">
+                      {labels.label}
+                      <ConfidenceDot tc={tc} />
+                    </div>
                     <div className="oa-preview">{formatToolCallPreview(tc)}</div>
                     {tc.status === 'pending' && (
                       <div className="oa-buttons">
@@ -383,8 +435,8 @@ export function OnboardingPage() {
           </div>
         )}
 
-        {/* Progressive exit buttons */}
-        {!isStreaming && !isFinished && messages.length > 1 && (
+        {/* Progressive exit buttons — shown after entity confirmation/skip */}
+        {!isStreaming && !isFinished && showExitButtons && (
           <div className="onb-exit-prompt">
             <button type="button" className="btn-primary onb-btn" onClick={() => void handleKeepGoing()}>
               Keep going {'\u2192'}

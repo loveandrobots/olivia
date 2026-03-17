@@ -165,7 +165,8 @@ export const CHAT_TOOLS: Anthropic.Messages.Tool[] = [
       properties: {
         title: { type: 'string', description: 'Title of the task' },
         owner: { type: 'string', enum: ['stakeholder', 'spouse', 'unassigned'], description: 'Who owns this task' },
-        dueText: { type: 'string', description: 'Natural language due date (e.g., "Friday", "next week")' }
+        dueText: { type: 'string', description: 'Natural language due date (e.g., "Friday", "next week")' },
+        parseConfidence: { type: 'number', description: 'How confident you are in your interpretation of this item (0.0 to 1.0). Use 0.9+ when the user was specific, 0.5-0.89 when you inferred details, below 0.5 when guessing.' }
       },
       required: ['title']
     }
@@ -178,7 +179,8 @@ export const CHAT_TOOLS: Anthropic.Messages.Tool[] = [
       properties: {
         title: { type: 'string', description: 'What to be reminded about' },
         scheduledAt: { type: 'string', description: 'ISO 8601 datetime or natural language time for the reminder' },
-        owner: { type: 'string', enum: ['stakeholder', 'spouse', 'unassigned'], description: 'Who owns this reminder' }
+        owner: { type: 'string', enum: ['stakeholder', 'spouse', 'unassigned'], description: 'Who owns this reminder' },
+        parseConfidence: { type: 'number', description: 'How confident you are in your interpretation of this item (0.0 to 1.0). Use 0.9+ when the user was specific, 0.5-0.89 when you inferred details, below 0.5 when guessing.' }
       },
       required: ['title', 'scheduledAt']
     }
@@ -190,7 +192,8 @@ export const CHAT_TOOLS: Anthropic.Messages.Tool[] = [
       type: 'object' as const,
       properties: {
         listTitle: { type: 'string', description: 'Name of the target shared list' },
-        body: { type: 'string', description: 'The item to add' }
+        body: { type: 'string', description: 'The item to add' },
+        parseConfidence: { type: 'number', description: 'How confident you are in your interpretation of this item (0.0 to 1.0). Use 0.9+ when the user was specific, 0.5-0.89 when you inferred details, below 0.5 when guessing.' }
       },
       required: ['listTitle', 'body']
     }
@@ -202,7 +205,8 @@ export const CHAT_TOOLS: Anthropic.Messages.Tool[] = [
       type: 'object' as const,
       properties: {
         name: { type: 'string', description: 'Name of the meal' },
-        dayOfWeek: { type: 'number', description: 'Day of week (0=Mon, 6=Sun)' }
+        dayOfWeek: { type: 'number', description: 'Day of week (0=Mon, 6=Sun)' },
+        parseConfidence: { type: 'number', description: 'How confident you are in your interpretation of this item (0.0 to 1.0). Use 0.9+ when the user was specific, 0.5-0.89 when you inferred details, below 0.5 when guessing.' }
       },
       required: ['name', 'dayOfWeek']
     }
@@ -244,7 +248,8 @@ const ONBOARDING_EXTRA_TOOLS: Anthropic.Messages.Tool[] = [
         owner: { type: 'string', enum: ['stakeholder', 'spouse', 'unassigned'], description: 'Who owns this routine' },
         recurrenceRule: { type: 'string', enum: ['daily', 'weekly', 'monthly', 'every_n_days'], description: 'How often the routine recurs' },
         intervalDays: { type: 'number', description: 'Number of days between occurrences (only for every_n_days)' },
-        firstDueDate: { type: 'string', description: 'ISO 8601 date for the first occurrence (e.g., "2026-03-18")' }
+        firstDueDate: { type: 'string', description: 'ISO 8601 date for the first occurrence (e.g., "2026-03-18")' },
+        parseConfidence: { type: 'number', description: 'How confident you are in your interpretation of this item (0.0 to 1.0). Use 0.9+ when the user was specific, 0.5-0.89 when you inferred details, below 0.5 when guessing.' }
       },
       required: ['title', 'recurrenceRule']
     }
@@ -256,7 +261,8 @@ const ONBOARDING_EXTRA_TOOLS: Anthropic.Messages.Tool[] = [
       type: 'object' as const,
       properties: {
         title: { type: 'string', description: 'Name of the list (e.g., "Groceries", "Packing list")' },
-        owner: { type: 'string', enum: ['stakeholder', 'spouse', 'unassigned'], description: 'Who owns this list' }
+        owner: { type: 'string', enum: ['stakeholder', 'spouse', 'unassigned'], description: 'Who owns this list' },
+        parseConfidence: { type: 'number', description: 'How confident you are in your interpretation of this item (0.0 to 1.0). Use 0.9+ when the user was specific, 0.5-0.89 when you inferred details, below 0.5 when guessing.' }
       },
       required: ['title']
     }
@@ -351,6 +357,7 @@ Templates are suggestions only — never auto-create them.
 - Each tool call generates a draft card. Do not describe the draft in prose — the card is the interface.
 - After proposing items, briefly acknowledge what you captured and let the cards speak for themselves.
 - If the user's text is ambiguous, ask a clarifying question before creating drafts.
+- Always include parseConfidence (0.0–1.0) in every tool call: 0.9+ when the user was explicit and specific, 0.5–0.89 when you had to infer missing details (due dates, owners, recurrence), below 0.5 when guessing or the intent was unclear.
 
 ## Progressive Exit
 After each topic's items are confirmed, ask: "Want to keep going with the next area, or is this enough for now?"
