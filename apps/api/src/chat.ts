@@ -247,6 +247,8 @@ export async function* streamChat(
   const systemPrompt = buildSystemPrompt(householdContext);
 
   // Build conversation history for LLM
+  // Note: the user message is already saved to DB before streamChat is called,
+  // so recentMessages includes it — no need to append it again.
   const recentMessages = repository.getRecentChatMessages(conversationId, MAX_CONVERSATION_HISTORY);
   const messages: Anthropic.Messages.MessageParam[] = [];
   for (const msg of recentMessages) {
@@ -256,7 +258,6 @@ export async function* streamChat(
       messages.push({ role: 'assistant', content: msg.content });
     }
   }
-  messages.push({ role: 'user', content: userContent });
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
@@ -321,17 +322,18 @@ export async function* streamChat(
 
     clearTimeout(timeout);
 
-    // Save assistant message to DB
+    // Save assistant message to DB — use current time so it sorts after the user message
     const assistantMsgId = randomUUID();
+    const assistantNow = new Date();
     repository.addChatMessage({
       id: assistantMsgId,
       conversationId,
       role: 'assistant',
       content: fullText,
       toolCalls: toolCalls.length > 0 ? toolCalls : null,
-      createdAt: now.toISOString()
+      createdAt: assistantNow.toISOString()
     });
-    repository.touchConversation(conversationId, now);
+    repository.touchConversation(conversationId, assistantNow);
 
     yield { event: 'done', data: { messageId: assistantMsgId, conversationId } };
   } catch (err) {
