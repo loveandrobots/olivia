@@ -137,10 +137,10 @@ export function HistoryPage() {
 
   return (
     <div className="screen">
-      <div className="screen__scroll-area">
-        <header className="screen-header">
-          <h1 className="screen-header__title">History</h1>
-        </header>
+      <div className="screen-scroll">
+        <div className="screen-header">
+          <div className="screen-title">History</div>
+        </div>
 
         {role === 'spouse' && (
           <div className="spouse-banner" role="note">
