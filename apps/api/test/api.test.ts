@@ -292,7 +292,7 @@ describe('reminder migrations and api', () => {
       .all() as Array<{ name: string }>;
 
     expect(repository.listItems()).toHaveLength(1);
-    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql', '0003_recurring_routines.sql', '0004_meal_planning.sql', '0005_planning_ritual_support.sql', '0006_ai_ritual_summaries.sql', '0007_push_notifications.sql', '0008_chat_conversations.sql']);
+    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql', '0003_recurring_routines.sql', '0004_meal_planning.sql', '0005_planning_ritual_support.sql', '0006_ai_ritual_summaries.sql', '0007_push_notifications.sql', '0008_chat_conversations.sql', '0009_onboarding_sessions.sql']);
     expect(reminderTables.map((row) => row.name).sort()).toEqual([
       'notification_delivery_log',
       'reminder_notification_preferences',
@@ -2351,6 +2351,260 @@ describe('proactive household nudges api', () => {
 
     const after = await app.inject({ method: 'GET', url: '/api/nudges?actorRole=stakeholder' });
     expect(after.json().nudges.some((n: { entityId: string }) => n.entityId === routine.id)).toBe(false);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe('onboarding api (OLI-119)', () => {
+  function makeDir() {
+    const dir = mkdtempSync(join(tmpdir(), 'olivia-onboarding-'));
+    return { dir, dbPath: join(dir, 'test.sqlite') };
+  }
+
+  it('returns needsOnboarding=true for empty household', async () => {
+    const { dir, dbPath } = makeDir();
+    const app = await buildApp({ config: createConfig(dbPath) });
+    const res = await app.inject({ method: 'GET', url: '/api/onboarding/state' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.needsOnboarding).toBe(true);
+    expect(body.entityCount).toBe(0);
+    expect(body.session).toBeNull();
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('returns needsOnboarding=false when household has more than 2 entities', async () => {
+    const { dir, dbPath } = makeDir();
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    // Create 3 inbox items to exceed threshold
+    for (let i = 0; i < 3; i++) {
+      await createInboxItemViaApi(app, `Item ${i}`);
+    }
+
+    const res = await app.inject({ method: 'GET', url: '/api/onboarding/state' });
+    const body = res.json();
+    expect(body.needsOnboarding).toBe(false);
+    expect(body.entityCount).toBe(3);
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('returns 503 for start when AI is unavailable', async () => {
+    const { dir, dbPath } = makeDir();
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    const res = await app.inject({ method: 'POST', url: '/api/onboarding/start' });
+    expect(res.statusCode).toBe(503);
+    expect(res.json().code).toBe('AI_UNAVAILABLE');
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('creates and manages onboarding session via repository directly', async () => {
+    const { dir, dbPath } = makeDir();
+    const db = createDatabase(dbPath);
+    const repo = new InboxRepository(db);
+    const now = new Date();
+
+    // Entity count starts at 0
+    expect(repo.countTotalEntities()).toBe(0);
+
+    // No session initially
+    expect(repo.getOnboardingSession()).toBeNull();
+
+    // Create onboarding conversation
+    const conv = repo.getOrCreateOnboardingConversation(now);
+    expect(conv.id).toBeTruthy();
+
+    // Create session
+    const sessionId = randomUUID();
+    repo.createOnboardingSession({
+      id: sessionId,
+      conversationId: conv.id,
+      status: 'started',
+      topicsCompleted: [],
+      currentTopic: 'tasks',
+      entitiesCreated: 0,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    });
+
+    const session = repo.getOnboardingSession();
+    expect(session).toBeTruthy();
+    expect(session!.status).toBe('started');
+    expect(session!.currentTopic).toBe('tasks');
+    expect(session!.topicsCompleted).toEqual([]);
+
+    // Update topic
+    repo.updateOnboardingSession(sessionId, {
+      topicsCompleted: ['tasks'],
+      currentTopic: 'routines',
+      updatedAt: now.toISOString()
+    });
+
+    const updated = repo.getOnboardingSession();
+    expect(updated!.topicsCompleted).toEqual(['tasks']);
+    expect(updated!.currentTopic).toBe('routines');
+
+    // Increment entities
+    repo.incrementOnboardingEntitiesCreated(sessionId, 3, now);
+    expect(repo.getOnboardingSession()!.entitiesCreated).toBe(3);
+
+    // Finish
+    repo.updateOnboardingSession(sessionId, {
+      status: 'finished',
+      currentTopic: null,
+      updatedAt: now.toISOString()
+    });
+    expect(repo.getOnboardingSession()!.status).toBe('finished');
+
+    db.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('advances through topics via API', async () => {
+    const { dir, dbPath } = makeDir();
+    const db = createDatabase(dbPath);
+    const repo = new InboxRepository(db);
+    const now = new Date();
+
+    // Manually create session (bypassing AI requirement of /start)
+    const conv = repo.getOrCreateOnboardingConversation(now);
+    const sessionId = randomUUID();
+    repo.createOnboardingSession({
+      id: sessionId,
+      conversationId: conv.id,
+      status: 'started',
+      topicsCompleted: [],
+      currentTopic: 'tasks',
+      entitiesCreated: 0,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    });
+    db.close();
+
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    // Advance from tasks to routines
+    const res1 = await app.inject({ method: 'POST', url: '/api/onboarding/next-topic' });
+    expect(res1.statusCode).toBe(200);
+    expect(res1.json().currentTopic).toBe('routines');
+    expect(res1.json().topicsCompleted).toContain('tasks');
+
+    // Advance through remaining topics
+    const res2 = await app.inject({ method: 'POST', url: '/api/onboarding/next-topic' });
+    expect(res2.json().currentTopic).toBe('reminders');
+
+    const res3 = await app.inject({ method: 'POST', url: '/api/onboarding/next-topic' });
+    expect(res3.json().currentTopic).toBe('lists');
+
+    const res4 = await app.inject({ method: 'POST', url: '/api/onboarding/next-topic' });
+    expect(res4.json().currentTopic).toBe('meals');
+
+    // Final advance — all done
+    const res5 = await app.inject({ method: 'POST', url: '/api/onboarding/next-topic' });
+    expect(res5.json().done).toBe(true);
+    expect(res5.json().topicsCompleted).toEqual(['tasks', 'routines', 'reminders', 'lists', 'meals']);
+
+    // State should show finished
+    const stateRes = await app.inject({ method: 'GET', url: '/api/onboarding/state' });
+    expect(stateRes.json().session.status).toBe('finished');
+    expect(stateRes.json().needsOnboarding).toBe(false);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('finishes onboarding early', async () => {
+    const { dir, dbPath } = makeDir();
+    const db = createDatabase(dbPath);
+    const repo = new InboxRepository(db);
+    const now = new Date();
+
+    // Create session with one topic completed
+    const conv = repo.getOrCreateOnboardingConversation(now);
+    const sessionId = randomUUID();
+    repo.createOnboardingSession({
+      id: sessionId,
+      conversationId: conv.id,
+      status: 'started',
+      topicsCompleted: ['tasks'],
+      currentTopic: 'routines',
+      entitiesCreated: 0,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    });
+    db.close();
+
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    // Finish early
+    const res = await app.inject({ method: 'POST', url: '/api/onboarding/finish' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().session.status).toBe('finished');
+    expect(res.json().session.topicsCompleted).toContain('routines');
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('returns 503 for onboarding message when AI unavailable', async () => {
+    const { dir, dbPath } = makeDir();
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/onboarding/messages',
+      payload: { content: 'hello' }
+    });
+    expect(res.statusCode).toBe(503);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('returns empty conversation when no session exists', async () => {
+    const { dir, dbPath } = makeDir();
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    const res = await app.inject({ method: 'GET', url: '/api/onboarding/conversation' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().conversationId).toBeNull();
+    expect(res.json().messages).toEqual([]);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('rejects next-topic when no active session', async () => {
+    const { dir, dbPath } = makeDir();
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    const res = await app.inject({ method: 'POST', url: '/api/onboarding/next-topic' });
+    expect(res.statusCode).toBe(400);
+
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('tracks entity count across session start and state', async () => {
+    const { dir, dbPath } = makeDir();
+    const app = await buildApp({ config: createConfig(dbPath) });
+
+    // Start onboarding
+    await app.inject({ method: 'POST', url: '/api/onboarding/start' });
+
+    // Create an inbox item
+    await createInboxItemViaApi(app, 'Test task');
+
+    // State should reflect entity count
+    const stateRes = await app.inject({ method: 'GET', url: '/api/onboarding/state' });
+    expect(stateRes.json().entityCount).toBe(1);
 
     await app.close();
     rmSync(dir, { recursive: true, force: true });

@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import Anthropic from '@anthropic-ai/sdk';
 import { format } from 'date-fns';
-import type { InboxRepository } from './repository';
+import { ONBOARDING_TOPICS, type OnboardingTopic } from '@olivia/contracts';
+import type { InboxRepository, OnboardingSessionRow } from './repository';
 import type { AppConfig } from './config';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -230,6 +231,142 @@ export const CHAT_TOOLS: Anthropic.Messages.Tool[] = [
   }
 ];
 
+// ─── Onboarding Tools (OLI-119) ──────────────────────────────────────────────
+
+const ONBOARDING_EXTRA_TOOLS: Anthropic.Messages.Tool[] = [
+  {
+    name: 'create_routine',
+    description: 'Propose creating a recurring routine. The user will see a draft card and must confirm.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        title: { type: 'string', description: 'Title of the routine (e.g., "Take out trash")' },
+        owner: { type: 'string', enum: ['stakeholder', 'spouse', 'unassigned'], description: 'Who owns this routine' },
+        recurrenceRule: { type: 'string', enum: ['daily', 'weekly', 'monthly', 'every_n_days'], description: 'How often the routine recurs' },
+        intervalDays: { type: 'number', description: 'Number of days between occurrences (only for every_n_days)' },
+        firstDueDate: { type: 'string', description: 'ISO 8601 date for the first occurrence (e.g., "2026-03-18")' }
+      },
+      required: ['title', 'recurrenceRule']
+    }
+  },
+  {
+    name: 'create_shared_list',
+    description: 'Propose creating a new shared list. The user will see a draft card and must confirm.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        title: { type: 'string', description: 'Name of the list (e.g., "Groceries", "Packing list")' },
+        owner: { type: 'string', enum: ['stakeholder', 'spouse', 'unassigned'], description: 'Who owns this list' }
+      },
+      required: ['title']
+    }
+  }
+];
+
+export const ONBOARDING_TOOLS: Anthropic.Messages.Tool[] = [
+  ...CHAT_TOOLS,
+  ...ONBOARDING_EXTRA_TOOLS
+];
+
+// ─── Onboarding System Prompt (OLI-119) ─────────────────────────────────────
+
+const TOPIC_PROMPTS: Record<OnboardingTopic, string> = {
+  tasks: "Let's start with the things on your mind. What tasks, to-dos, or obligations are you tracking right now? Just list them out naturally — I'll organize them.",
+  routines: "Any recurring chores or routines your household does regularly? Things like cleaning, laundry, taking out trash, paying bills?",
+  reminders: "Do you have any upcoming reminders or deadlines you want to make sure you don't forget?",
+  lists: "Do you keep any shared lists — groceries, shopping, packing lists, or anything else?",
+  meals: "Do you plan meals for the week? If so, tell me about your typical pattern."
+};
+
+export function getTopicPrompt(topic: OnboardingTopic): string {
+  return TOPIC_PROMPTS[topic];
+}
+
+export function getNextOnboardingTopic(completedTopics: string[]): OnboardingTopic | null {
+  for (const topic of ONBOARDING_TOPICS) {
+    if (!completedTopics.includes(topic)) return topic;
+  }
+  return null;
+}
+
+// ─── Starter Templates (OLI-119) ────────────────────────────────────────────
+
+export const STARTER_ROUTINE_TEMPLATES = [
+  { title: 'Take out trash', recurrenceRule: 'weekly' as const },
+  { title: 'Do laundry', recurrenceRule: 'weekly' as const },
+  { title: 'Clean kitchen', recurrenceRule: 'weekly' as const },
+  { title: 'Vacuum/sweep floors', recurrenceRule: 'weekly' as const },
+  { title: 'Pay bills', recurrenceRule: 'monthly' as const },
+  { title: 'Water plants', recurrenceRule: 'weekly' as const },
+  { title: 'Change bed sheets', recurrenceRule: 'weekly' as const },
+];
+
+export const STARTER_LIST_TEMPLATES = [
+  { title: 'Groceries' },
+  { title: 'Shopping list' },
+  { title: 'Things to buy' },
+];
+
+export function buildOnboardingSystemPrompt(
+  householdContext: string,
+  session: OnboardingSessionRow | null
+): string {
+  const completedTopics = session?.topicsCompleted ?? [];
+  const currentTopic = session?.currentTopic ?? null;
+  const nextTopic = currentTopic ?? getNextOnboardingTopic(completedTopics);
+
+  const routineTemplateList = STARTER_ROUTINE_TEMPLATES.map(t => `"${t.title}" (${t.recurrenceRule})`).join(', ');
+  const listTemplateList = STARTER_LIST_TEMPLATES.map(t => `"${t.title}"`).join(', ');
+
+  return `You are Olivia, a household command center assistant guiding a new user through their initial household setup.
+
+## Voice
+- Speak in a calm, steady, present tone. Be warm and encouraging but not performative.
+- Be clear, not clever. No puns, jokes, or personality quirks.
+- Keep responses concise. This should feel like a conversation, not a questionnaire.
+- Celebrate what the user shares ("Great, I've got those captured") without being sycophantic.
+
+## Your Role
+You are helping the user set up their household by walking through topics one at a time. For each topic, you:
+1. Ask what they have on their mind for that area
+2. Parse their freeform text into specific, actionable items
+3. Use your tools to propose each item as a draft for the user to confirm
+4. After they respond, ask if they want to keep going or stop for now
+
+## Topic Flow
+The topics are: tasks → routines → reminders → lists → meals.
+Topics already completed: ${completedTopics.length > 0 ? completedTopics.join(', ') : 'none'}.
+${currentTopic ? `Current topic: ${currentTopic}. Continue guiding the user through this topic.` : ''}
+${nextTopic && !currentTopic ? `Next topic to introduce: ${nextTopic}.` : ''}
+${completedTopics.length === ONBOARDING_TOPICS.length ? 'All topics completed! Summarize what was created and congratulate the user.' : ''}
+
+## Starter Templates
+When on the routines topic, mention that many households track routines like ${routineTemplateList}. Offer these as suggestions the user can accept or skip.
+When on the lists topic, mention common lists like ${listTemplateList}. Offer these as suggestions.
+Templates are suggestions only — never auto-create them.
+
+## Tool Use Rules
+- Parse the user's freeform text into individual items and create a tool call for EACH item.
+- For tasks, use create_inbox_item. For reminders, use create_reminder. For routines, use create_routine. For lists, use create_shared_list and add_list_item. For meals, use create_meal_entry.
+- Each tool call generates a draft card. Do not describe the draft in prose — the card is the interface.
+- After proposing items, briefly acknowledge what you captured and let the cards speak for themselves.
+- If the user's text is ambiguous, ask a clarifying question before creating drafts.
+
+## Progressive Exit
+After each topic's items are confirmed, ask: "Want to keep going with the next area, or is this enough for now?"
+If the user wants to stop, say something warm like "You've made a great start. You can always continue setup later from the home screen."
+
+## Behavioral Rules
+- Never create items without using a tool call (which requires user confirmation).
+- Never auto-create starter templates. Always ask first.
+- Be specific with proposed items. "Buy groceries" is too vague — ask what they need.
+- If the user shares a mix of topics (tasks + reminders in one message), sort them into the right types.
+- Keep the conversation flowing naturally. Don't repeat instructions the user has already heard.
+
+## Current Household State
+${householdContext}`;
+}
+
 // ─── Streaming Chat Engine ────────────────────────────────────────────────────
 
 const CHAT_MODEL = 'claude-haiku-4-5-20251001';
@@ -323,6 +460,112 @@ export async function* streamChat(
     clearTimeout(timeout);
 
     // Save assistant message to DB — use current time so it sorts after the user message
+    const assistantMsgId = randomUUID();
+    const assistantNow = new Date();
+    repository.addChatMessage({
+      id: assistantMsgId,
+      conversationId,
+      role: 'assistant',
+      content: fullText,
+      toolCalls: toolCalls.length > 0 ? toolCalls : null,
+      createdAt: assistantNow.toISOString()
+    });
+    repository.touchConversation(conversationId, assistantNow);
+
+    yield { event: 'done', data: { messageId: assistantMsgId, conversationId } };
+  } catch (err) {
+    clearTimeout(timeout);
+    const message = err instanceof Error && err.name === 'AbortError'
+      ? 'I\'m taking longer than usual to think this through. Give me another moment, or try asking in a different way.'
+      : 'Something unexpected happened on my end. Try sending your message again.';
+    yield { event: 'error', data: { message } };
+  }
+}
+
+// ─── Onboarding Chat Engine (OLI-119) ───────────────────────────────────────
+
+export async function* streamOnboardingChat(
+  client: Anthropic,
+  repository: InboxRepository,
+  config: AppConfig,
+  conversationId: string,
+  session: OnboardingSessionRow,
+  now: Date
+): AsyncGenerator<ChatStreamEvent> {
+  const householdContext = assembleHouseholdContext(repository, config, now);
+  const systemPrompt = buildOnboardingSystemPrompt(householdContext, session);
+
+  const recentMessages = repository.getRecentChatMessages(conversationId, MAX_CONVERSATION_HISTORY);
+  const messages: Anthropic.Messages.MessageParam[] = [];
+  for (const msg of recentMessages) {
+    if (msg.role === 'user') {
+      messages.push({ role: 'user', content: msg.content });
+    } else if (msg.role === 'assistant') {
+      messages.push({ role: 'assistant', content: msg.content });
+    }
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
+
+  try {
+    const stream = await client.messages.create(
+      {
+        model: CHAT_MODEL,
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages,
+        tools: ONBOARDING_TOOLS,
+        stream: true
+      },
+      { signal: controller.signal }
+    );
+
+    let fullText = '';
+    const toolCalls: ChatToolCall[] = [];
+    let currentToolName = '';
+    let currentToolInput = '';
+    let currentToolUseId = '';
+
+    for await (const event of stream) {
+      if (event.type === 'content_block_start') {
+        if (event.content_block.type === 'tool_use') {
+          currentToolName = event.content_block.name;
+          currentToolUseId = event.content_block.id;
+          currentToolInput = '';
+        }
+      } else if (event.type === 'content_block_delta') {
+        if (event.delta.type === 'text_delta') {
+          fullText += event.delta.text;
+          yield { event: 'text', data: { delta: event.delta.text } };
+        } else if (event.delta.type === 'input_json_delta') {
+          currentToolInput += event.delta.partial_json;
+        }
+      } else if (event.type === 'content_block_stop') {
+        if (currentToolName && currentToolUseId) {
+          let parsedInput: Record<string, unknown> = {};
+          try {
+            parsedInput = JSON.parse(currentToolInput || '{}');
+          } catch {
+            // leave empty
+          }
+          const toolCall: ChatToolCall = {
+            id: randomUUID(),
+            type: currentToolName,
+            data: parsedInput,
+            status: 'pending'
+          };
+          toolCalls.push(toolCall);
+          yield { event: 'tool_call', data: { toolCall } };
+          currentToolName = '';
+          currentToolInput = '';
+          currentToolUseId = '';
+        }
+      }
+    }
+
+    clearTimeout(timeout);
+
     const assistantMsgId = randomUUID();
     const assistantNow = new Date();
     repository.addChatMessage({

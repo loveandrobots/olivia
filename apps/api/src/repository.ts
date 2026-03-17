@@ -1706,7 +1706,117 @@ export class InboxRepository {
       this.db.prepare('DELETE FROM conversations WHERE id = ?').run(conversationId);
     })();
   }
+
+  // ─── Onboarding (OLI-119) ─────────────────────────────────────────────────
+
+  countTotalEntities(): number {
+    const result = this.db.prepare(`
+      SELECT
+        (SELECT COUNT(*) FROM inbox_items WHERE archived_at IS NULL) +
+        (SELECT COUNT(*) FROM reminders WHERE completed_at IS NULL AND cancelled_at IS NULL) +
+        (SELECT COUNT(*) FROM routines WHERE archived_at IS NULL) +
+        (SELECT COUNT(*) FROM shared_lists WHERE archived_at IS NULL) +
+        (SELECT COUNT(*) FROM meal_plans WHERE archived_at IS NULL)
+      AS total
+    `).get() as { total: number };
+    return result.total;
+  }
+
+  getOrCreateOnboardingConversation(now: Date): { id: string; createdAt: string; updatedAt: string } {
+    const existing = this.db.prepare(
+      "SELECT * FROM conversations WHERE type = 'onboarding' ORDER BY created_at DESC LIMIT 1"
+    ).get() as Record<string, unknown> | undefined;
+    if (existing) {
+      return { id: String(existing.id), createdAt: String(existing.created_at), updatedAt: String(existing.updated_at) };
+    }
+    const id = randomUUID();
+    const ts = now.toISOString();
+    this.db.prepare(
+      "INSERT INTO conversations (id, type, created_at, updated_at) VALUES (?, 'onboarding', ?, ?)"
+    ).run(id, ts, ts);
+    return { id, createdAt: ts, updatedAt: ts };
+  }
+
+  getOnboardingSession(): OnboardingSessionRow | null {
+    const row = this.db.prepare(
+      'SELECT * FROM onboarding_sessions ORDER BY created_at DESC LIMIT 1'
+    ).get() as Record<string, unknown> | undefined;
+    return row ? mapOnboardingSessionRow(row) : null;
+  }
+
+  createOnboardingSession(session: {
+    id: string;
+    conversationId: string;
+    status: string;
+    topicsCompleted: string[];
+    currentTopic: string | null;
+    entitiesCreated: number;
+    createdAt: string;
+    updatedAt: string;
+  }): void {
+    this.db.prepare(`
+      INSERT INTO onboarding_sessions (id, conversation_id, status, topics_completed, current_topic, entities_created, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      session.id,
+      session.conversationId,
+      session.status,
+      JSON.stringify(session.topicsCompleted),
+      session.currentTopic,
+      session.entitiesCreated,
+      session.createdAt,
+      session.updatedAt
+    );
+  }
+
+  updateOnboardingSession(id: string, updates: {
+    status?: string;
+    topicsCompleted?: string[];
+    currentTopic?: string | null;
+    entitiesCreated?: number;
+    updatedAt: string;
+  }): void {
+    const setClauses: string[] = ['updated_at = ?'];
+    const params: unknown[] = [updates.updatedAt];
+
+    if (updates.status !== undefined) {
+      setClauses.push('status = ?');
+      params.push(updates.status);
+    }
+    if (updates.topicsCompleted !== undefined) {
+      setClauses.push('topics_completed = ?');
+      params.push(JSON.stringify(updates.topicsCompleted));
+    }
+    if (updates.currentTopic !== undefined) {
+      setClauses.push('current_topic = ?');
+      params.push(updates.currentTopic);
+    }
+    if (updates.entitiesCreated !== undefined) {
+      setClauses.push('entities_created = ?');
+      params.push(updates.entitiesCreated);
+    }
+
+    params.push(id);
+    this.db.prepare(`UPDATE onboarding_sessions SET ${setClauses.join(', ')} WHERE id = ?`).run(...params);
+  }
+
+  incrementOnboardingEntitiesCreated(sessionId: string, count: number, now: Date): void {
+    this.db.prepare(
+      'UPDATE onboarding_sessions SET entities_created = entities_created + ?, updated_at = ? WHERE id = ?'
+    ).run(count, now.toISOString(), sessionId);
+  }
 }
+
+export type OnboardingSessionRow = {
+  id: string;
+  conversationId: string;
+  status: string;
+  topicsCompleted: string[];
+  currentTopic: string | null;
+  entitiesCreated: number;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export type ChatMessageRow = {
   id: string;
@@ -1724,4 +1834,15 @@ const mapChatMessageRow = (row: Record<string, unknown>): ChatMessageRow => ({
   content: String(row.content),
   toolCalls: row.tool_calls ? JSON.parse(String(row.tool_calls)) : null,
   createdAt: String(row.created_at)
+});
+
+const mapOnboardingSessionRow = (row: Record<string, unknown>): OnboardingSessionRow => ({
+  id: String(row.id),
+  conversationId: String(row.conversation_id),
+  status: String(row.status),
+  topicsCompleted: JSON.parse(String(row.topics_completed)),
+  currentTopic: row.current_topic ? String(row.current_topic) : null,
+  entitiesCreated: Number(row.entities_created),
+  createdAt: String(row.created_at),
+  updatedAt: String(row.updated_at)
 });

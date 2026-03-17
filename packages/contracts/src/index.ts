@@ -1392,8 +1392,12 @@ export const chatToolCallTypeSchema = z.enum([
   'add_list_item',
   'create_meal_entry',
   'complete_routine',
-  'skip_routine'
+  'skip_routine',
+  'create_routine',
+  'create_shared_list'
 ]);
+
+export const conversationTypeSchema = z.enum(['general', 'onboarding']);
 
 export const chatToolCallSchema = z.object({
   id: z.string().uuid(),
@@ -1413,6 +1417,7 @@ export const chatMessageSchema = z.object({
 
 export const conversationSchema = z.object({
   id: z.string().uuid(),
+  type: conversationTypeSchema,
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime()
 });
@@ -1456,3 +1461,51 @@ export type ChatConversationQuery = z.infer<typeof chatConversationQuerySchema>;
 export type ChatClearResponse = z.infer<typeof chatClearResponseSchema>;
 export type ChatActionConfirmResponse = z.infer<typeof chatActionConfirmResponseSchema>;
 export type ChatActionDismissResponse = z.infer<typeof chatActionDismissResponseSchema>;
+
+// ─── Onboarding Contracts (OLI-119) ──────────────────────────────────────────
+
+export const onboardingTopicSchema = z.enum([
+  'tasks',
+  'routines',
+  'reminders',
+  'lists',
+  'meals'
+]);
+
+export const onboardingSessionStatusSchema = z.enum([
+  'started',
+  'finished'
+]);
+
+export const onboardingSessionSchema = z.object({
+  id: z.string().uuid(),
+  conversationId: z.string().uuid(),
+  status: onboardingSessionStatusSchema,
+  topicsCompleted: z.array(onboardingTopicSchema),
+  currentTopic: onboardingTopicSchema.nullable(),
+  entitiesCreated: z.number().int().min(0),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime()
+});
+
+export const onboardingStateResponseSchema = z.object({
+  needsOnboarding: z.boolean(),
+  session: onboardingSessionSchema.nullable(),
+  entityCount: z.number().int().min(0)
+});
+
+export const ONBOARDING_ENTITY_THRESHOLD = 2;
+
+export const ONBOARDING_TOPICS: readonly OnboardingTopic[] = [
+  'tasks',
+  'routines',
+  'reminders',
+  'lists',
+  'meals'
+] as const;
+
+export type ConversationType = z.infer<typeof conversationTypeSchema>;
+export type OnboardingTopic = z.infer<typeof onboardingTopicSchema>;
+export type OnboardingSessionStatus = z.infer<typeof onboardingSessionStatusSchema>;
+export type OnboardingSession = z.infer<typeof onboardingSessionSchema>;
+export type OnboardingStateResponse = z.infer<typeof onboardingStateResponseSchema>;
