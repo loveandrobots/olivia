@@ -13,7 +13,8 @@ export const inboxItemsTable = sqliteTable('inbox_items', {
   version: integer('version').notNull(),
   lastStatusChangedAt: text('last_status_changed_at').notNull(),
   lastNoteAt: text('last_note_at'),
-  archivedAt: text('archived_at')
+  archivedAt: text('archived_at'),
+  freshnessCheckedAt: text('freshness_checked_at')
 });
 
 export const inboxItemHistoryTable = sqliteTable('inbox_item_history', {
@@ -53,7 +54,8 @@ export const remindersTable = sqliteTable('reminders', {
   cancelledAt: text('cancelled_at'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
-  version: integer('version').notNull()
+  version: integer('version').notNull(),
+  freshnessCheckedAt: text('freshness_checked_at')
 });
 
 export const reminderTimelineTable = sqliteTable('reminder_timeline', {
@@ -97,7 +99,8 @@ export const sharedListsTable = sqliteTable('shared_lists', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   archivedAt: text('archived_at'),
-  version: integer('version').notNull()
+  version: integer('version').notNull(),
+  freshnessCheckedAt: text('freshness_checked_at')
 });
 
 export const listItemsTable = sqliteTable('list_items', {
@@ -134,7 +137,8 @@ export const routinesTable = sqliteTable('routines', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   archivedAt: text('archived_at'),
-  version: integer('version').notNull()
+  version: integer('version').notNull(),
+  freshnessCheckedAt: text('freshness_checked_at')
 });
 
 export const routineOccurrencesTable = sqliteTable('routine_occurrences', {
@@ -156,7 +160,8 @@ export const mealPlansTable = sqliteTable('meal_plans', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   archivedAt: text('archived_at'),
-  version: integer('version').notNull()
+  version: integer('version').notNull(),
+  freshnessCheckedAt: text('freshness_checked_at')
 });
 
 export const mealEntriesTable = sqliteTable('meal_entries', {
@@ -204,6 +209,14 @@ export const onboardingSessionsTable = sqliteTable('onboarding_sessions', {
   topicsCompleted: text('topics_completed').notNull().default('[]'),
   currentTopic: text('current_topic'),
   entitiesCreated: integer('entities_created').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull()
+});
+
+export const householdFreshnessTable = sqliteTable('household_freshness', {
+  id: text('id').primaryKey().default('singleton'),
+  lastHealthCheckCompletedAt: text('last_health_check_completed_at'),
+  lastHealthCheckDismissedAt: text('last_health_check_dismissed_at'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull()
 });

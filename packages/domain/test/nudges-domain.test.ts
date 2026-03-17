@@ -19,6 +19,7 @@ function makeWeeklyRoutine(overrides: Partial<Routine> = {}): Routine {
     createdAt: '2026-03-01T12:00:00.000Z',
     updatedAt: '2026-03-01T12:00:00.000Z',
     archivedAt: null,
+    freshnessCheckedAt: null,
     version: 1,
     ...overrides
   };

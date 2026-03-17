@@ -80,6 +80,12 @@ import {
   reviewRecordSchema,
   ritualSummaryResponseSchema,
   nudgesResponseSchema,
+  staleItemsResponseSchema,
+  freshnessConfirmRequestSchema,
+  freshnessConfirmResponseSchema,
+  freshnessArchiveRequestSchema,
+  freshnessArchiveResponseSchema,
+  healthCheckStateSchema,
   sendChatMessageRequestSchema,
   chatConversationQuerySchema,
   skipRoutineOccurrenceRequestSchema,
@@ -2426,6 +2432,54 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
         updatedAt: now.toISOString()
       }
     });
+  });
+
+  // ─── Data Freshness Routes ────────────────────────────────────────────────
+
+  app.get('/api/freshness/stale-items', async (_request, reply) => {
+    const now = new Date();
+    const result = repository.getStaleItems(now, 10);
+    return reply.send(staleItemsResponseSchema.parse(result));
+  });
+
+  app.post('/api/freshness/confirm', async (request, reply) => {
+    const body = freshnessConfirmRequestSchema.parse(request.body);
+    assertStakeholderWrite(body.actorRole);
+    const now = new Date();
+    const result = repository.confirmFreshness(body.entityType, body.entityId, now, body.expectedVersion);
+    if (!result) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', message: 'Version conflict — entity was modified.' });
+    }
+    return reply.send(freshnessConfirmResponseSchema.parse(result));
+  });
+
+  app.post('/api/freshness/archive', async (request, reply) => {
+    const body = freshnessArchiveRequestSchema.parse(request.body);
+    assertStakeholderWrite(body.actorRole);
+    const now = new Date();
+    const result = repository.archiveEntity(body.entityType, body.entityId, now, body.expectedVersion);
+    if (!result) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', message: 'Version conflict — entity was modified.' });
+    }
+    return reply.send(freshnessArchiveResponseSchema.parse(result));
+  });
+
+  app.get('/api/freshness/health-check-state', async (_request, reply) => {
+    const now = new Date();
+    const state = repository.getHealthCheckState(now);
+    return reply.send(healthCheckStateSchema.parse(state));
+  });
+
+  app.post('/api/freshness/health-check-complete', async (_request, reply) => {
+    const now = new Date();
+    repository.completeHealthCheck(now);
+    return reply.send({ success: true });
+  });
+
+  app.post('/api/freshness/health-check-dismiss', async (_request, reply) => {
+    const now = new Date();
+    repository.dismissHealthCheck(now);
+    return reply.send({ success: true });
   });
 
   app.setErrorHandler((error, _request, reply) => {

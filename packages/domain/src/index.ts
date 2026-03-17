@@ -50,6 +50,7 @@ import {
   type RoutineOccurrence,
   type RoutineRecurrenceRule,
   type SharedList,
+  type StaleItemEntityType,
   type Suggestion,
   type UpdateChange
 } from '@olivia/contracts';
@@ -382,6 +383,7 @@ export function createReminder(draft: DraftReminder, now: Date = new Date()): Re
     snoozedUntil: null,
     completedAt: null,
     cancelledAt: null,
+    freshnessCheckedAt: null,
     createdAt: timestamp,
     updatedAt: timestamp,
     version: 1
@@ -1833,10 +1835,11 @@ export function skipRoutineOccurrence(
  * 1. planningRitual overdue
  * 2. reminder approaching or overdue
  * 3. routine overdue
+ * 4. freshness (informational, lowest priority)
  * Within each tier: oldest overdue/approaching first (earliest overdueSince or dueAt).
  */
 export function sortNudgesByPriority(nudges: Nudge[]): Nudge[] {
-  const tierOrder: Record<string, number> = { planningRitual: 0, reminder: 1, routine: 2 };
+  const tierOrder: Record<string, number> = { planningRitual: 0, reminder: 1, routine: 2, freshness: 3 };
 
   return [...nudges].sort((a, b) => {
     const tierDiff = (tierOrder[a.entityType] ?? 99) - (tierOrder[b.entityType] ?? 99);
@@ -1919,4 +1922,187 @@ export function computeCompletionWindow(
     return { decision: 'hold', windowStartHour: windowStart, windowEndHour: windowEnd };
   }
   return { decision: 'deliver', windowStartHour: windowStart, windowEndHour: windowEnd };
+}
+
+// ─── Data Freshness (Phase 2) ─────────────────────────────────────────────────
+
+export const FRESHNESS_THRESHOLDS = {
+  inbox: 14,      // days since last status change
+  routine: 2,     // multiplier of interval_days
+  reminder: 7,    // days past scheduled_at
+  list: 30,       // days since last modification
+} as const;
+
+export const HEALTH_CHECK_INTERVAL_DAYS = 30;
+
+/**
+ * Check if an inbox item is stale.
+ * Uses freshnessCheckedAt if available, otherwise falls back to lastStatusChangedAt.
+ * Stale = active item with no activity for 14+ days.
+ */
+export function isInboxItemStale(
+  item: InboxItem,
+  now: Date
+): { stale: boolean; lastActivityAt: string } {
+  const active = item.status === 'open' || item.status === 'in_progress';
+  if (!active) return { stale: false, lastActivityAt: item.lastStatusChangedAt };
+
+  const referenceDate = item.freshnessCheckedAt ?? item.lastStatusChangedAt;
+  const daysSince = differenceInCalendarDays(now, new Date(referenceDate));
+  return { stale: daysSince >= FRESHNESS_THRESHOLDS.inbox, lastActivityAt: referenceDate };
+}
+
+/**
+ * Check if a routine is stale.
+ * Stale = active routine where last completed occurrence > 2× intervalDays ago.
+ * For routines without intervalDays (e.g., weekly = 7), uses 7 as default.
+ */
+export function isRoutineStale(
+  routine: Routine,
+  lastCompletedAt: string | null,
+  now: Date
+): { stale: boolean; lastActivityAt: string } {
+  const active = routine.status === 'active';
+  if (!active) return { stale: false, lastActivityAt: routine.updatedAt };
+
+  const referenceDate = routine.freshnessCheckedAt;
+  if (referenceDate) {
+    const intervalDays = routine.intervalDays ?? 7;
+    const threshold = intervalDays * FRESHNESS_THRESHOLDS.routine;
+    const daysSince = differenceInCalendarDays(now, new Date(referenceDate));
+    return { stale: daysSince >= threshold, lastActivityAt: referenceDate };
+  }
+
+  // Fall back to last completed occurrence
+  if (!lastCompletedAt) {
+    // No completions ever — check if overdue by 2× interval from creation
+    const intervalDays = routine.intervalDays ?? 7;
+    const threshold = intervalDays * FRESHNESS_THRESHOLDS.routine;
+    const daysSince = differenceInCalendarDays(now, new Date(routine.createdAt));
+    return { stale: daysSince >= threshold, lastActivityAt: routine.createdAt };
+  }
+
+  const intervalDays = routine.intervalDays ?? 7;
+  const threshold = intervalDays * FRESHNESS_THRESHOLDS.routine;
+  const daysSince = differenceInCalendarDays(now, new Date(lastCompletedAt));
+  return { stale: daysSince >= threshold, lastActivityAt: lastCompletedAt };
+}
+
+/**
+ * Check if a reminder is stale.
+ * Stale = pending reminder with scheduledAt 7+ days in the past.
+ */
+export function isReminderStale(
+  reminder: Reminder,
+  now: Date
+): { stale: boolean; lastActivityAt: string } {
+  const isActive = reminder.state === 'upcoming' || reminder.state === 'due' || reminder.state === 'overdue';
+  if (!isActive) return { stale: false, lastActivityAt: reminder.scheduledAt };
+
+  const referenceDate = reminder.freshnessCheckedAt ?? reminder.scheduledAt;
+  const daysSince = differenceInCalendarDays(now, new Date(referenceDate));
+  return { stale: daysSince >= FRESHNESS_THRESHOLDS.reminder, lastActivityAt: referenceDate };
+}
+
+/**
+ * Check if a shared list is stale.
+ * Stale = active list with unchecked items and no modification for 30+ days.
+ */
+export function isSharedListStale(
+  list: SharedList,
+  hasUncheckedItems: boolean,
+  now: Date
+): { stale: boolean; lastActivityAt: string } {
+  const active = list.status === 'active';
+  if (!active || !hasUncheckedItems) return { stale: false, lastActivityAt: list.updatedAt };
+
+  const referenceDate = list.freshnessCheckedAt ?? list.updatedAt;
+  const daysSince = differenceInCalendarDays(now, new Date(referenceDate));
+  return { stale: daysSince >= FRESHNESS_THRESHOLDS.list, lastActivityAt: referenceDate };
+}
+
+/**
+ * Check if meal planning is stale (health-check-only, no nudges).
+ * Stale = current week has no meal plan entries AND the user has previously used meal planning.
+ */
+export function isMealPlanStale(
+  currentWeekHasEntries: boolean,
+  hasPriorUsage: boolean
+): boolean {
+  return !currentWeekHasEntries && hasPriorUsage;
+}
+
+/**
+ * Compute a human-readable description of when the last activity occurred.
+ */
+export function computeLastActivityDescription(
+  entityType: StaleItemEntityType,
+  lastActivityAt: string,
+  now: Date
+): string {
+  const days = differenceInCalendarDays(now, new Date(lastActivityAt));
+
+  const timeAgo =
+    days === 0 ? 'today' :
+    days === 1 ? 'yesterday' :
+    days < 7 ? `${days} days ago` :
+    days < 14 ? '1 week ago' :
+    days < 30 ? `${Math.floor(days / 7)} weeks ago` :
+    days < 60 ? '1 month ago' :
+    `${Math.floor(days / 30)} months ago`;
+
+  switch (entityType) {
+    case 'inbox': return `No status change ${timeAgo}`;
+    case 'routine': return `Last completed ${timeAgo}`;
+    case 'reminder': return `Was due ${timeAgo}`;
+    case 'list': return `Last updated ${timeAgo}`;
+    case 'mealPlan': return `No meal plan this week`;
+  }
+}
+
+/**
+ * Generate contextual nudge copy for a freshness nudge.
+ */
+export function generateFreshnessNudgeCopy(
+  entitySubType: 'inbox' | 'routine' | 'reminder' | 'list',
+  entityName: string,
+  lastActivityAt: string,
+  now: Date
+): string {
+  const days = differenceInCalendarDays(now, new Date(lastActivityAt));
+  const timeAgo =
+    days < 7 ? `${days} days` :
+    days < 14 ? '1 week' :
+    days < 30 ? `${Math.floor(days / 7)} weeks` :
+    days < 60 ? '1 month' :
+    `${Math.floor(days / 30)} months`;
+
+  switch (entitySubType) {
+    case 'routine': return `${entityName} hasn't been marked done in ${timeAgo} — still on track?`;
+    case 'reminder': return `${entityName} was due ${timeAgo} ago — still need this?`;
+    case 'list': return `${entityName} hasn't been updated in ${timeAgo} — still using it?`;
+    case 'inbox': return `${entityName} has had no activity for ${timeAgo} — still relevant?`;
+  }
+}
+
+/**
+ * Check if a health check should be shown.
+ * Shows when ≥30 days since last completed check (or since first use if no check),
+ * AND not dismissed today.
+ */
+export function shouldShowHealthCheck(
+  lastCompletedAt: string | null,
+  lastDismissedAt: string | null,
+  now: Date
+): boolean {
+  // Check if dismissed today
+  if (lastDismissedAt) {
+    const dismissedDate = new Date(lastDismissedAt);
+    if (isSameDay(dismissedDate, now)) return false;
+  }
+
+  if (!lastCompletedAt) return true; // Never completed — always show
+
+  const daysSince = differenceInCalendarDays(now, new Date(lastCompletedAt));
+  return daysSince >= HEALTH_CHECK_INTERVAL_DAYS;
 }

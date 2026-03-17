@@ -292,7 +292,7 @@ describe('reminder migrations and api', () => {
       .all() as Array<{ name: string }>;
 
     expect(repository.listItems()).toHaveLength(1);
-    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql', '0003_recurring_routines.sql', '0004_meal_planning.sql', '0005_planning_ritual_support.sql', '0006_ai_ritual_summaries.sql', '0007_push_notifications.sql', '0008_chat_conversations.sql', '0009_onboarding_sessions.sql']);
+    expect(migrationFiles.map((row) => row.filename)).toEqual(['0000_initial.sql', '0001_first_class_reminders.sql', '0002_shared_lists.sql', '0003_recurring_routines.sql', '0004_meal_planning.sql', '0005_planning_ritual_support.sql', '0006_ai_ritual_summaries.sql', '0007_push_notifications.sql', '0008_chat_conversations.sql', '0009_onboarding_sessions.sql', '0010_data_freshness.sql']);
     expect(reminderTables.map((row) => row.name).sort()).toEqual([
       'notification_delivery_log',
       'reminder_notification_preferences',
@@ -1876,6 +1876,7 @@ describe('planning ritual AI summaries api', () => {
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
       archivedAt: null,
+      freshnessCheckedAt: null,
       version: 1
     };
     repo.createRoutine(ritual);
@@ -2069,6 +2070,7 @@ describe('proactive household nudges api', () => {
       createdAt: pastDate,
       updatedAt: pastDate,
       archivedAt: null,
+      freshnessCheckedAt: null,
       version: 1
     };
     repo.createRoutine(routine);
@@ -2090,6 +2092,7 @@ describe('proactive household nudges api', () => {
       createdAt: pastDate,
       updatedAt: pastDate,
       archivedAt: null,
+      freshnessCheckedAt: null,
       version: 1
     };
     repo.createRoutine(ritual);

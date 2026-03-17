@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import Database from 'better-sqlite3';
-import { computeReminderState } from '@olivia/domain';
+import { computeReminderState, isMealPlanStale, computeLastActivityDescription, generateFreshnessNudgeCopy } from '@olivia/domain';
 import {
   historyEntrySchema,
   inboxItemSchema,
@@ -34,7 +34,11 @@ import {
   type Routine,
   type RoutineOccurrence,
   type RoutineStatus,
-  type SharedList
+  type SharedList,
+  type StaleItem,
+  type StaleItemEntityType,
+  type ArchivableEntityType,
+  type HealthCheckState
 } from '@olivia/contracts';
 
 const DEFAULT_REMINDER_PREFERENCES_UPDATED_AT = new Date(0).toISOString();
@@ -87,7 +91,8 @@ const mapItemRow = (row: Record<string, unknown>): InboxItem =>
     version: row.version,
     lastStatusChangedAt: row.last_status_changed_at,
     lastNoteAt: row.last_note_at ?? null,
-    archivedAt: row.archived_at ?? null
+    archivedAt: row.archived_at ?? null,
+    freshnessCheckedAt: row.freshness_checked_at ?? null
   });
 
 const mapHistoryRow = (row: Record<string, unknown>): HistoryEntry =>
@@ -122,6 +127,7 @@ const mapReminderRow = (row: Record<string, unknown>, now: Date = new Date()): R
     snoozedUntil: row.snoozed_until ? String(row.snoozed_until) : null,
     completedAt: row.completed_at ? String(row.completed_at) : null,
     cancelledAt: row.cancelled_at ? String(row.cancelled_at) : null,
+    freshnessCheckedAt: row.freshness_checked_at ? String(row.freshness_checked_at) : null,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     version: Number(row.version),
@@ -171,6 +177,7 @@ const mapSharedListRow = (row: Record<string, unknown>): SharedList =>
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     archivedAt: row.archived_at ?? null,
+    freshnessCheckedAt: row.freshness_checked_at ?? null,
     version: row.version
   });
 
@@ -786,6 +793,7 @@ export class InboxRepository {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       archivedAt: row.archived_at ?? null,
+      freshnessCheckedAt: row.freshness_checked_at ?? null,
       version: row.version
     });
     return base;
@@ -932,6 +940,7 @@ export class InboxRepository {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       archivedAt: row.archived_at ?? null,
+      freshnessCheckedAt: row.freshness_checked_at ?? null,
       version: row.version
     });
   }
@@ -1536,6 +1545,10 @@ export class InboxRepository {
       });
     }
 
+    // Freshness nudges (lowest priority tier — no meal plans per D-058)
+    const freshnessNudges = this.getFreshnessNudges(now);
+    nudges.push(...freshnessNudges);
+
     return nudges;
   }
 
@@ -1804,6 +1817,258 @@ export class InboxRepository {
     this.db.prepare(
       'UPDATE onboarding_sessions SET entities_created = entities_created + ?, updated_at = ? WHERE id = ?'
     ).run(count, now.toISOString(), sessionId);
+  }
+
+  // ─── Data Freshness ────────────────────────────────────────────────────────
+
+  getStaleItems(now: Date, limit: number = 10): { items: StaleItem[]; totalStaleCount: number } {
+    const staleItems: Array<StaleItem & { sortDate: string }> = [];
+
+    // 1. Stale inbox items
+    const inboxRows = this.db.prepare(`
+      SELECT id, title, last_status_changed_at, freshness_checked_at
+      FROM inbox_items
+      WHERE status IN ('open', 'in_progress') AND archived_at IS NULL
+    `).all() as Array<{ id: string; title: string; last_status_changed_at: string; freshness_checked_at: string | null }>;
+
+    for (const row of inboxRows) {
+      const refDate = row.freshness_checked_at ?? row.last_status_changed_at;
+      const daysSince = Math.floor((now.getTime() - new Date(refDate).getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSince >= 14) {
+        const lastActivityAt = new Date(refDate).toISOString();
+        staleItems.push({
+          entityType: 'inbox',
+          entityId: row.id,
+          entityName: row.title,
+          lastActivityAt,
+          lastActivityDescription: computeLastActivityDescription('inbox', lastActivityAt, now),
+          sortDate: lastActivityAt
+        });
+      }
+    }
+
+    // 2. Stale routines
+    const routineRows = this.db.prepare(`
+      SELECT r.id, r.title, r.interval_days, r.freshness_checked_at,
+             r.created_at, r.updated_at, r.ritual_type,
+             (SELECT MAX(o.completed_at) FROM routine_occurrences o WHERE o.routine_id = r.id AND o.completed_at IS NOT NULL) AS last_completed_at
+      FROM routines r
+      WHERE r.status = 'active'
+    `).all() as Array<{ id: string; title: string; interval_days: number | null; freshness_checked_at: string | null; created_at: string; updated_at: string; ritual_type: string | null; last_completed_at: string | null }>;
+
+    for (const row of routineRows) {
+      if (row.ritual_type === 'weekly_review') continue; // Skip planning rituals
+      const intervalDays = row.interval_days ?? 7;
+      const freshnessRef = row.freshness_checked_at;
+      const lastCompleted = row.last_completed_at;
+      // Use the same logic as isRoutineStale but with raw values to avoid Zod parsing overhead
+      const refDate = freshnessRef ?? lastCompleted ?? row.created_at;
+      const threshold = intervalDays * 2;
+      const daysSince = Math.floor((now.getTime() - new Date(refDate).getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSince >= threshold) {
+        staleItems.push({
+          entityType: 'routine',
+          entityId: row.id,
+          entityName: row.title,
+          lastActivityAt: new Date(refDate).toISOString(),
+          lastActivityDescription: computeLastActivityDescription('routine', new Date(refDate).toISOString(), now),
+          sortDate: new Date(refDate).toISOString()
+        });
+      }
+    }
+
+    // 3. Stale reminders (active, 7+ days past scheduledAt)
+    const reminderRows = this.db.prepare(`
+      SELECT id, title, scheduled_at, freshness_checked_at
+      FROM reminders
+      WHERE completed_at IS NULL AND cancelled_at IS NULL
+    `).all() as Array<{ id: string; title: string; scheduled_at: string; freshness_checked_at: string | null }>;
+
+    for (const row of reminderRows) {
+      const refDate = row.freshness_checked_at ?? row.scheduled_at;
+      const daysSince = Math.floor((now.getTime() - new Date(refDate).getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSince >= 7) {
+        const lastActivityAt = new Date(refDate).toISOString();
+        staleItems.push({
+          entityType: 'reminder',
+          entityId: row.id,
+          entityName: row.title,
+          lastActivityAt,
+          lastActivityDescription: computeLastActivityDescription('reminder', lastActivityAt, now),
+          sortDate: lastActivityAt
+        });
+      }
+    }
+
+    // 4. Stale shared lists (active, unchecked items, no modification in 30+ days)
+    const listRows = this.db.prepare(`
+      SELECT sl.id, sl.title, sl.updated_at, sl.freshness_checked_at,
+             EXISTS(SELECT 1 FROM list_items li WHERE li.list_id = sl.id AND li.checked = 0) AS has_unchecked
+      FROM shared_lists sl
+      WHERE sl.status = 'active'
+    `).all() as Array<{ id: string; title: string; updated_at: string; freshness_checked_at: string | null; has_unchecked: number }>;
+
+    for (const row of listRows) {
+      if (row.has_unchecked !== 1) continue;
+      const refDate = row.freshness_checked_at ?? row.updated_at;
+      const daysSince = Math.floor((now.getTime() - new Date(refDate).getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSince >= 30) {
+        const lastActivityAt = new Date(refDate).toISOString();
+        staleItems.push({
+          entityType: 'list',
+          entityId: row.id,
+          entityName: row.title,
+          lastActivityAt,
+          lastActivityDescription: computeLastActivityDescription('list', lastActivityAt, now),
+          sortDate: lastActivityAt
+        });
+      }
+    }
+
+    // 5. Stale meal plans (health-check-only)
+    const currentWeekStart = new Date(now);
+    currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay());
+    const weekStartStr = currentWeekStart.toISOString().slice(0, 10);
+    const currentWeekHasEntries = (this.db.prepare(
+      'SELECT COUNT(*) AS cnt FROM meal_plans WHERE week_start_date = ? AND status = ?'
+    ).get(weekStartStr, 'active') as { cnt: number }).cnt > 0;
+    const hasPriorUsage = (this.db.prepare(
+      'SELECT COUNT(*) AS cnt FROM meal_plans WHERE status IN (?, ?)'
+    ).get('active', 'archived') as { cnt: number }).cnt > 0;
+
+    if (isMealPlanStale(currentWeekHasEntries, hasPriorUsage)) {
+      staleItems.push({
+        entityType: 'mealPlan',
+        entityId: 'meal-plan-freshness',
+        entityName: 'Meal planning',
+        lastActivityAt: now.toISOString(),
+        lastActivityDescription: computeLastActivityDescription('mealPlan', now.toISOString(), now),
+        sortDate: now.toISOString()
+      });
+    }
+
+    // Sort oldest first, cap at limit
+    staleItems.sort((a, b) => a.sortDate < b.sortDate ? -1 : a.sortDate > b.sortDate ? 1 : 0);
+    const totalStaleCount = staleItems.length;
+    const items: StaleItem[] = staleItems.slice(0, limit).map(({ sortDate: _, ...item }) => item);
+
+    return { items, totalStaleCount };
+  }
+
+  getFreshnessNudges(now: Date): Nudge[] {
+    const nudges: Nudge[] = [];
+    const { items } = this.getStaleItems(now, 100);
+
+    for (const item of items) {
+      // Meal plans: health-check-only, no nudges
+      if (item.entityType === 'mealPlan') continue;
+
+      const subType = item.entityType as 'inbox' | 'routine' | 'reminder' | 'list';
+      nudges.push({
+        entityType: 'freshness',
+        entityId: item.entityId,
+        entityName: item.entityName,
+        triggerReason: generateFreshnessNudgeCopy(subType, item.entityName, item.lastActivityAt, now),
+        overdueSince: item.lastActivityAt.slice(0, 10),
+        dueAt: null,
+        entitySubType: subType
+      });
+    }
+
+    return nudges;
+  }
+
+  confirmFreshness(entityType: StaleItemEntityType, entityId: string, now: Date, expectedVersion: number): { newVersion: number } | null {
+    const timestamp = now.toISOString();
+    const newVersion = expectedVersion + 1;
+
+    const tableMap: Record<StaleItemEntityType, string> = {
+      inbox: 'inbox_items',
+      routine: 'routines',
+      reminder: 'reminders',
+      list: 'shared_lists',
+      mealPlan: 'meal_plans'
+    };
+
+    const table = tableMap[entityType];
+    const result = this.db.prepare(
+      `UPDATE ${table} SET freshness_checked_at = ?, updated_at = ?, version = ? WHERE id = ? AND version = ?`
+    ).run(timestamp, timestamp, newVersion, entityId, expectedVersion);
+
+    return result.changes > 0 ? { newVersion } : null;
+  }
+
+  archiveEntity(entityType: ArchivableEntityType, entityId: string, now: Date, expectedVersion: number): { newVersion: number } | null {
+    const timestamp = now.toISOString();
+    const newVersion = expectedVersion + 1;
+
+    let sql: string;
+    switch (entityType) {
+      case 'inbox':
+        sql = `UPDATE inbox_items SET status = 'done', archived_at = ?, updated_at = ?, last_status_changed_at = ?, version = ? WHERE id = ? AND version = ?`;
+        return this.db.prepare(sql).run(timestamp, timestamp, timestamp, newVersion, entityId, expectedVersion).changes > 0 ? { newVersion } : null;
+      case 'routine':
+        sql = `UPDATE routines SET status = 'paused', archived_at = ?, updated_at = ?, version = ? WHERE id = ? AND version = ?`;
+        return this.db.prepare(sql).run(timestamp, timestamp, newVersion, entityId, expectedVersion).changes > 0 ? { newVersion } : null;
+      case 'reminder':
+        sql = `UPDATE reminders SET cancelled_at = ?, updated_at = ?, version = ? WHERE id = ? AND version = ?`;
+        return this.db.prepare(sql).run(timestamp, timestamp, newVersion, entityId, expectedVersion).changes > 0 ? { newVersion } : null;
+      case 'list':
+        sql = `UPDATE shared_lists SET status = 'archived', archived_at = ?, updated_at = ?, version = ? WHERE id = ? AND version = ?`;
+        return this.db.prepare(sql).run(timestamp, timestamp, newVersion, entityId, expectedVersion).changes > 0 ? { newVersion } : null;
+    }
+  }
+
+  getHealthCheckState(now: Date): HealthCheckState {
+    const row = this.db.prepare('SELECT * FROM household_freshness WHERE id = ?').get('singleton') as Record<string, unknown> | undefined;
+
+    if (!row) {
+      return { lastCompletedAt: null, lastDismissedAt: null, shouldShow: true };
+    }
+
+    const lastCompletedAt = row.last_health_check_completed_at as string | null;
+    const lastDismissedAt = row.last_health_check_dismissed_at as string | null;
+
+    // Check if dismissed today
+    let dismissedToday = false;
+    if (lastDismissedAt) {
+      const dismissedDate = new Date(lastDismissedAt);
+      dismissedToday = dismissedDate.toISOString().slice(0, 10) === now.toISOString().slice(0, 10);
+    }
+
+    let shouldShow = false;
+    if (dismissedToday) {
+      shouldShow = false;
+    } else if (!lastCompletedAt) {
+      shouldShow = true;
+    } else {
+      const daysSince = Math.floor((now.getTime() - new Date(lastCompletedAt).getTime()) / (1000 * 60 * 60 * 24));
+      shouldShow = daysSince >= 30;
+    }
+
+    return {
+      lastCompletedAt: lastCompletedAt ?? null,
+      lastDismissedAt: lastDismissedAt ?? null,
+      shouldShow
+    };
+  }
+
+  completeHealthCheck(now: Date): void {
+    const timestamp = now.toISOString();
+    this.db.prepare(`
+      INSERT INTO household_freshness (id, last_health_check_completed_at, created_at, updated_at)
+      VALUES ('singleton', ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET last_health_check_completed_at = ?, updated_at = ?
+    `).run(timestamp, timestamp, timestamp, timestamp, timestamp);
+  }
+
+  dismissHealthCheck(now: Date): void {
+    const timestamp = now.toISOString();
+    this.db.prepare(`
+      INSERT INTO household_freshness (id, last_health_check_dismissed_at, created_at, updated_at)
+      VALUES ('singleton', ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET last_health_check_dismissed_at = ?, updated_at = ?
+    `).run(timestamp, timestamp, timestamp, timestamp, timestamp);
   }
 }
 
