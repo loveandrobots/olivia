@@ -3621,3 +3621,15 @@ textarea:focus, input:focus, select:focus {
   padding: 8px 20px;
   cursor: pointer;
 }
+
+.weekly-view-footer {
+  padding: 16px 22px;
+}
+
+.view-history-link {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--violet);
+  text-decoration: none;
+}
