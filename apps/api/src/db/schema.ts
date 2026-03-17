@@ -189,3 +189,18 @@ export const pushNotificationLogTable = sqliteTable('push_notification_log', {
   entityId: text('entity_id').notNull(),
   sentAt: text('sent_at').notNull(),
 });
+
+export const conversationsTable = sqliteTable('conversations', {
+  id: text('id').primaryKey(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull()
+});
+
+export const conversationMessagesTable = sqliteTable('conversation_messages', {
+  id: text('id').primaryKey(),
+  conversationId: text('conversation_id').notNull(),
+  role: text('role').notNull(),
+  content: text('content').notNull(),
+  toolCalls: text('tool_calls'),
+  createdAt: text('created_at').notNull()
+});

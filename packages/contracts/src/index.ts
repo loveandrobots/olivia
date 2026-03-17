@@ -1379,3 +1379,80 @@ export const completionWindowResultSchema = z.discriminatedUnion('decision', [
   z.object({ decision: z.literal('no_window'), reason: z.enum(['insufficient_data', 'high_variance']) }),
 ]);
 export type CompletionWindowResult = z.infer<typeof completionWindowResultSchema>;
+
+// ─── Chat Contracts (OLI-100) ─────────────────────────────────────────────────
+
+export const chatMessageRoleSchema = z.enum(['user', 'assistant']);
+
+export const chatToolCallStatusSchema = z.enum(['pending', 'confirmed', 'dismissed']);
+
+export const chatToolCallTypeSchema = z.enum([
+  'create_inbox_item',
+  'create_reminder',
+  'add_list_item',
+  'create_meal_entry',
+  'complete_routine',
+  'skip_routine'
+]);
+
+export const chatToolCallSchema = z.object({
+  id: z.string().uuid(),
+  type: chatToolCallTypeSchema,
+  data: z.record(z.string(), z.unknown()),
+  status: chatToolCallStatusSchema
+});
+
+export const chatMessageSchema = z.object({
+  id: z.string().uuid(),
+  conversationId: z.string().uuid(),
+  role: chatMessageRoleSchema,
+  content: z.string(),
+  toolCalls: z.array(chatToolCallSchema).nullable(),
+  createdAt: z.string().datetime()
+});
+
+export const conversationSchema = z.object({
+  id: z.string().uuid(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime()
+});
+
+export const sendChatMessageRequestSchema = z.object({
+  content: z.string().trim().min(1).max(2000)
+});
+
+export const chatConversationResponseSchema = z.object({
+  conversationId: z.string().uuid(),
+  messages: z.array(chatMessageSchema),
+  hasMore: z.boolean()
+});
+
+export const chatConversationQuerySchema = z.object({
+  limit: z.coerce.number().int().positive().max(100).default(50),
+  before: z.string().uuid().optional()
+});
+
+export const chatClearResponseSchema = z.object({
+  cleared: z.literal(true)
+});
+
+export const chatActionConfirmResponseSchema = z.object({
+  result: z.record(z.string(), z.unknown())
+});
+
+export const chatActionDismissResponseSchema = z.object({
+  dismissed: z.literal(true)
+});
+
+export type ChatMessageRole = z.infer<typeof chatMessageRoleSchema>;
+export type ChatToolCallStatus = z.infer<typeof chatToolCallStatusSchema>;
+export type ChatToolCallType = z.infer<typeof chatToolCallTypeSchema>;
+export type ChatToolCall = z.infer<typeof chatToolCallSchema>;
+export type ChatMessage = z.infer<typeof chatMessageSchema>;
+export type Conversation = z.infer<typeof conversationSchema>;
+export type SendChatMessageRequest = z.infer<typeof sendChatMessageRequestSchema>;
+export type ChatConversationResponse = z.infer<typeof chatConversationResponseSchema>;
+export type ChatConversationQuery = z.infer<typeof chatConversationQuerySchema>;
+export type ChatClearResponse = z.infer<typeof chatClearResponseSchema>;
+export type ChatActionConfirmResponse = z.infer<typeof chatActionConfirmResponseSchema>;
+export type ChatActionDismissResponse = z.infer<typeof chatActionDismissResponseSchema>;

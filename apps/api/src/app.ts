@@ -80,6 +80,8 @@ import {
   reviewRecordSchema,
   ritualSummaryResponseSchema,
   nudgesResponseSchema,
+  sendChatMessageRequestSchema,
+  chatConversationQuerySchema,
   skipRoutineOccurrenceRequestSchema,
   skipRoutineOccurrenceResponseSchema,
   type ActorRole,
@@ -155,7 +157,9 @@ import {
   skipRoutineOccurrence,
   sortNudgesByPriority
 } from '@olivia/domain';
+import Anthropic from '@anthropic-ai/sdk';
 import { createAiProvider, type RitualSummaryInput } from './ai';
+import { streamChat } from './chat';
 import type { AppConfig } from './config';
 import { createDatabase } from './db/client';
 import { DraftStore } from './drafts';
@@ -2014,6 +2018,179 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     }
     repository.deletePushSubscription(endpoint);
     return reply.status(204).send();
+  });
+
+  // ─── Chat Routes (OLI-100) ──────────────────────────────────────────────────
+
+  const anthropicApiKey = config.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY;
+  const chatClient = anthropicApiKey ? new Anthropic({ apiKey: anthropicApiKey }) : null;
+
+  app.post('/api/chat/messages', async (request, reply) => {
+    if (!chatClient) {
+      return reply.status(503).send({ code: 'AI_UNAVAILABLE', message: 'Olivia is unavailable right now. You can still use the app to manage your household.' });
+    }
+    const parsed = sendChatMessageRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ code: 'BAD_REQUEST', message: parsed.error.message });
+    }
+
+    const now = new Date();
+    const conversation = repository.getOrCreateConversation(now);
+
+    // Save user message
+    const userMsgId = randomUUID();
+    repository.addChatMessage({
+      id: userMsgId,
+      conversationId: conversation.id,
+      role: 'user',
+      content: parsed.data.content,
+      toolCalls: null,
+      createdAt: now.toISOString()
+    });
+
+    // Stream response via SSE
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no'
+    });
+
+    const generator = streamChat(chatClient, repository, config, conversation.id, parsed.data.content, now);
+    for await (const evt of generator) {
+      reply.raw.write(`event: ${evt.event}\ndata: ${JSON.stringify(evt.data)}\n\n`);
+    }
+    reply.raw.end();
+  });
+
+  app.get('/api/chat/conversation', async (request, reply) => {
+    const now = new Date();
+    const conversation = repository.getOrCreateConversation(now);
+    const query = chatConversationQuerySchema.parse(request.query);
+    const { messages, hasMore } = repository.listChatMessages(conversation.id, query.limit, query.before);
+    return reply.send({
+      conversationId: conversation.id,
+      messages,
+      hasMore
+    });
+  });
+
+  app.post('/api/chat/conversation/clear', async (_request, reply) => {
+    const now = new Date();
+    const conversation = repository.getOrCreateConversation(now);
+    repository.clearConversation(conversation.id);
+    return reply.send({ cleared: true });
+  });
+
+  app.post<{ Params: { toolCallId: string } }>('/api/chat/actions/:toolCallId/confirm', async (request, reply) => {
+    const { toolCallId } = request.params;
+
+    // Find the message containing this tool call
+    const msg = repository.findMessageByToolCallId(toolCallId);
+    if (!msg || !msg.toolCalls) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Tool call not found.' });
+    }
+
+    const toolCall = msg.toolCalls.find(tc => tc.id === toolCallId);
+    if (!toolCall) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Tool call not found.' });
+    }
+
+    if (toolCall.status !== 'pending') {
+      return reply.status(400).send({ code: 'ALREADY_RESOLVED', message: `This action has already been ${toolCall.status}.` });
+    }
+
+    const now = new Date();
+    const actorRole = 'stakeholder' as const;
+    let result: Record<string, unknown> = {};
+
+    try {
+      switch (toolCall.type) {
+        case 'create_inbox_item': {
+          const dueText = toolCall.data.dueText ? String(toolCall.data.dueText) : undefined;
+          const parsed = createDraft({
+            structuredInput: {
+              title: String(toolCall.data.title ?? ''),
+              owner: (toolCall.data.owner as 'stakeholder' | 'spouse' | 'unassigned') ?? 'unassigned',
+              dueText: dueText ?? null
+            },
+            now
+          });
+          const { item, historyEntry } = createInboxItem(parsed.draft, now);
+          repository.createItem(item, historyEntry);
+          result = { item };
+          break;
+        }
+        case 'create_reminder': {
+          const parsed = createReminderDraft({
+            structuredInput: {
+              title: String(toolCall.data.title ?? ''),
+              scheduledAt: toolCall.data.scheduledAt ? String(toolCall.data.scheduledAt) : now.toISOString(),
+              owner: (toolCall.data.owner as 'stakeholder' | 'spouse' | 'unassigned') ?? 'unassigned'
+            },
+            now
+          });
+          const { reminder, timelineEntries } = createReminder(parsed.draft, now);
+          repository.createReminder(reminder, timelineEntries);
+          result = { reminder };
+          break;
+        }
+        case 'add_list_item': {
+          const listTitle = String(toolCall.data.listTitle ?? '');
+          const lists = repository.listSharedLists('active');
+          const targetList = lists.find(l => l.title.toLowerCase() === listTitle.toLowerCase());
+          if (!targetList) {
+            return reply.status(400).send({ code: 'LIST_NOT_FOUND', message: `No active list named "${listTitle}" found.` });
+          }
+          const nextPos = repository.getNextListItemPosition(targetList.id);
+          const newItem = addListItem(targetList.id, String(toolCall.data.body ?? ''), nextPos, now);
+          const itemHistoryEntry = createItemAddedHistoryEntry(newItem, actorRole);
+          repository.addListItem(newItem, itemHistoryEntry);
+          result = { item: newItem, listTitle: targetList.title };
+          break;
+        }
+        case 'create_meal_entry': {
+          const plans = repository.listMealPlans('active');
+          if (plans.length === 0) {
+            return reply.status(400).send({ code: 'NO_MEAL_PLAN', message: 'No active meal plan found.' });
+          }
+          const plan = plans[0];
+          const dayOfWeek = Number(toolCall.data.dayOfWeek ?? 0);
+          const entryPosition = repository.getNextMealEntryPosition(plan.id, dayOfWeek);
+          const entry = addMealEntry(plan.id, dayOfWeek, String(toolCall.data.name ?? ''), entryPosition, now);
+          repository.addMealEntry(entry);
+          result = { entry, planTitle: plan.title };
+          break;
+        }
+        default:
+          return reply.status(400).send({ code: 'UNSUPPORTED_ACTION', message: `Action type "${toolCall.type}" is not yet supported for confirmation.` });
+      }
+    } catch (err) {
+      return reply.status(400).send({ code: 'ACTION_FAILED', message: err instanceof Error ? err.message : 'Action failed.' });
+    }
+
+    repository.updateToolCallStatus(msg.id, toolCallId, 'confirmed');
+    return reply.send({ result });
+  });
+
+  app.post<{ Params: { toolCallId: string } }>('/api/chat/actions/:toolCallId/dismiss', async (request, reply) => {
+    const { toolCallId } = request.params;
+    const msg = repository.findMessageByToolCallId(toolCallId);
+    if (!msg || !msg.toolCalls) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Tool call not found.' });
+    }
+
+    const toolCall = msg.toolCalls.find(tc => tc.id === toolCallId);
+    if (!toolCall) {
+      return reply.status(404).send({ code: 'NOT_FOUND', message: 'Tool call not found.' });
+    }
+
+    if (toolCall.status !== 'pending') {
+      return reply.status(400).send({ code: 'ALREADY_RESOLVED', message: `This action has already been ${toolCall.status}.` });
+    }
+
+    repository.updateToolCallStatus(msg.id, toolCallId, 'dismissed');
+    return reply.send({ dismissed: true });
   });
 
   app.setErrorHandler((error, _request, reply) => {

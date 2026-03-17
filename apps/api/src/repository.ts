@@ -1607,4 +1607,121 @@ export class InboxRepository {
     const cutoff = new Date(now.getTime() - retentionMs).toISOString();
     this.db.prepare('DELETE FROM push_notification_log WHERE sent_at < ?').run(cutoff);
   }
+
+  // ─── Chat Conversations ────────────────────────────────────────────────────
+
+  getOrCreateConversation(now: Date): { id: string; createdAt: string; updatedAt: string } {
+    const existing = this.db.prepare('SELECT * FROM conversations ORDER BY created_at DESC LIMIT 1').get() as Record<string, unknown> | undefined;
+    if (existing) {
+      return { id: String(existing.id), createdAt: String(existing.created_at), updatedAt: String(existing.updated_at) };
+    }
+    const id = randomUUID();
+    const ts = now.toISOString();
+    this.db.prepare('INSERT INTO conversations (id, created_at, updated_at) VALUES (?, ?, ?)').run(id, ts, ts);
+    return { id, createdAt: ts, updatedAt: ts };
+  }
+
+  touchConversation(conversationId: string, now: Date): void {
+    this.db.prepare('UPDATE conversations SET updated_at = ? WHERE id = ?').run(now.toISOString(), conversationId);
+  }
+
+  addChatMessage(msg: {
+    id: string;
+    conversationId: string;
+    role: string;
+    content: string;
+    toolCalls: unknown[] | null;
+    createdAt: string;
+  }): void {
+    this.db.prepare(`
+      INSERT INTO conversation_messages (id, conversation_id, role, content, tool_calls, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(msg.id, msg.conversationId, msg.role, msg.content, msg.toolCalls ? JSON.stringify(msg.toolCalls) : null, msg.createdAt);
+  }
+
+  listChatMessages(conversationId: string, limit: number, before?: string): { messages: ChatMessageRow[]; hasMore: boolean } {
+    let rows: Record<string, unknown>[];
+    if (before) {
+      rows = this.db.prepare(`
+        SELECT * FROM conversation_messages
+        WHERE conversation_id = ? AND created_at < (SELECT created_at FROM conversation_messages WHERE id = ?)
+        ORDER BY created_at DESC LIMIT ?
+      `).all(conversationId, before, limit + 1) as Record<string, unknown>[];
+    } else {
+      rows = this.db.prepare(`
+        SELECT * FROM conversation_messages
+        WHERE conversation_id = ?
+        ORDER BY created_at DESC LIMIT ?
+      `).all(conversationId, limit + 1) as Record<string, unknown>[];
+    }
+    const hasMore = rows.length > limit;
+    const slice = hasMore ? rows.slice(0, limit) : rows;
+    return {
+      messages: slice.reverse().map(mapChatMessageRow),
+      hasMore
+    };
+  }
+
+  getRecentChatMessages(conversationId: string, limit: number): ChatMessageRow[] {
+    const rows = this.db.prepare(`
+      SELECT * FROM conversation_messages
+      WHERE conversation_id = ?
+      ORDER BY created_at DESC LIMIT ?
+    `).all(conversationId, limit) as Record<string, unknown>[];
+    return rows.reverse().map(mapChatMessageRow);
+  }
+
+  getChatMessage(messageId: string): ChatMessageRow | null {
+    const row = this.db.prepare('SELECT * FROM conversation_messages WHERE id = ?').get(messageId) as Record<string, unknown> | undefined;
+    return row ? mapChatMessageRow(row) : null;
+  }
+
+  updateToolCallStatus(messageId: string, toolCallId: string, status: string): boolean {
+    const row = this.db.prepare('SELECT tool_calls FROM conversation_messages WHERE id = ?').get(messageId) as { tool_calls: string | null } | undefined;
+    if (!row?.tool_calls) return false;
+    const toolCalls = JSON.parse(row.tool_calls) as Array<{ id: string; status: string }>;
+    const tc = toolCalls.find(t => t.id === toolCallId);
+    if (!tc) return false;
+    tc.status = status;
+    this.db.prepare('UPDATE conversation_messages SET tool_calls = ? WHERE id = ?').run(JSON.stringify(toolCalls), messageId);
+    return true;
+  }
+
+  findMessageByToolCallId(toolCallId: string): ChatMessageRow | null {
+    const rows = this.db.prepare(
+      "SELECT * FROM conversation_messages WHERE tool_calls IS NOT NULL ORDER BY created_at DESC"
+    ).all() as Record<string, unknown>[];
+    for (const row of rows) {
+      const toolCalls = JSON.parse(String(row.tool_calls)) as Array<{ id: string }>;
+      if (toolCalls.some(tc => tc.id === toolCallId)) {
+        return mapChatMessageRow(row);
+      }
+    }
+    return null;
+  }
+
+  clearConversation(conversationId: string): void {
+    this.db.transaction(() => {
+      this.db.prepare('DELETE FROM conversation_messages WHERE conversation_id = ?').run(conversationId);
+      this.db.prepare('DELETE FROM conversations WHERE id = ?').run(conversationId);
+    })();
+  }
 }
+
+export type ChatMessageRow = {
+  id: string;
+  conversationId: string;
+  role: string;
+  content: string;
+  toolCalls: Array<{ id: string; type: string; data: Record<string, unknown>; status: string }> | null;
+  createdAt: string;
+};
+
+const mapChatMessageRow = (row: Record<string, unknown>): ChatMessageRow => ({
+  id: String(row.id),
+  conversationId: String(row.conversation_id),
+  role: String(row.role),
+  content: String(row.content),
+  toolCalls: row.tool_calls ? JSON.parse(String(row.tool_calls)) : null,
+  createdAt: String(row.created_at)
+});
