@@ -42,6 +42,7 @@ export function InlineAddInput({ onAdd, disabled = false }: InlineAddInputProps)
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
+        onFocus={() => inputRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}
         disabled={disabled || busy}
         aria-label="Add item"
       />
