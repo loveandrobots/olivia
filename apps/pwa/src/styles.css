@@ -5155,3 +5155,237 @@ textarea:focus, input:focus, select:focus {
     transition: none;
   }
 }
+
+/* ── Nudge Tray ─────────────────────────────────────────── */
+
+.nudge-tray {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 16px;
+  padding: 16px 0;
+}
+
+.nudge-tray__overflow {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding-left: 4px;
+}
+
+/* ── Nudge Card ─────────────────────────────────────────── */
+
+.nudge-card {
+  position: relative;
+  background: var(--surface);
+  border-radius: 18px;
+  border: 1.5px solid var(--ink-4);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+}
+
+.nudge-card--ritual {
+  border: 1.5px solid var(--lavender-mid);
+}
+
+/* Left accent stripe */
+.nudge-card__stripe {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+}
+
+.nudge-card__stripe--mint { background: var(--mint); }
+.nudge-card__stripe--rose { background: var(--rose); }
+.nudge-card__stripe--amber { background: var(--sky); }
+.nudge-card__stripe--violet { background: var(--violet); }
+
+/* Body layout */
+.nudge-card__body {
+  display: flex;
+  flex-direction: column;
+}
+
+.nudge-card__header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Icon container */
+.nudge-card__icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.nudge-card__icon-wrap--mint { background: var(--mint-soft); }
+.nudge-card__icon-wrap--rose { background: var(--rose-soft); }
+.nudge-card__icon-wrap--amber { background: var(--sky-soft); }
+.nudge-card__icon-wrap--violet { background: var(--lavender-soft); }
+
+.nudge-card__icon {
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nudge-card__icon-wrap--mint .nudge-card__icon { color: var(--mint); }
+.nudge-card__icon-wrap--rose .nudge-card__icon { color: var(--rose); }
+.nudge-card__icon-wrap--amber .nudge-card__icon { color: var(--sky); }
+.nudge-card__icon-wrap--violet .nudge-card__icon { color: var(--violet); }
+
+/* Text */
+.nudge-card__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.nudge-card__name {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nudge-card__trigger {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-2);
+}
+
+/* Dismiss button */
+.nudge-card__dismiss {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: var(--ink-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.nudge-card__dismiss:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Action buttons */
+.nudge-card__actions {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.nudge-card__btn {
+  flex: 1;
+  min-height: 44px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  transition: opacity 0.15s ease;
+}
+
+.nudge-card__btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.nudge-card__btn--primary {
+  background: var(--violet);
+  color: white;
+}
+
+.nudge-card__btn--ghost {
+  background: var(--lavender-soft);
+  color: var(--violet);
+}
+
+.nudge-card__btn--full {
+  width: 100%;
+}
+
+/* ── Push Opt-In Prompt ─────────────────────────────────── */
+
+.push-opt-in-prompt {
+  background: var(--surface);
+  border-radius: 18px;
+  border: 1.5px solid var(--ink-4);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+}
+
+.push-opt-in-prompt p {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink-2);
+  margin: 0 0 12px 0;
+}
+
+.push-opt-in-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+}
+
+.push-opt-in-actions button {
+  flex: 1;
+  min-height: 44px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  transition: opacity 0.15s ease;
+}
+
+.push-opt-in-actions button:first-child {
+  background: var(--violet);
+  color: white;
+}
+
+.push-opt-in-actions button:last-child {
+  background: var(--lavender-soft);
+  color: var(--violet);
+}
+
+/* ── Reduced Motion — Nudge Tray ────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .nudge-card,
+  .nudge-card__btn,
+  .push-opt-in-actions button {
+    transition: none;
+  }
+}
