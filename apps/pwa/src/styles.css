@@ -1215,6 +1215,176 @@ p { margin: 0; }
   box-shadow: 0 4px 14px rgba(108,92,231,0.25);
 }
 
+/* ── MARKDOWN IN CHAT BUBBLES ──────────────────────── */
+
+.md-content p {
+  margin: 0 0 10px 0;
+}
+.md-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Headings — Olivia bubble */
+.msg-olivia .md-content h1,
+.msg-olivia .md-content h2,
+.msg-olivia .md-content h3 {
+  font-family: 'Fraunces', serif;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink);
+  margin: 14px 0 6px 0;
+}
+.msg-olivia .md-content h1 { font-size: 17px; }
+.msg-olivia .md-content h2 { font-size: 15px; }
+.msg-olivia .md-content h3 { font-size: 14px; }
+.msg-olivia .md-content :first-child:is(h1, h2, h3) {
+  margin-top: 0;
+}
+
+/* Headings — User bubble */
+.msg-user .md-content h1,
+.msg-user .md-content h2,
+.msg-user .md-content h3 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 14px 0 6px 0;
+}
+.msg-user .md-content h1 { font-size: 16px; }
+.msg-user .md-content h2 { font-size: 15px; }
+.msg-user .md-content h3 { font-size: 14px; }
+.msg-user .md-content :first-child:is(h1, h2, h3) {
+  margin-top: 0;
+}
+
+/* Bold & Italic — Olivia */
+.msg-olivia .md-content strong {
+  font-weight: 700;
+}
+.msg-olivia .md-content em {
+  /* parent is already italic — no change */
+}
+
+/* Bold & Italic — User */
+.msg-user .md-content strong {
+  font-weight: 700;
+}
+.msg-user .md-content em {
+  font-style: italic;
+}
+
+/* Lists */
+.md-content ul,
+.md-content ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+.md-content li {
+  margin-bottom: 4px;
+  line-height: 1.5;
+}
+.md-content li:last-child {
+  margin-bottom: 0;
+}
+.md-content ul { list-style-type: disc; }
+.md-content ul ul { list-style-type: circle; }
+.md-content ol { list-style-type: decimal; }
+
+/* List markers — Olivia */
+.msg-olivia .md-content ul li::marker {
+  color: var(--violet);
+}
+.msg-olivia .md-content ol li::marker {
+  color: var(--violet);
+  font-weight: 600;
+}
+
+/* Inline code */
+.md-content code:not(pre code) {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 0.85em;
+  font-style: normal;
+  font-weight: 400;
+  padding: 2px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.msg-olivia .md-content code:not(pre code) {
+  background: var(--violet-dim);
+  color: var(--violet);
+}
+.msg-user .md-content code:not(pre code) {
+  background: rgba(255, 255, 255, 0.18);
+  color: white;
+}
+
+/* Fenced code blocks */
+.md-content pre {
+  margin: 10px 0;
+  border-radius: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.md-content pre code {
+  display: block;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.5;
+  padding: 12px 14px;
+  white-space: pre;
+  tab-size: 2;
+}
+.msg-olivia .md-content pre {
+  background: var(--surface-2);
+  border: 1px solid var(--ink-4);
+}
+.msg-olivia .md-content pre code {
+  color: var(--ink);
+}
+.msg-user .md-content pre {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.msg-user .md-content pre code {
+  color: white;
+}
+.md-content pre::-webkit-scrollbar { display: none; }
+.md-content pre { scrollbar-width: none; }
+
+/* Links */
+.md-content a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  transition: color 0.15s ease;
+}
+.msg-olivia .md-content a {
+  color: var(--violet);
+  text-decoration-color: var(--violet-dim);
+}
+.msg-olivia .md-content a:hover,
+.msg-olivia .md-content a:active {
+  text-decoration-color: var(--violet);
+}
+.msg-user .md-content a {
+  color: white;
+  text-decoration-color: rgba(255, 255, 255, 0.4);
+}
+.msg-user .md-content a:hover,
+.msg-user .md-content a:active {
+  text-decoration-color: white;
+}
+
+/* Strikethrough */
+.md-content del {
+  text-decoration: line-through;
+}
+
 /* ── ACTION CARDS ───────────────────────────────────── */
 
 .olivia-action-card {
@@ -4182,5 +4352,1040 @@ textarea:focus, input:focus, select:focus {
   }
   .home-empty-today {
     animation: none;
+  }
+}
+
+/* ─── Onboarding Components (OLI-119) ──────────────────────────────────────── */
+
+/* Welcome Card (Home Screen) */
+.onb-welcome-card {
+  margin: 0 16px 20px;
+  background: linear-gradient(135deg, var(--violet) 0%, var(--violet-2, #8B7FF5) 100%);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: var(--shadow-violet);
+  position: relative;
+  overflow: hidden;
+  animation: popIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.onb-welcome-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.8);
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.onb-welcome-headline {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: white;
+  line-height: 1.3;
+  margin-bottom: 10px;
+}
+.onb-welcome-body {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+.onb-welcome-btn-primary {
+  display: inline-block;
+  background: white;
+  color: var(--violet);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 12px 24px;
+  border-radius: 16px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.onb-welcome-btn-primary:active {
+  transform: scale(0.97);
+}
+.onb-welcome-skip {
+  display: block;
+  margin-top: 12px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px 0;
+  min-height: 44px;
+}
+
+/* Continue Setup Card (Home Screen) */
+.onb-continue-card {
+  margin: 0 16px 20px;
+  background: var(--surface);
+  border: 1.5px solid var(--lavender-mid, #D4CCFF);
+  border-left: 3px solid var(--violet);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+  animation: fadeUp 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.onb-continue-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--violet);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.onb-continue-body {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--ink);
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+.onb-continue-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.onb-continue-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-4);
+  flex-shrink: 0;
+}
+.onb-continue-dot-done {
+  background: var(--mint);
+}
+.onb-continue-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-2);
+  margin-left: 4px;
+}
+.onb-continue-actions {
+  display: flex;
+  gap: 10px;
+}
+.onb-continue-btn {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 18px;
+  border-radius: 16px;
+}
+
+/* Onboarding Chat Page */
+.onb-page {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  background: var(--bg);
+}
+.onb-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  padding: 12px 22px 16px;
+  border-bottom: 1px solid var(--ink-4);
+}
+.onb-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--violet);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+  margin-bottom: 14px;
+}
+.onb-header-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.onb-orb {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+.onb-title {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.onb-subtitle {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+/* Topic Progress Bar */
+.onb-progress-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.onb-progress-bar::-webkit-scrollbar {
+  display: none;
+}
+.onb-progress-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.onb-progress-item:not(:last-child)::after {
+  content: '\00B7';
+  color: var(--ink-3);
+  margin: 0 2px;
+}
+.onb-progress-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+.onb-progress-dot-done {
+  background: var(--mint);
+}
+.onb-progress-dot-current {
+  width: 10px;
+  height: 10px;
+  background: var(--violet);
+  box-shadow: 0 0 0 4px var(--violet-dim, rgba(108, 92, 231, 0.1));
+}
+.onb-progress-dot-ahead {
+  background: var(--ink-4);
+}
+.onb-progress-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+.onb-progress-done .onb-progress-label {
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.onb-progress-current .onb-progress-label {
+  font-weight: 700;
+  color: var(--violet);
+}
+
+/* Onboarding chat area */
+.onb-chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 16px 120px;
+}
+
+/* Progressive exit prompt */
+.onb-exit-prompt {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  padding: 16px 0;
+  animation: fadeUp 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.onb-btn {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 20px;
+  border-radius: 16px;
+}
+
+/* Confidence indicators on action cards */
+.oa-confidence {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+.oa-confidence-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.oa-confidence-high .oa-confidence-dot { background: var(--mint); }
+.oa-confidence-medium .oa-confidence-dot { background: var(--peach); }
+.oa-confidence-low .oa-confidence-dot { background: var(--rose); }
+.oa-confidence-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.oa-confidence-medium .oa-confidence-label { color: var(--peach); }
+.oa-confidence-low .oa-confidence-label { color: var(--rose); }
+
+/* Topic badge on Olivia topic-intro messages */
+.onb-topic-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  background: var(--violet-dim);
+  color: var(--violet);
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-bottom: 8px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-style: normal;
+}
+
+/* Confirmed/dismissed states for action cards */
+.oa-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 8px;
+  margin-top: 6px;
+  display: inline-block;
+}
+.oa-confirmed {
+  color: var(--mint);
+  background: var(--mint-soft, #E0FFF9);
+}
+.oa-dismissed {
+  color: var(--ink-2);
+  background: var(--surface-2);
+}
+
+/* Reduced motion — onboarding */
+@media (prefers-reduced-motion: reduce) {
+  .onb-welcome-card,
+  .onb-continue-card,
+  .onb-exit-prompt {
+    animation: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   HEALTH CHECK — HOME CARD + REVIEW SCREEN
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Home Screen Card ─────────────────────────────────── */
+.health-check-card {
+  margin: 0 16px 20px;
+  background: var(--surface);
+  border: 1.5px solid var(--ink-4);
+  border-left: 3px solid var(--sky);
+  border-radius: 18px;
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+  animation: fadeUp 0.25s ease-out both;
+}
+
+.health-check-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.health-check-card__icon {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 12px;
+  background: var(--sky-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sky);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.health-check-card__title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  padding-top: 5px;
+  flex: 1;
+}
+
+.health-check-card__dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: var(--ink-3);
+  margin: -8px -8px 0 0;
+  border-radius: 12px;
+  transition: background 0.15s ease;
+}
+
+.health-check-card__dismiss:hover {
+  background: var(--surface-2);
+}
+
+.health-check-card__body {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ink);
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+
+.health-check-card__body--progress {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-style: normal;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.health-check-card__actions {
+  display: flex;
+}
+
+.health-check-card__btn {
+  width: 100%;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  background: var(--violet);
+  color: white;
+  height: 44px;
+  transition: background 0.15s ease;
+}
+
+.health-check-card__btn:hover {
+  background: #5B4DD6;
+}
+
+.health-check-card__btn:active {
+  transform: scale(0.98);
+}
+
+/* ── Review Screen ────────────────────────────────────── */
+.health-check-page {
+  min-height: 100dvh;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  animation: screenIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.health-check-page__header {
+  padding: 16px 22px 12px;
+  position: relative;
+  text-align: center;
+}
+
+.health-check-page__back {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--violet-text);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 44px;
+  padding: 0 6px;
+}
+
+.health-check-page__title {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--ink);
+}
+
+.health-check-page__subtitle {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  color: var(--ink-2);
+  margin-top: 2px;
+}
+
+.health-check-page__intro {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--ink);
+  line-height: 1.5;
+  padding: 0 22px;
+  margin-bottom: 20px;
+}
+
+.health-check-page__loading {
+  padding: 40px 22px;
+  text-align: center;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+.health-check-page__content {
+  flex: 1;
+  padding-bottom: 32px;
+}
+
+/* ── Section Groups ───────────────────────────────────── */
+.health-check-section {
+  margin-bottom: 20px;
+}
+
+.health-check-section__label {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: var(--ink-2);
+  padding: 0 22px 8px;
+}
+
+/* ── Item Cards ───────────────────────────────────────── */
+.health-check-item {
+  background: var(--surface);
+  border: 1.5px solid var(--ink-4);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+  margin: 0 16px 10px;
+  animation: taskIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  opacity: 0;
+  transition: opacity 0.25s ease-out, max-height 0.25s ease-out;
+  overflow: hidden;
+}
+
+.health-check-item--collapsing {
+  opacity: 0;
+  max-height: 0 !important;
+  padding: 0 16px;
+  margin-bottom: 0;
+  border-width: 0;
+}
+
+.health-check-item__top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.health-check-item__icon {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* Type-colored icon backgrounds */
+.health-check-item__icon--routine  { background: var(--mint-soft);  color: var(--mint); }
+.health-check-item__icon--reminder { background: var(--rose-soft);  color: var(--rose); }
+.health-check-item__icon--list     { background: var(--peach-soft); color: var(--peach); }
+.health-check-item__icon--inbox    { background: var(--lavender-soft); color: var(--violet); }
+.health-check-item__icon--mealPlan { background: var(--sky-soft);   color: var(--sky); }
+
+.health-check-item__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.health-check-item__name {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.health-check-item__activity {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  color: var(--ink-2);
+  margin-top: 1px;
+}
+
+.health-check-item__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.health-check-item__btn {
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  min-height: 40px;
+  transition: all 0.15s ease;
+}
+
+.health-check-item__btn--primary {
+  background: var(--violet);
+  color: white;
+}
+
+.health-check-item__btn--primary:hover { background: #5B4DD6; }
+
+.health-check-item__btn--primary.health-check-item__btn--checked {
+  background: var(--mint);
+}
+
+.health-check-item__btn--secondary {
+  background: var(--lavender-soft);
+  color: var(--violet);
+}
+
+.health-check-item__btn--secondary:hover { background: var(--lavender-mid); }
+
+/* Item stagger delays */
+.health-check-item:nth-child(2) { animation-delay: 0.05s; }
+.health-check-item:nth-child(3) { animation-delay: 0.10s; }
+.health-check-item:nth-child(4) { animation-delay: 0.15s; }
+.health-check-item:nth-child(5) { animation-delay: 0.20s; }
+.health-check-item:nth-child(6) { animation-delay: 0.25s; }
+.health-check-item:nth-child(7) { animation-delay: 0.30s; }
+.health-check-item:nth-child(8) { animation-delay: 0.35s; }
+.health-check-item:nth-child(9) { animation-delay: 0.40s; }
+.health-check-item:nth-child(10) { animation-delay: 0.45s; }
+
+/* ── Overflow Note ────────────────────────────────────── */
+.health-check-overflow {
+  background: var(--surface-2);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin: 12px 16px 0;
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink-2);
+}
+
+/* ── Completion State ─────────────────────────────────── */
+.health-check-page__complete {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 32px;
+  gap: 12px;
+}
+
+.health-check-page__check-icon {
+  color: var(--violet);
+  animation: fadeUp 0.3s ease-out both;
+}
+
+.health-check-page__complete-title {
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 24px;
+  color: var(--ink);
+  animation: fadeUp 0.3s ease-out both;
+  animation-delay: 0.08s;
+  opacity: 0;
+}
+
+.health-check-page__complete-body {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ink-2);
+  line-height: 1.5;
+  animation: fadeUp 0.3s ease-out both;
+  animation-delay: 0.16s;
+  opacity: 0;
+}
+
+.health-check-page__home-btn {
+  margin-top: 8px;
+  padding: 12px 28px;
+  border-radius: 12px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--violet);
+  color: white;
+  border: none;
+  cursor: pointer;
+  height: 44px;
+  transition: background 0.15s ease;
+  animation: fadeUp 0.3s ease-out both;
+  animation-delay: 0.24s;
+  opacity: 0;
+}
+
+.health-check-page__home-btn:hover { background: #5B4DD6; }
+
+/* ── Archive Confirmation Modal ───────────────────────── */
+.freshness-archive-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.freshness-archive-confirm__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  animation: sheetFadeIn 0.2s ease;
+}
+
+.freshness-archive-confirm__sheet {
+  position: relative;
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  padding: 24px 22px;
+  width: 100%;
+  max-width: 480px;
+  animation: sheetUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.freshness-archive-confirm__title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.freshness-archive-confirm__body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  color: var(--ink-2);
+  margin-bottom: 20px;
+  line-height: 1.4;
+}
+
+.freshness-archive-confirm__actions {
+  display: flex;
+  gap: 10px;
+}
+
+.freshness-archive-confirm__actions .btn-secondary {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--lavender-soft);
+  color: var(--violet);
+  border: none;
+  cursor: pointer;
+  height: 44px;
+  transition: background 0.15s ease;
+}
+
+.freshness-archive-confirm__actions .btn-secondary:hover { background: var(--lavender-mid); }
+
+.freshness-archive-confirm__actions .btn-primary {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--rose);
+  color: white;
+  border: none;
+  cursor: pointer;
+  height: 44px;
+  transition: background 0.15s ease;
+}
+
+.freshness-archive-confirm__actions .btn-primary:hover { background: #f06a9e; }
+
+/* ── Reduced Motion — Health Check ────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .health-check-card,
+  .health-check-item,
+  .health-check-page,
+  .health-check-page__check-icon,
+  .health-check-page__complete-title,
+  .health-check-page__complete-body,
+  .health-check-page__home-btn,
+  .freshness-archive-confirm__backdrop,
+  .freshness-archive-confirm__sheet {
+    animation: none;
+    opacity: 1;
+  }
+
+  .health-check-item--collapsing {
+    transition: none;
+  }
+}
+
+/* ── Nudge Tray ─────────────────────────────────────────── */
+
+.nudge-tray {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 16px;
+  padding: 16px 0;
+}
+
+.nudge-tray__overflow {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding-left: 4px;
+}
+
+/* ── Nudge Card ─────────────────────────────────────────── */
+
+.nudge-card {
+  position: relative;
+  background: var(--surface);
+  border-radius: 18px;
+  border: 1.5px solid var(--ink-4);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+}
+
+.nudge-card--ritual {
+  border: 1.5px solid var(--lavender-mid);
+}
+
+/* Left accent stripe */
+.nudge-card__stripe {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+}
+
+.nudge-card__stripe--mint { background: var(--mint); }
+.nudge-card__stripe--rose { background: var(--rose); }
+.nudge-card__stripe--amber { background: var(--sky); }
+.nudge-card__stripe--violet { background: var(--violet); }
+
+/* Body layout */
+.nudge-card__body {
+  display: flex;
+  flex-direction: column;
+}
+
+.nudge-card__header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Icon container */
+.nudge-card__icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.nudge-card__icon-wrap--mint { background: var(--mint-soft); }
+.nudge-card__icon-wrap--rose { background: var(--rose-soft); }
+.nudge-card__icon-wrap--amber { background: var(--sky-soft); }
+.nudge-card__icon-wrap--violet { background: var(--lavender-soft); }
+
+.nudge-card__icon {
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nudge-card__icon-wrap--mint .nudge-card__icon { color: var(--mint); }
+.nudge-card__icon-wrap--rose .nudge-card__icon { color: var(--rose); }
+.nudge-card__icon-wrap--amber .nudge-card__icon { color: var(--sky); }
+.nudge-card__icon-wrap--violet .nudge-card__icon { color: var(--violet); }
+
+/* Text */
+.nudge-card__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.nudge-card__name {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nudge-card__trigger {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-2);
+}
+
+/* Dismiss button */
+.nudge-card__dismiss {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: var(--ink-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.nudge-card__dismiss:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Action buttons */
+.nudge-card__actions {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.nudge-card__btn {
+  flex: 1;
+  min-height: 44px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  transition: opacity 0.15s ease;
+}
+
+.nudge-card__btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.nudge-card__btn--primary {
+  background: var(--violet);
+  color: white;
+}
+
+.nudge-card__btn--ghost {
+  background: var(--lavender-soft);
+  color: var(--violet);
+}
+
+.nudge-card__btn--full {
+  width: 100%;
+}
+
+/* ── Push Opt-In Prompt ─────────────────────────────────── */
+
+.push-opt-in-prompt {
+  background: var(--surface);
+  border-radius: 18px;
+  border: 1.5px solid var(--ink-4);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+}
+
+.push-opt-in-prompt p {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink-2);
+  margin: 0 0 12px 0;
+}
+
+.push-opt-in-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+}
+
+.push-opt-in-actions button {
+  flex: 1;
+  min-height: 44px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  transition: opacity 0.15s ease;
+}
+
+.push-opt-in-actions button:first-child {
+  background: var(--violet);
+  color: white;
+}
+
+.push-opt-in-actions button:last-child {
+  background: var(--lavender-soft);
+  color: var(--violet);
+}
+
+/* ── Reduced Motion — Nudge Tray ────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .nudge-card,
+  .nudge-card__btn,
+  .push-opt-in-actions button {
+    transition: none;
   }
 }

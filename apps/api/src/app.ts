@@ -80,10 +80,17 @@ import {
   reviewRecordSchema,
   ritualSummaryResponseSchema,
   nudgesResponseSchema,
+  staleItemsResponseSchema,
+  freshnessConfirmRequestSchema,
+  freshnessConfirmResponseSchema,
+  freshnessArchiveRequestSchema,
+  freshnessArchiveResponseSchema,
+  healthCheckStateSchema,
   sendChatMessageRequestSchema,
   chatConversationQuerySchema,
   skipRoutineOccurrenceRequestSchema,
   skipRoutineOccurrenceResponseSchema,
+  ONBOARDING_ENTITY_THRESHOLD,
   type ActorRole,
   type DraftItem,
   type DraftReminder,
@@ -155,11 +162,12 @@ import {
   getReviewWindowsForOccurrence,
   formatReviewWindowAsDateStrings,
   skipRoutineOccurrence,
-  sortNudgesByPriority
+  sortNudgesByPriority,
+  localDateToUtcNoon
 } from '@olivia/domain';
 import Anthropic from '@anthropic-ai/sdk';
 import { createAiProvider, type RitualSummaryInput } from './ai';
-import { streamChat } from './chat';
+import { streamChat, streamOnboardingChat, getTopicPrompt, getNextOnboardingTopic } from './chat';
 import type { AppConfig } from './config';
 import { createDatabase } from './db/client';
 import { DraftStore } from './drafts';
@@ -235,6 +243,7 @@ function resolveReminderUpdateChange(
   }
   return change;
 }
+
 
 export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger: true });
@@ -2162,8 +2171,60 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
           result = { entry, planTitle: plan.title };
           break;
         }
+        case 'create_routine': {
+          const recurrenceRule = String(toolCall.data.recurrenceRule ?? 'weekly');
+          const intervalDays = recurrenceRule === 'every_n_days' ? Number(toolCall.data.intervalDays ?? 7) : undefined;
+          const rawFirstDueDate = toolCall.data.firstDueDate ? String(toolCall.data.firstDueDate) : format(now, 'yyyy-MM-dd');
+          // Normalize date-only strings (yyyy-MM-dd) to UTC noon in the household timezone.
+          // Using noon avoids DST day-shift issues (L-025); using the household timezone
+          // ensures "next Wednesday" stays on Wednesday regardless of UTC offset (OLI-134).
+          const firstDueDate = /^\d{4}-\d{2}-\d{2}$/.test(rawFirstDueDate)
+            ? localDateToUtcNoon(rawFirstDueDate, config.householdTimezone)
+            : rawFirstDueDate;
+          const owner = (toolCall.data.owner as 'stakeholder' | 'spouse' | 'unassigned') ?? 'stakeholder';
+          const routine = createRoutine(
+            String(toolCall.data.title ?? ''),
+            owner,
+            recurrenceRule as 'daily' | 'weekly' | 'monthly' | 'every_n_days',
+            firstDueDate,
+            intervalDays,
+            now
+          );
+          repository.createRoutine(routine);
+          result = { routine };
+
+          // Track in onboarding session if active
+          const onboardingSession = repository.getOnboardingSession();
+          if (onboardingSession && onboardingSession.status === 'started') {
+            repository.incrementOnboardingEntitiesCreated(onboardingSession.id, 1, now);
+          }
+          break;
+        }
+        case 'create_shared_list': {
+          const rawListOwner = String(toolCall.data.owner ?? 'stakeholder');
+          const listOwner: 'stakeholder' | 'spouse' = rawListOwner === 'spouse' ? 'spouse' : 'stakeholder';
+          const list = createSharedList(String(toolCall.data.title ?? ''), listOwner, now);
+          const historyEntry = createListCreatedHistoryEntry(list, actorRole);
+          repository.createSharedList(list, historyEntry);
+          result = { list };
+
+          // Track in onboarding session if active
+          const onboardingSession2 = repository.getOnboardingSession();
+          if (onboardingSession2 && onboardingSession2.status === 'started') {
+            repository.incrementOnboardingEntitiesCreated(onboardingSession2.id, 1, now);
+          }
+          break;
+        }
         default:
           return reply.status(400).send({ code: 'UNSUPPORTED_ACTION', message: `Action type "${toolCall.type}" is not yet supported for confirmation.` });
+      }
+
+      // Track entity creation in active onboarding session for standard types
+      if (['create_inbox_item', 'create_reminder', 'add_list_item', 'create_meal_entry'].includes(toolCall.type)) {
+        const onboardingSession = repository.getOnboardingSession();
+        if (onboardingSession && onboardingSession.status === 'started') {
+          repository.incrementOnboardingEntitiesCreated(onboardingSession.id, 1, now);
+        }
       }
     } catch (err) {
       return reply.status(400).send({ code: 'ACTION_FAILED', message: err instanceof Error ? err.message : 'Action failed.' });
@@ -2191,6 +2252,242 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
 
     repository.updateToolCallStatus(msg.id, toolCallId, 'dismissed');
     return reply.send({ dismissed: true });
+  });
+
+  // ─── Onboarding API (OLI-119) ─────────────────────────────────────────────
+
+  // Get onboarding state — tells the client whether to show the welcome card
+  app.get('/api/onboarding/state', async (_request, reply) => {
+    const entityCount = repository.countTotalEntities();
+    const session = repository.getOnboardingSession();
+    const needsOnboarding = entityCount <= ONBOARDING_ENTITY_THRESHOLD && (!session || session.status !== 'finished');
+    return reply.send({
+      needsOnboarding,
+      session,
+      entityCount
+    });
+  });
+
+  // Start or resume onboarding — creates session + conversation if needed
+  app.post('/api/onboarding/start', async (_request, reply) => {
+    if (!chatClient) {
+      return reply.status(503).send({ code: 'AI_UNAVAILABLE', message: 'Olivia is unavailable right now.' });
+    }
+
+    const now = new Date();
+    let session = repository.getOnboardingSession();
+
+    if (session && session.status === 'finished') {
+      return reply.status(400).send({ code: 'ALREADY_COMPLETED', message: 'Onboarding has already been completed.' });
+    }
+
+    if (!session) {
+      const conversation = repository.getOrCreateOnboardingConversation(now);
+      const sessionId = randomUUID();
+      const firstTopic = 'tasks';
+      session = {
+        id: sessionId,
+        conversationId: conversation.id,
+        status: 'started',
+        topicsCompleted: [],
+        currentTopic: firstTopic,
+        entitiesCreated: 0,
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString()
+      };
+      repository.createOnboardingSession(session);
+
+      // Seed the conversation with Olivia's opening message
+      const openingMessage = `Welcome! I'm Olivia, and I'm here to help you get your household set up. This usually takes about 10 minutes, and you can stop anytime.\n\n${getTopicPrompt('tasks')}`;
+      repository.addChatMessage({
+        id: randomUUID(),
+        conversationId: conversation.id,
+        role: 'assistant',
+        content: openingMessage,
+        toolCalls: null,
+        createdAt: now.toISOString()
+      });
+    }
+
+    return reply.send({ session });
+  });
+
+  // Send message in onboarding chat
+  app.post('/api/onboarding/messages', async (request, reply) => {
+    if (!chatClient) {
+      return reply.status(503).send({ code: 'AI_UNAVAILABLE', message: 'Olivia is unavailable right now.' });
+    }
+
+    const parsed = sendChatMessageRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ code: 'BAD_REQUEST', message: parsed.error.message });
+    }
+
+    const session = repository.getOnboardingSession();
+    if (!session || session.status === 'finished') {
+      return reply.status(400).send({ code: 'NO_ACTIVE_SESSION', message: 'No active onboarding session.' });
+    }
+
+    const now = new Date();
+    const conversationId = session.conversationId;
+
+    // Save user message
+    const userMsgId = randomUUID();
+    repository.addChatMessage({
+      id: userMsgId,
+      conversationId,
+      role: 'user',
+      content: parsed.data.content,
+      toolCalls: null,
+      createdAt: now.toISOString()
+    });
+
+    // Stream response via SSE
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no'
+    });
+
+    const generator = streamOnboardingChat(chatClient, repository, config, conversationId, session, now);
+    for await (const evt of generator) {
+      reply.raw.write(`event: ${evt.event}\ndata: ${JSON.stringify(evt.data)}\n\n`);
+    }
+    reply.raw.end();
+  });
+
+  // Get onboarding conversation history
+  app.get('/api/onboarding/conversation', async (request, reply) => {
+    const session = repository.getOnboardingSession();
+    if (!session) {
+      return reply.send({ conversationId: null, messages: [], hasMore: false });
+    }
+
+    const query = chatConversationQuerySchema.parse(request.query);
+    const { messages, hasMore } = repository.listChatMessages(session.conversationId, query.limit, query.before);
+    return reply.send({
+      conversationId: session.conversationId,
+      messages,
+      hasMore
+    });
+  });
+
+  // Advance to next topic
+  app.post('/api/onboarding/next-topic', async (_request, reply) => {
+    const session = repository.getOnboardingSession();
+    if (!session || session.status === 'finished') {
+      return reply.status(400).send({ code: 'NO_ACTIVE_SESSION', message: 'No active onboarding session.' });
+    }
+
+    const now = new Date();
+    const updatedTopics = session.currentTopic && !session.topicsCompleted.includes(session.currentTopic)
+      ? [...session.topicsCompleted, session.currentTopic]
+      : session.topicsCompleted;
+
+    const nextTopic = getNextOnboardingTopic(updatedTopics);
+
+    if (!nextTopic) {
+      // All topics done
+      repository.updateOnboardingSession(session.id, {
+        status: 'finished',
+        topicsCompleted: updatedTopics,
+        currentTopic: null,
+        updatedAt: now.toISOString()
+      });
+      return reply.send({ done: true, topicsCompleted: updatedTopics });
+    }
+
+    repository.updateOnboardingSession(session.id, {
+      topicsCompleted: updatedTopics,
+      currentTopic: nextTopic,
+      updatedAt: now.toISOString()
+    });
+
+    return reply.send({
+      done: false,
+      currentTopic: nextTopic,
+      topicPrompt: getTopicPrompt(nextTopic),
+      topicsCompleted: updatedTopics
+    });
+  });
+
+  // Finish onboarding early (user wants to stop)
+  app.post('/api/onboarding/finish', async (_request, reply) => {
+    const session = repository.getOnboardingSession();
+    if (!session) {
+      return reply.status(400).send({ code: 'NO_ACTIVE_SESSION', message: 'No active onboarding session.' });
+    }
+
+    const now = new Date();
+    const updatedTopics = session.currentTopic && !session.topicsCompleted.includes(session.currentTopic)
+      ? [...session.topicsCompleted, session.currentTopic]
+      : session.topicsCompleted;
+
+    repository.updateOnboardingSession(session.id, {
+      status: 'finished',
+      topicsCompleted: updatedTopics,
+      currentTopic: null,
+      updatedAt: now.toISOString()
+    });
+
+    return reply.send({
+      session: {
+        ...session,
+        status: 'finished',
+        topicsCompleted: updatedTopics,
+        currentTopic: null,
+        updatedAt: now.toISOString()
+      }
+    });
+  });
+
+  // ─── Data Freshness Routes ────────────────────────────────────────────────
+
+  app.get('/api/freshness/stale-items', async (_request, reply) => {
+    const now = new Date();
+    const result = repository.getStaleItems(now, 10);
+    return reply.send(staleItemsResponseSchema.parse(result));
+  });
+
+  app.post('/api/freshness/confirm', async (request, reply) => {
+    const body = freshnessConfirmRequestSchema.parse(request.body);
+    assertStakeholderWrite(body.actorRole);
+    const now = new Date();
+    const result = repository.confirmFreshness(body.entityType, body.entityId, now, body.expectedVersion);
+    if (!result) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', message: 'Version conflict — entity was modified.' });
+    }
+    return reply.send(freshnessConfirmResponseSchema.parse(result));
+  });
+
+  app.post('/api/freshness/archive', async (request, reply) => {
+    const body = freshnessArchiveRequestSchema.parse(request.body);
+    assertStakeholderWrite(body.actorRole);
+    const now = new Date();
+    const result = repository.archiveEntity(body.entityType, body.entityId, now, body.expectedVersion);
+    if (!result) {
+      return reply.status(409).send({ code: 'VERSION_CONFLICT', message: 'Version conflict — entity was modified.' });
+    }
+    return reply.send(freshnessArchiveResponseSchema.parse(result));
+  });
+
+  app.get('/api/freshness/health-check-state', async (_request, reply) => {
+    const now = new Date();
+    const state = repository.getHealthCheckState(now);
+    return reply.send(healthCheckStateSchema.parse(state));
+  });
+
+  app.post('/api/freshness/health-check-complete', async (_request, reply) => {
+    const now = new Date();
+    repository.completeHealthCheck(now);
+    return reply.send({ success: true });
+  });
+
+  app.post('/api/freshness/health-check-dismiss', async (_request, reply) => {
+    const now = new Date();
+    repository.dismissHealthCheck(now);
+    return reply.send({ success: true });
   });
 
   app.setErrorHandler((error, _request, reply) => {

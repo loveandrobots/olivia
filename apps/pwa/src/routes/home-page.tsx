@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { format } from 'date-fns';
-import { ArrowsClockwise, Bell, ForkKnife, Tray, GearSix } from '@phosphor-icons/react';
+import { ArrowsClockwise, Bell, ForkKnife, Tray, GearSix, Stethoscope } from '@phosphor-icons/react';
 import { computeReminderState, rankRemindersForSurfacing } from '@olivia/domain';
 import { getWeekBounds } from '@olivia/domain';
 import type { Reminder, DraftReminder, WeeklyDayView, WeeklyRoutineOccurrence, WeeklyReminder, WeeklyMealEntry, WeeklyInboxItem } from '@olivia/contracts';
@@ -17,6 +17,8 @@ import { SnoozeSheet } from '../components/reminders/SnoozeSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
 import { SpouseBanner } from '../components/lists/SpouseBanner';
 import type { NudgeData } from '../types/display';
+import { fetchOnboardingState, startOnboarding, finishOnboarding, fetchHealthCheckState, dismissHealthCheck, type OnboardingState, type HealthCheckState } from '../lib/api';
+import { getHealthCheckProgress } from '../lib/client-db';
 
 // ─── Status badge helpers ─────────────────────────────────────────────────────
 
@@ -405,6 +407,29 @@ export function HomePage() {
 
   const { nudges, dismiss: dismissNudge, removeNudge } = useNudges(role);
 
+  // Onboarding state query
+  const onboardingQuery = useQuery({
+    queryKey: ['onboarding-state'],
+    queryFn: fetchOnboardingState,
+  });
+  const onboardingState: OnboardingState | undefined = onboardingQuery.data;
+
+  const healthCheckQuery = useQuery({
+    queryKey: ['health-check-state'],
+    queryFn: fetchHealthCheckState,
+  });
+  const healthCheckState: HealthCheckState | undefined = healthCheckQuery.data;
+
+  const [healthCheckRemainingCount, setHealthCheckRemainingCount] = useState<number | null>(null);
+  // Check for partial progress on mount
+  useState(() => {
+    void getHealthCheckProgress().then((p) => {
+      if (p && p.totalItems && p.reviewedItemIds.length > 0) {
+        setHealthCheckRemainingCount(Math.max(0, p.totalItems - p.reviewedItemIds.length));
+      }
+    });
+  });
+
   const { weekStart } = useMemo(() => getWeekBounds(new Date()), []);
   const weekStartString = useMemo(() => weekStart.toISOString().split('T')[0], [weekStart]);
 
@@ -546,8 +571,140 @@ export function HomePage() {
           onRemove={removeNudge}
         />
 
-        {/* Olivia nudge card */}
-        {nudge && !nudgeDismissed && (
+        {/* Onboarding: Welcome Card (new user, no session yet) */}
+        {onboardingState && onboardingState.needsOnboarding && !onboardingState.session && (
+          <div className="onb-welcome-card" role="region" aria-label="Welcome to Olivia">
+            <div className="nudge-deco nudge-deco-1" aria-hidden="true" />
+            <div className="nudge-deco nudge-deco-2" aria-hidden="true" />
+            <div className="nudge-deco nudge-deco-3" aria-hidden="true" />
+            <div className="onb-welcome-eyebrow">{'\u2726'} OLIVIA</div>
+            <div className="onb-welcome-headline">Let{'\u2019'}s get your household set up.</div>
+            <div className="onb-welcome-body">It takes about 10 minutes {'\u2014'} just tell me what{'\u2019'}s on your plate and I{'\u2019'}ll organize it.</div>
+            <button
+              type="button"
+              className="onb-welcome-btn-primary"
+              onClick={async () => {
+                try {
+                  await startOnboarding();
+                  void queryClient.invalidateQueries({ queryKey: ['onboarding-state'] });
+                  void navigate({ to: '/onboarding' });
+                } catch {
+                  // AI unavailable — navigate anyway, page will handle the error
+                  void navigate({ to: '/onboarding' });
+                }
+              }}
+            >
+              Let{'\u2019'}s go {'\u2192'}
+            </button>
+            <button
+              type="button"
+              className="onb-welcome-skip"
+              onClick={async () => {
+                try {
+                  await startOnboarding();
+                  await finishOnboarding();
+                  void queryClient.invalidateQueries({ queryKey: ['onboarding-state'] });
+                } catch {
+                  // ignore
+                }
+              }}
+            >
+              Skip for now
+            </button>
+          </div>
+        )}
+
+        {/* Onboarding: Continue Setup Card (session started but not finished) */}
+        {onboardingState?.session && onboardingState.session.status === 'started' && (
+          <div className="onb-continue-card" role="region" aria-label="Continue setting up">
+            <div className="onb-continue-eyebrow">{'\u2726'} Continue setting up</div>
+            <div className="onb-continue-body">
+              {onboardingState.session.topicsCompleted.length > 0
+                ? `You\u2019ve set up ${onboardingState.session.topicsCompleted.join(' and ')}. Ready to keep going?`
+                : `Whenever you\u2019re ready, I can help organize your household.`
+              }
+            </div>
+            <div className="onb-continue-progress">
+              {['tasks', 'routines', 'reminders', 'lists', 'meals'].map((topic) => (
+                <div
+                  key={topic}
+                  className={`onb-continue-dot ${onboardingState.session!.topicsCompleted.includes(topic) ? 'onb-continue-dot-done' : ''}`}
+                />
+              ))}
+              <span className="onb-continue-label">
+                {onboardingState.session.topicsCompleted.length} of 5 topics covered
+              </span>
+            </div>
+            <div className="onb-continue-actions">
+              <button
+                type="button"
+                className="btn-primary onb-continue-btn"
+                onClick={() => void navigate({ to: '/onboarding' })}
+              >
+                Continue {'\u2192'}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary onb-continue-btn"
+                onClick={async () => {
+                  try {
+                    await finishOnboarding();
+                    void queryClient.invalidateQueries({ queryKey: ['onboarding-state'] });
+                  } catch {
+                    // ignore
+                  }
+                }}
+              >
+                I{'\u2019'}m good {'\u2713'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Health Check Card (data freshness — monthly prompt) */}
+        {healthCheckState?.shouldShow && (
+          <div className="health-check-card" role="region" aria-label="Monthly health check">
+            <div className="health-check-card__header">
+              <div className="health-check-card__icon">
+                <Stethoscope size={18} weight="bold" />
+              </div>
+              <div className="health-check-card__title">Monthly check-up</div>
+              <button
+                type="button"
+                className="health-check-card__dismiss"
+                aria-label="Dismiss health check"
+                onClick={async () => {
+                  try {
+                    await dismissHealthCheck();
+                    void queryClient.invalidateQueries({ queryKey: ['health-check-state'] });
+                  } catch {
+                    // ignore
+                  }
+                }}
+              >
+                {'\u00D7'}
+              </button>
+            </div>
+            <div className={`health-check-card__body${healthCheckRemainingCount != null && healthCheckRemainingCount > 0 ? ' health-check-card__body--progress' : ''}`}>
+              {healthCheckRemainingCount != null && healthCheckRemainingCount > 0
+                ? `${healthCheckRemainingCount} item${healthCheckRemainingCount === 1 ? '' : 's'} left to review`
+                : `Want to make sure everything\u2019s still accurate?`
+              }
+            </div>
+            <div className="health-check-card__actions">
+              <button
+                type="button"
+                className="health-check-card__btn"
+                onClick={() => void navigate({ to: '/health-check' })}
+              >
+                {healthCheckRemainingCount != null && healthCheckRemainingCount > 0 ? 'Continue' : 'Review now'} {'\u2192'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Olivia nudge card (hidden during onboarding) */}
+        {nudge && !nudgeDismissed && !(onboardingState?.needsOnboarding || onboardingState?.session?.status === 'started') && (
           <div
             className="nudge"
             role="region"

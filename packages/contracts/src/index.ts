@@ -43,6 +43,7 @@ export const inboxItemSchema = draftItemSchema.extend({
   lastStatusChangedAt: z.string().datetime(),
   lastNoteAt: z.string().datetime().nullable(),
   archivedAt: z.string().datetime().nullable(),
+  freshnessCheckedAt: z.string().datetime().nullable().default(null),
   pendingSync: z.boolean().optional()
 });
 
@@ -218,6 +219,7 @@ export const reminderSchema = draftReminderSchema.extend({
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   version: z.number().int().positive(),
+  freshnessCheckedAt: z.string().datetime().nullable().default(null),
   pendingSync: z.boolean().optional()
 });
 
@@ -410,6 +412,7 @@ export const sharedListSchema = z.object({
   updatedAt: z.string().datetime(),
   archivedAt: z.string().datetime().nullable(),
   version: z.number().int().positive(),
+  freshnessCheckedAt: z.string().datetime().nullable().default(null),
   pendingSync: z.boolean().optional()
 });
 
@@ -567,6 +570,7 @@ export const routineSchema = z.object({
   updatedAt: z.string().datetime(),
   archivedAt: z.string().datetime().nullable(),
   version: z.number().int().positive(),
+  freshnessCheckedAt: z.string().datetime().nullable().default(null),
   pendingSync: z.boolean().optional()
 }).refine(
   (r) => r.recurrenceRule !== 'every_n_days' || (r.intervalDays !== null && r.intervalDays > 0),
@@ -709,6 +713,7 @@ export const mealPlanSchema = z.object({
   updatedAt: z.string().datetime(),
   archivedAt: z.string().datetime().nullable(),
   version: z.number().int().positive(),
+  freshnessCheckedAt: z.string().datetime().nullable().default(null),
   pendingSync: z.boolean().optional()
 });
 
@@ -1332,8 +1337,13 @@ export const NUDGE_APPROACHING_THRESHOLD_HOURS = 24;
 export const NUDGE_SNOOZE_INTERVAL_HOURS = 1;
 export const NUDGE_MAX_DISPLAY_COUNT = 5;
 
-export const nudgeEntityTypeSchema = z.enum(['routine', 'reminder', 'planningRitual']);
+export const nudgeEntityTypeSchema = z.enum(['routine', 'reminder', 'planningRitual', 'freshness']);
 export type NudgeEntityType = z.infer<typeof nudgeEntityTypeSchema>;
+
+export const freshnessEntitySubTypeSchema = z.enum(['inbox', 'routine', 'reminder', 'list']);
+export type FreshnessEntitySubType = z.infer<typeof freshnessEntitySubTypeSchema>;
+
+export const FRESHNESS_NUDGE_MAX_PER_DAY = 2;
 
 export const nudgeSchema = z.object({
   entityType: nudgeEntityTypeSchema,
@@ -1341,7 +1351,8 @@ export const nudgeSchema = z.object({
   entityName: z.string(),
   triggerReason: z.string(),
   overdueSince: z.string().nullable(),    // YYYY-MM-DD, for overdue items; null for approaching-only
-  dueAt: z.string().datetime().nullable() // ISO datetime for approaching reminders; null otherwise
+  dueAt: z.string().datetime().nullable(), // ISO datetime for approaching reminders; null otherwise
+  entitySubType: freshnessEntitySubTypeSchema.optional() // workflow type for freshness nudges
 });
 
 export const nudgesResponseSchema = z.object({
@@ -1392,8 +1403,12 @@ export const chatToolCallTypeSchema = z.enum([
   'add_list_item',
   'create_meal_entry',
   'complete_routine',
-  'skip_routine'
+  'skip_routine',
+  'create_routine',
+  'create_shared_list'
 ]);
+
+export const conversationTypeSchema = z.enum(['general', 'onboarding']);
 
 export const chatToolCallSchema = z.object({
   id: z.string().uuid(),
@@ -1413,6 +1428,7 @@ export const chatMessageSchema = z.object({
 
 export const conversationSchema = z.object({
   id: z.string().uuid(),
+  type: conversationTypeSchema,
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime()
 });
@@ -1456,3 +1472,106 @@ export type ChatConversationQuery = z.infer<typeof chatConversationQuerySchema>;
 export type ChatClearResponse = z.infer<typeof chatClearResponseSchema>;
 export type ChatActionConfirmResponse = z.infer<typeof chatActionConfirmResponseSchema>;
 export type ChatActionDismissResponse = z.infer<typeof chatActionDismissResponseSchema>;
+
+// ─── Onboarding Contracts (OLI-119) ──────────────────────────────────────────
+
+export const onboardingTopicSchema = z.enum([
+  'tasks',
+  'routines',
+  'reminders',
+  'lists',
+  'meals'
+]);
+
+export const onboardingSessionStatusSchema = z.enum([
+  'started',
+  'finished'
+]);
+
+export const onboardingSessionSchema = z.object({
+  id: z.string().uuid(),
+  conversationId: z.string().uuid(),
+  status: onboardingSessionStatusSchema,
+  topicsCompleted: z.array(onboardingTopicSchema),
+  currentTopic: onboardingTopicSchema.nullable(),
+  entitiesCreated: z.number().int().min(0),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime()
+});
+
+export const onboardingStateResponseSchema = z.object({
+  needsOnboarding: z.boolean(),
+  session: onboardingSessionSchema.nullable(),
+  entityCount: z.number().int().min(0)
+});
+
+export const ONBOARDING_ENTITY_THRESHOLD = 2;
+
+export const ONBOARDING_TOPICS: readonly OnboardingTopic[] = [
+  'tasks',
+  'routines',
+  'reminders',
+  'lists',
+  'meals'
+] as const;
+
+export type ConversationType = z.infer<typeof conversationTypeSchema>;
+export type OnboardingTopic = z.infer<typeof onboardingTopicSchema>;
+export type OnboardingSessionStatus = z.infer<typeof onboardingSessionStatusSchema>;
+export type OnboardingSession = z.infer<typeof onboardingSessionSchema>;
+export type OnboardingStateResponse = z.infer<typeof onboardingStateResponseSchema>;
+
+// ─── Data Freshness (Phase 2) ─────────────────────────────────────────────────
+
+export const staleItemEntityTypeSchema = z.enum(['inbox', 'routine', 'reminder', 'list', 'mealPlan']);
+export type StaleItemEntityType = z.infer<typeof staleItemEntityTypeSchema>;
+
+export const archivableEntityTypeSchema = z.enum(['inbox', 'routine', 'reminder', 'list']);
+export type ArchivableEntityType = z.infer<typeof archivableEntityTypeSchema>;
+
+export const staleItemSchema = z.object({
+  entityType: staleItemEntityTypeSchema,
+  entityId: z.string().uuid(),
+  entityName: z.string(),
+  lastActivityAt: z.string().datetime(),
+  lastActivityDescription: z.string()
+});
+
+export const staleItemsResponseSchema = z.object({
+  items: z.array(staleItemSchema),
+  totalStaleCount: z.number().int().nonnegative()
+});
+
+export const freshnessConfirmRequestSchema = z.object({
+  entityType: staleItemEntityTypeSchema,
+  entityId: z.string().uuid(),
+  actorRole: actorRoleSchema,
+  expectedVersion: z.number().int().positive()
+});
+
+export const freshnessArchiveRequestSchema = z.object({
+  entityType: archivableEntityTypeSchema,
+  entityId: z.string().uuid(),
+  actorRole: actorRoleSchema,
+  expectedVersion: z.number().int().positive()
+});
+
+export const freshnessConfirmResponseSchema = z.object({
+  newVersion: z.number().int().positive()
+});
+
+export const freshnessArchiveResponseSchema = z.object({
+  newVersion: z.number().int().positive()
+});
+
+export const healthCheckStateSchema = z.object({
+  lastCompletedAt: z.string().datetime().nullable(),
+  lastDismissedAt: z.string().datetime().nullable(),
+  shouldShow: z.boolean()
+});
+
+export type StaleItem = z.infer<typeof staleItemSchema>;
+export type StaleItemsResponse = z.infer<typeof staleItemsResponseSchema>;
+export type FreshnessConfirmRequest = z.infer<typeof freshnessConfirmRequestSchema>;
+export type FreshnessArchiveRequest = z.infer<typeof freshnessArchiveRequestSchema>;
+export type HealthCheckState = z.infer<typeof healthCheckStateSchema>;

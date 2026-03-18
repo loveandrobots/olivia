@@ -18,6 +18,56 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-060: Adopt spec-level CSS completeness checklist to prevent unstyled components from shipping
+- Date: 2026-03-17
+- Area: process / quality / UI delivery
+- Decision: Add a mandatory acceptance criterion to the spec template requiring that all UI components have corresponding CSS styles before shipping. Also add a PR review template with a style completeness check as a lightweight safety net.
+- Rationale: OLI-136 revealed that NudgeCard, NudgeTray, and PushOptInPrompt shipped with BEM class names but zero CSS, causing jarring unstyled content. Root cause: component TSX was implemented in one task and CSS was forgotten. The lightest effective fix is catching this at spec time (before implementation begins) rather than adding heavier tooling like visual regression tests or custom lint rules.
+- Alternatives considered: (1) Visual regression gate via Storybook/screenshot tests — high effort, deferred until component volume justifies it. (2) Custom lint rule flagging class names without matching CSS selectors — aspirational, not worth the build cost now. Both remain viable future additions if the spec checklist proves insufficient.
+- Trade-offs: Manual process depends on spec authors remembering the criterion. Mitigated by it being baked into the template itself.
+- Status: active
+- Related docs: `docs/specs/spec-template.md`, OLI-136, OLI-138, L-028
+
+### D-059: Phase 2 Data Freshness implementation validated — all 20 acceptance criteria pass
+- Date: 2026-03-17
+- Area: delivery / data freshness / product validation
+- Decision: Phase 2 Data Freshness implementation is validated and ready to ship. All 20 acceptance criteria from the approved spec pass. 57 tests passing across domain and API integration layers. Implementation covers: extended staleness detection for all 5 workflow types, monthly health check surface with 10-item cap, freshness nudges via H5 nudge tray with 2/day throttle, and "Still active?" single-tap confirmation pattern.
+- Rationale: Thorough code review confirmed spec conformance across schema (5 entity tables + household_freshness), domain staleness functions (all check freshnessCheckedAt first), API endpoints (6 new freshness routes + nudge extension), and PWA surfaces (nudge tray extension, health check card, health check review screen). One minor spec correction: inbox archive status was listed as "resolved" but the correct schema value is "done" — spec updated.
+- Alternatives considered: none — implementation followed the approved spec and implementation plan exactly.
+- Trade-offs: none beyond those already documented in D-058.
+- Status: active
+- Related docs: `docs/specs/data-freshness.md`, `docs/plans/data-freshness-implementation-plan.md`, OLI-121, OLI-124, OLI-125, D-058
+
+### D-058: Phase 2 Data Freshness spec approved — CEO resolved 5 open questions; ready for design and build
+- Date: 2026-03-17
+- Area: data freshness / product approval
+- Decision: CEO approved the Phase 2 Data Freshness standalone spec (`docs/specs/data-freshness.md`) with decisions on all 5 open questions: (1) Health check frequency stays monthly (30 days), reconfirming D-056. (2) Health check item cap is 10; under-2-minute target is the real constraint. (3) Freshness nudge daily cap is separate 2/day, not shared with the existing 4-nudge display cap — keeps both channels clean. (4) Meal plan freshness is health-check-only — no inline freshness nudges, since meal planning is optional and weekly skips are intentional. (5) "Update" deep-link included in health check alongside "Still active" / "Archive" — three actions is fine since it's one primary action and two alternatives.
+- Rationale: The spec extends staleness detection to all five workflow types, adds a monthly household health check, and introduces freshness nudges via existing H5 infrastructure. CEO's decisions consistently favor simplicity and calm UX: separate caps prevent channel crowding, health-check-only for meal plans avoids false urgency, and the update deep-link saves navigation steps without adding decision complexity.
+- Alternatives considered: (1) Biweekly health check for newly onboarded households — rejected; easier to increase frequency than walk back nagging. (2) Shared nudge cap — rejected; freshness nudges are informational and should neither crowd out nor be crowded out by time-sensitive types. (3) Two-action-only health check — rejected; the deep-link is additive, not a competing choice.
+- Trade-offs: Separate nudge caps mean users could theoretically see up to 6 nudges total (4 time-sensitive + 2 freshness). Accepted because freshness nudges rank last in priority and the channels serve different purposes. Health-check-only meal plan freshness means meal plan drift won't be caught between monthly checks, but this matches the optional/weekly nature of the feature.
+- Status: active
+- Related docs: `docs/specs/data-freshness.md`, OLI-121, OLI-123, D-056, D-057
+
+### D-057: Phase 1 Onboarding shipped — CEO final validation passed; Phase 2 data freshness planning begins
+- Date: 2026-03-17
+- Area: delivery / onboarding / product progression
+- Decision: Phase 1 Conversational Onboarding is approved to ship to the validation cohort. CEO validated the full implementation across three commits (426ae8f, 23ea9e0, 91deb3c) against the approved spec and all five CEO decisions. 7/8 acceptance criteria fully pass; the one partial (inline edit of drafts, AC #5) is an accepted MVP tradeoff — confirm/skip is sufficient, inline edit deferred to fast-follow. Phase 2 (data freshness) planning begins immediately, following the same sequence: spec refinement → CEO approval → design → build.
+- Rationale: The implementation delivers the core conversational brain-dump experience: dedicated onboarding chat, topic-guided prompts across all 5 household areas, freeform-to-draft parsing with three-tier confidence indicators, session persistence with resume capability, starter templates (7 routines, 3 lists), progressive exit, and contextual UI polish (topic badges, exit buttons). 294 tests passing. The trust model requirement (confidence indicators) was a must-fix that was addressed in OLI-120 before CEO sign-off.
+- Alternatives considered: none — the implementation followed the approved spec and CEO decisions exactly. The inline edit deferral was agreed as an acceptable tradeoff by both VP Product and CEO.
+- Trade-offs: shipping without inline edit means users can only confirm or skip draft entities, not edit them in-place. Accepted because the conversational flow and confidence indicators provide sufficient review capability for MVP. If editing friction surfaces during validation cohort testing, a review sheet will be added as a fast-follow.
+- Status: active
+- Related docs: `docs/specs/onboarding-and-data-freshness.md`, OLI-117, OLI-118, OLI-119, OLI-120, D-056
+
+### D-056: Onboarding & Data Freshness spec approved — conversational brain-dump with phased rollout
+- Date: 2026-03-17
+- Area: onboarding / data freshness / product strategy
+- Decision: Approved the Improved Onboarding & Data Freshness spec with CEO decisions on all five open questions: (1) Onboarding trigger threshold is ≤2 entities — someone who manually created one item still benefits from guided setup. (2) Health check frequency is monthly fixed — no adaptive cadence; reassess in 8 weeks. (3) Starter template set is small and conservative (5-7 routines, 2-3 lists) — bad templates erode trust fast. (4) Spouse onboarding deferred. (5) Batch creation UX is inline in chat — keeps conversational feel; review sheet only if editing friction surfaces. Phase 1 (conversational onboarding) ships first; Phase 2 (data freshness) begins only after onboarding is validated.
+- Rationale: The conversational brain-dump approach flips onboarding from "fill out forms" to "just tell me what's going on," which aligns with Olivia's product ethos. The freshness system pairs naturally: onboarding solves day-one, freshness solves day-thirty. Phasing de-risks scope and ensures the core flow is validated before adding the review layer.
+- Alternatives considered: (1) Form wizard onboarding — rejected as contrary to Olivia's conversational identity. (2) Auto-creation from AI parsing without review — rejected per trust model (all entity creation requires explicit confirmation). (3) Adaptive health check cadence — deferred as over-engineering for initial release.
+- Trade-offs: Inline batch creation in chat is simpler but offers less editing control than a dedicated review sheet. Accepted because conversational feel is the priority; review sheet can be a fast-follow if needed. Monthly fixed frequency may be too frequent or infrequent for some users but avoids complexity of adaptive scheduling.
+- Status: active
+- Related docs: `docs/specs/onboarding-and-data-freshness.md`, OLI-117
+
 ### D-055: Home Screen Declutter spec approved — Today-Forward layout with accessibility-compliant tokens
 - Date: 2026-03-16
 - Area: home screen / UI design

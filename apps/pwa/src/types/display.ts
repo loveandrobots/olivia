@@ -73,6 +73,7 @@ export type ChatMessage = {
   isStreaming?: boolean;
   isError?: boolean;
   showDraftCard?: boolean;
+  topic?: string;
 };
 
 export type QuickChip = string;

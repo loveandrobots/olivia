@@ -85,6 +85,7 @@ Before saving the file, check:
 - [ ] No section contradicts an active decision in `decision-history.md`
 - [ ] All glossary terms used match the definitions in `docs/glossary.md`
 - [ ] Acceptance criteria are testable, not aspirational
+- [ ] If the feature includes UI components: acceptance criteria include CSS/styling completeness (D-060)
 - [ ] At least one Learning or Assumption log entry is referenced by ID
 - [ ] Open Questions section contains only genuine blockers, not padding
 

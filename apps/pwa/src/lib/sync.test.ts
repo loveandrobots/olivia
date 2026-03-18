@@ -185,6 +185,7 @@ function createReminder(overrides: Partial<Reminder> = {}): Reminder {
     snoozedUntil: overrides.snoozedUntil ?? null,
     completedAt: overrides.completedAt ?? null,
     cancelledAt: overrides.cancelledAt ?? null,
+    freshnessCheckedAt: overrides.freshnessCheckedAt ?? null,
     createdAt: overrides.createdAt ?? '2026-03-14T08:00:00.000Z',
     updatedAt: overrides.updatedAt ?? '2026-03-14T08:00:00.000Z',
     version: overrides.version ?? 1,

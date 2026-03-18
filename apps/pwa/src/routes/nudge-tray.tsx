@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { addHours } from 'date-fns';
-import { ArrowsClockwise } from '@phosphor-icons/react';
+import { ArrowsClockwise, ClockCountdown } from '@phosphor-icons/react';
 import type { Nudge, ActorRole } from '@olivia/contracts';
-import { NUDGE_MAX_DISPLAY_COUNT, NUDGE_SNOOZE_INTERVAL_HOURS } from '@olivia/contracts';
+import { NUDGE_MAX_DISPLAY_COUNT, NUDGE_SNOOZE_INTERVAL_HOURS, FRESHNESS_NUDGE_MAX_PER_DAY } from '@olivia/contracts';
 import {
   loadNudges,
   submitRoutineSkip,
@@ -12,7 +12,8 @@ import {
   completeReminderCommand,
   snoozeReminderCommand
 } from '../lib/sync';
-import { dismissNudge, filterDismissed, pruneStaleNudgeDismissals, clientDb } from '../lib/client-db';
+import { dismissNudge, filterDismissed, pruneStaleNudgeDismissals, filterFreshnessNudgesByThrottle, clientDb } from '../lib/client-db';
+import { confirmFreshness, archiveFreshnessEntity } from '../lib/api';
 import { usePushOptIn } from '../lib/push-opt-in';
 
 const POLL_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
@@ -27,7 +28,11 @@ export function useNudges(role: ActorRole) {
     await pruneStaleNudgeDismissals();
     const raw = await loadNudges(role);
     const filtered = await filterDismissed(raw);
-    setNudges(filtered);
+    // Apply 2/day throttle to freshness nudges
+    const nonFreshness = filtered.filter((n) => n.entityType !== 'freshness');
+    const freshnessOnly = filtered.filter((n) => n.entityType === 'freshness');
+    const throttledFreshness = await filterFreshnessNudgesByThrottle(freshnessOnly, FRESHNESS_NUDGE_MAX_PER_DAY);
+    setNudges([...nonFreshness, ...throttledFreshness]);
   }, [role]);
 
   useEffect(() => {
@@ -88,9 +93,11 @@ interface NudgeCardProps {
   onSkip?: (entityId: string) => void;
   onSnooze?: (entityId: string) => void;
   onStartReview?: (entityId: string) => void;
+  onStillActive?: (entityId: string) => void;
+  onArchive?: (entityId: string) => void;
 }
 
-function NudgeCard({ nudge, isSpouse, onDismiss, onDone, onSkip, onSnooze, onStartReview }: NudgeCardProps) {
+function NudgeCard({ nudge, isSpouse, onDismiss, onDone, onSkip, onSnooze, onStartReview, onStillActive, onArchive }: NudgeCardProps) {
   const [exiting, setExiting] = useState(false);
 
   const handleAction = (fn: (entityId: string) => void) => {
@@ -187,6 +194,52 @@ function NudgeCard({ nudge, isSpouse, onDismiss, onDone, onSkip, onSnooze, onSta
               onClick={() => onSnooze && handleAction(onSnooze)}
             >
               Snooze
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (nudge.entityType === 'freshness') {
+    return (
+      <div className="nudge-card nudge-card--freshness" style={cardStyle} role="article" aria-label={nudge.entityName}>
+        <div className="nudge-card__stripe nudge-card__stripe--amber" />
+        <div className="nudge-card__body">
+          <div className="nudge-card__header">
+            <div className="nudge-card__icon-wrap nudge-card__icon-wrap--amber" aria-hidden="true">
+              <span className="nudge-card__icon"><ClockCountdown size={18} /></span>
+            </div>
+            <div className="nudge-card__text">
+              <div className="nudge-card__name">{nudge.entityName}</div>
+              <div className="nudge-card__trigger">{nudge.triggerReason}</div>
+            </div>
+            <button
+              type="button"
+              className="nudge-card__dismiss"
+              aria-label="Dismiss nudge"
+              disabled={isSpouse}
+              onClick={() => handleAction(onDismiss)}
+            >
+              ×
+            </button>
+          </div>
+          <div className="nudge-card__actions">
+            <button
+              type="button"
+              className="nudge-card__btn nudge-card__btn--primary"
+              disabled={isSpouse}
+              onClick={() => onStillActive && handleAction(onStillActive)}
+            >
+              Still active
+            </button>
+            <button
+              type="button"
+              className="nudge-card__btn nudge-card__btn--ghost"
+              disabled={isSpouse}
+              onClick={() => onArchive && handleAction(onArchive)}
+            >
+              Archive
             </button>
           </div>
         </div>
@@ -333,6 +386,65 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
     await void navigate({ to: '/routines/$routineId/review/$occurrenceId', params: { routineId: entityId, occurrenceId } });
   }, [navigate]);
 
+  const handleStillActive = useCallback(async (entityId: string) => {
+    const nudge = nudges.find((n) => n.entityId === entityId);
+    if (!nudge || !nudge.entitySubType) { onRemove(entityId); return; }
+    try {
+      // Get version from the appropriate cached entity
+      let version = 1;
+      if (nudge.entitySubType === 'inbox') {
+        const item = await clientDb.items.get(entityId);
+        version = item?.version ?? 1;
+      } else if (nudge.entitySubType === 'routine') {
+        const routine = await clientDb.routines.get(entityId);
+        version = routine?.version ?? 1;
+      } else if (nudge.entitySubType === 'reminder') {
+        const reminder = await clientDb.reminders.get(entityId);
+        version = reminder?.version ?? 1;
+      } else if (nudge.entitySubType === 'list') {
+        const list = await clientDb.sharedLists.get(entityId);
+        version = list?.version ?? 1;
+      }
+      await confirmFreshness(nudge.entitySubType, entityId, role, version);
+      onRemove(entityId);
+    } catch {
+      onRemove(entityId);
+    }
+  }, [nudges, role, onRemove]);
+
+  const [archiveTarget, setArchiveTarget] = useState<string | null>(null);
+
+  const handleArchive = useCallback(async (entityId: string) => {
+    setArchiveTarget(entityId);
+  }, []);
+
+  const confirmArchive = useCallback(async () => {
+    if (!archiveTarget) return;
+    const nudge = nudges.find((n) => n.entityId === archiveTarget);
+    if (!nudge || !nudge.entitySubType) { onRemove(archiveTarget); setArchiveTarget(null); return; }
+    try {
+      let version = 1;
+      if (nudge.entitySubType === 'inbox') {
+        const item = await clientDb.items.get(archiveTarget);
+        version = item?.version ?? 1;
+      } else if (nudge.entitySubType === 'routine') {
+        const routine = await clientDb.routines.get(archiveTarget);
+        version = routine?.version ?? 1;
+      } else if (nudge.entitySubType === 'reminder') {
+        const reminder = await clientDb.reminders.get(archiveTarget);
+        version = reminder?.version ?? 1;
+      } else if (nudge.entitySubType === 'list') {
+        const list = await clientDb.sharedLists.get(archiveTarget);
+        version = list?.version ?? 1;
+      }
+      await archiveFreshnessEntity(nudge.entitySubType, archiveTarget, role, version);
+      onRemove(archiveTarget);
+    } catch {
+      onRemove(archiveTarget);
+    }
+    setArchiveTarget(null);
+  }, [archiveTarget, nudges, role, onRemove]);
+
   if (nudges.length === 0) return null;
 
   return (
@@ -349,8 +461,28 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
           onSkip={nudge.entityType === 'routine' ? (id) => void handleRoutineSkip(id) : undefined}
           onSnooze={nudge.entityType === 'reminder' ? (id) => void handleReminderSnooze(id) : undefined}
           onStartReview={nudge.entityType === 'planningRitual' ? (id) => void handleStartReview(id) : undefined}
+          onStillActive={nudge.entityType === 'freshness' ? (id) => void handleStillActive(id) : undefined}
+          onArchive={nudge.entityType === 'freshness' ? (id) => void handleArchive(id) : undefined}
         />
       ))}
+      {/* Archive confirmation dialog for freshness nudges */}
+      {archiveTarget && (
+        <div className="freshness-archive-confirm" role="alertdialog" aria-label="Archive confirmation">
+          <div className="freshness-archive-confirm__backdrop" onClick={() => setArchiveTarget(null)} />
+          <div className="freshness-archive-confirm__sheet">
+            <div className="freshness-archive-confirm__title">
+              Archive {nudges.find((n) => n.entityId === archiveTarget)?.entityName ?? 'this item'}?
+            </div>
+            <div className="freshness-archive-confirm__body">
+              This item will be archived. You can restore it later if needed.
+            </div>
+            <div className="freshness-archive-confirm__actions">
+              <button type="button" className="btn-secondary" onClick={() => setArchiveTarget(null)}>Cancel</button>
+              <button type="button" className="btn-primary" onClick={() => void confirmArchive()}>Archive</button>
+            </div>
+          </div>
+        </div>
+      )}
       {overflowCount > 0 && (
         <div className="nudge-tray__overflow" aria-label={`${overflowCount} more items`}>
           + {overflowCount} more {overflowCount === 1 ? 'item' : 'items'} →

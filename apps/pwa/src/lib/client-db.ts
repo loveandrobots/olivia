@@ -47,6 +47,18 @@ type StoredOutboxCommand = OutboxCommand & {
   lastError?: string;
 };
 
+type FreshnessThrottle = {
+  date: string; // YYYY-MM-DD
+  shownEntityIds: string[];
+};
+
+type HealthCheckProgress = {
+  id: string; // 'current'
+  reviewedItemIds: string[];
+  startedAt: string;
+  totalItems?: number;
+};
+
 class OliviaClientDb extends Dexie {
   items!: Table<InboxItem, string>;
   historyCache!: Table<{ itemId: string; history: HistoryEntry[] }, string>;
@@ -61,6 +73,8 @@ class OliviaClientDb extends Dexie {
   mealEntries!: Table<MealEntry, string>;
   reviewRecords!: Table<ReviewRecord, string>;
   nudgeDismissals!: Table<NudgeDismissal, string>;
+  freshnessThrottle!: Table<FreshnessThrottle, string>;
+  healthCheckProgress!: Table<HealthCheckProgress, string>;
   outbox!: Table<StoredOutboxCommand, string>;
   meta!: Table<MetaRecord, string>;
 
@@ -150,6 +164,25 @@ class OliviaClientDb extends Dexie {
       mealEntries: 'id, planId, dayOfWeek, position',
       reviewRecords: 'id, ritualOccurrenceId, reviewDate, completedAt, pendingSync',
       nudgeDismissals: 'entityId, dismissedAt',
+      outbox: 'commandId, kind, state, createdAt',
+      meta: 'key'
+    });
+    this.version(8).stores({
+      items: 'id, status, owner, updatedAt, pendingSync',
+      historyCache: 'itemId',
+      reminders: 'id, state, owner, scheduledAt, updatedAt, pendingSync',
+      reminderTimelineCache: 'reminderId',
+      reminderSettingsCache: 'actorRole',
+      sharedLists: 'id, status, updatedAt, pendingSync',
+      listItems: 'id, listId, position, pendingSync',
+      routines: 'id, status, owner, currentDueDate, updatedAt, pendingSync',
+      routineOccurrences: 'id, routineId, dueDate',
+      mealPlans: 'id, status, weekStartDate, updatedAt, pendingSync',
+      mealEntries: 'id, planId, dayOfWeek, position',
+      reviewRecords: 'id, ritualOccurrenceId, reviewDate, completedAt, pendingSync',
+      nudgeDismissals: 'entityId, dismissedAt',
+      freshnessThrottle: 'date',
+      healthCheckProgress: 'id',
       outbox: 'commandId, kind, state, createdAt',
       meta: 'key'
     });
@@ -734,4 +767,75 @@ export async function pruneStaleNudgeDismissals(): Promise<void> {
   const all = await clientDb.nudgeDismissals.toArray();
   const stale = all.filter((r) => !isToday(parseISO(r.dismissedAt)));
   await clientDb.nudgeDismissals.bulkDelete(stale.map((r) => r.entityId));
+}
+
+// ─── Freshness Nudge Throttle helpers ─────────────────────────────────────────
+
+export async function getFreshnessThrottleToday(): Promise<FreshnessThrottle | null> {
+  const today = format(new Date(), 'yyyy-MM-dd');
+  return (await clientDb.freshnessThrottle.get(today)) ?? null;
+}
+
+export async function recordFreshnessNudgeShown(entityId: string): Promise<void> {
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const existing = await clientDb.freshnessThrottle.get(today);
+  if (existing) {
+    if (!existing.shownEntityIds.includes(entityId)) {
+      await clientDb.freshnessThrottle.put({ ...existing, shownEntityIds: [...existing.shownEntityIds, entityId] });
+    }
+  } else {
+    await clientDb.freshnessThrottle.put({ date: today, shownEntityIds: [entityId] });
+  }
+}
+
+export async function filterFreshnessNudgesByThrottle<T extends { entityId: string }>(nudges: T[], maxPerDay: number): Promise<T[]> {
+  const throttle = await getFreshnessThrottleToday();
+  const alreadyShown = throttle?.shownEntityIds ?? [];
+  const result: T[] = [];
+  let shownCount = alreadyShown.length;
+
+  for (const nudge of nudges) {
+    if (alreadyShown.includes(nudge.entityId)) {
+      result.push(nudge); // Already shown today, keep showing
+    } else if (shownCount < maxPerDay) {
+      result.push(nudge);
+      shownCount++;
+      void recordFreshnessNudgeShown(nudge.entityId);
+    }
+  }
+
+  return result;
+}
+
+// ─── Health Check Progress helpers ────────────────────────────────────────────
+
+export async function getHealthCheckProgress(): Promise<HealthCheckProgress | null> {
+  return (await clientDb.healthCheckProgress.get('current')) ?? null;
+}
+
+export async function saveHealthCheckProgress(reviewedItemId: string, totalItems?: number): Promise<void> {
+  const existing = await clientDb.healthCheckProgress.get('current');
+  if (existing) {
+    const updated = { ...existing };
+    if (!existing.reviewedItemIds.includes(reviewedItemId)) {
+      updated.reviewedItemIds = [...existing.reviewedItemIds, reviewedItemId];
+    }
+    if (totalItems !== undefined) updated.totalItems = totalItems;
+    await clientDb.healthCheckProgress.put(updated);
+  } else {
+    await clientDb.healthCheckProgress.put({ id: 'current', reviewedItemIds: [reviewedItemId], startedAt: new Date().toISOString(), totalItems });
+  }
+}
+
+export async function saveHealthCheckTotalItems(totalItems: number): Promise<void> {
+  const existing = await clientDb.healthCheckProgress.get('current');
+  if (existing) {
+    await clientDb.healthCheckProgress.put({ ...existing, totalItems });
+  } else {
+    await clientDb.healthCheckProgress.put({ id: 'current', reviewedItemIds: [], startedAt: new Date().toISOString(), totalItems });
+  }
+}
+
+export async function clearHealthCheckProgress(): Promise<void> {
+  await clientDb.healthCheckProgress.delete('current');
 }

@@ -38,6 +38,7 @@ function makeRoutine(overrides: Partial<Routine> = {}): Routine {
     updatedAt: localNoon(2026, 3, 1),
     version: 1,
     archivedAt: null,
+    freshnessCheckedAt: null,
     ...overrides
   };
 }

@@ -843,7 +843,7 @@ Status: todo
 
 Context:
 - H5 Phases 1–3 shipped without household validation (M28 bypassed by board directive).
-- The product now includes: inbox, reminders, recurring routines, shared lists, meal planning (H3 complete except meal planning spec pending), unified weekly view, activity history, planning rituals, AI-assisted summaries, proactive nudges, push notifications, completion-window timing, and a chat interface.
+- The product now includes: inbox, reminders, recurring routines, shared lists, meal planning (all H3 workflows complete), unified weekly view, activity history, planning rituals, AI-assisted summaries, proactive nudges, push notifications, completion-window timing, and a chat interface.
 - This is a substantial feature surface. Before adding more, we need to know what the household actually uses, what it ignores, and where friction exists.
 
 Required artifacts:

@@ -2,7 +2,7 @@
 title: "Olivia — Home Screen Declutter: Visual Implementation Spec"
 subtitle: "Today-Forward layout — calm daily briefing over full weekly calendar"
 date: "March 2025"
-status: "Revised with accessibility fixes — resubmitted for final sign-off"
+status: "Approved and implemented (D-055, OLI-114)"
 ---
 
 # Olivia — Home Screen Declutter
