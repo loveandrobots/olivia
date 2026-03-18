@@ -63,7 +63,7 @@ Delivered MVP shape:
 The goal is not a complete assistant. The goal is a workflow the household would actually miss if it disappeared.
 
 ## Horizon 3: Household Coordination Layer
-Status: active
+Status: complete
 
 Focus: expand from one useful workflow into a coherent coordination surface for routine household operations.
 
@@ -72,16 +72,15 @@ Product direction:
 - add recurring routines for chores, maintenance, bills, and other repeated household obligations
 - introduce shared lists for grocery, shopping, packing, and other lightweight collaborative list workflows
 - extend the inbox into a broader coordination layer with clearer ownership, due-state visibility, and planning views
-- reserve meal planning as a later Horizon 3 expansion once recurring and list primitives are clear
+- meal planning as the final Horizon 3 workflow, connecting to shared lists for grocery generation
 
 Near-term workflow priorities:
 1. ~~first-class reminders~~ — spec approved, implemented (Phase 1 complete)
 2. ~~shared lists~~ — spec approved, implemented (Phase 1 complete)
 3. ~~recurring routines~~ — spec approved, implemented (all 7 phases complete)
-4. meal planning — deferred until recurring and list primitives are proven; those primitives are now built and validated
+4. ~~meal planning~~ — spec approved (D-021), implemented (Phase 1 complete). Weekly meal planning with grocery list generation via Shared Lists. See D-019, D-020, D-021.
 
-Active spec target:
-- meal planning — spec drafted (`docs/specs/meal-planning.md`); submitted for CEO approval. Scoped to weekly meal planning with grocery list generation via Shared Lists. See D-019, D-020.
+All four planned Horizon 3 workflows are built and available in the PWA. Horizon 3 is near-complete; remaining expansion (if any) would be driven by M29 usage signal.
 
 How Horizon 3 builds on the MVP:
 - the inbox remains the capture and follow-through foundation for open household work
@@ -255,15 +254,15 @@ Phase 4 candidate tracks (to be decided by M29 usage signal):
 
 ## Assumptions
 - A narrow MVP will create more durable value than attempting broad assistant capabilities early.
-- Shared list workflows are distinct enough from inbox items that they may deserve their own product model.
-- Recurring schedule infrastructure can support reminders, routines, and future planning workflows without each feature inventing its own scheduling logic.
+- Shared list workflows are behaviorally distinct from inbox items and deserve their own product model. (Validated — A-007)
+- Recurring schedule infrastructure can be shared across reminders, routines, and planning workflows without each feature inventing its own scheduling logic. (Validated — A-008)
 - Long-term interface decisions can remain flexible beyond the chosen PWA MVP surface until product usage reveals whether native clients or other surfaces deserve to become primary.
 
 ## Open Questions
-- What is the minimum first-class reminder model that improves on the inbox without creating a second overlapping workflow?
-- How much recurrence should be defined inside the first reminder spec versus deferred to a later recurring-routines spec?
-- Which behaviors should be shared across inbox items, reminders, recurring routines, and lists, and which deserve separate workflow rules?
-- How should grocery and shopping lists relate to meal planning without forcing both into the same feature too early?
+- ~~What is the minimum first-class reminder model that improves on the inbox without creating a second overlapping workflow?~~ — Answered: hybrid standalone-or-linked model (D-014, `docs/specs/first-class-reminders.md`)
+- ~~How much recurrence should be defined inside the first reminder spec versus deferred to a later recurring-routines spec?~~ — Answered: shared recurrence infrastructure validated across both specs (A-008)
+- ~~Which behaviors should be shared across inbox items, reminders, recurring routines, and lists, and which deserve separate workflow rules?~~ — Answered: separate workflow models with shared scheduling primitives; each workflow has distinct lifecycle rules (D-016, A-007, A-008)
+- ~~How should grocery and shopping lists relate to meal planning without forcing both into the same feature too early?~~ — Answered: meal planning generates grocery lists via the Shared Lists primitive (D-021, `docs/specs/meal-planning.md`)
 - What evidence should justify moving beyond the PWA to native clients or a shared-display mode?
 - When should spouse-specific collaborative flows become first-class rather than secondary?
 

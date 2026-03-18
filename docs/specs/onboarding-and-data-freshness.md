@@ -3,7 +3,7 @@
 ## Status
 - Approved (CEO approved 2026-03-17, Phase 1 first)
 - **Phase 1 shipped** (CEO final validation 2026-03-17). 7/8 AC pass, 1 accepted tradeoff (inline edit deferred to fast-follow). 294 tests passing. Commits: 426ae8f, 23ea9e0, 91deb3c.
-- Phase 2 (data freshness) planning next — same sequence: spec refinement → CEO approval → design → build.
+- **Phase 2 shipped** (Data freshness — D-059, 2026-03-17). Standalone spec: `docs/specs/data-freshness.md`. All 20 AC pass. 57 tests. Commits: e65ca4e, f15cb6a.
 
 ## Summary
 Olivia currently has no guided onboarding experience. New users land on an empty home screen and must manually create every inbox item, routine, reminder, list, and meal plan from scratch — the exact kind of cognitive labor the product exists to reduce. This spec proposes a two-part solution: (1) a conversational onboarding flow that makes initial setup feel lightweight and progressive, and (2) a data freshness system that prevents household state from drifting out of sync with reality over time.

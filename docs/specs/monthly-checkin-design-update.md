@@ -1,7 +1,7 @@
 # Feature Spec: Monthly Check-In Design Update
 
 ## Status
-- Draft
+- Implemented (OLI-128, commit 2a82e5e). Health check card and review screen styled per visual spec.
 
 ## Summary
 The monthly health check card and review screen were implemented with complete functionality (JSX, API integration, client state) but shipped without CSS styling. The card appears unstyled on the homepage — unstyled buttons, no alignment with other cards, no visual distinction. Additionally, the JSX structure diverges from the approved visual implementation spec in several places. This spec defines the concrete changes needed to bring both surfaces into visual conformance with `docs/plans/data-freshness-visual-implementation-spec.md` and ensure the health check feels calm, polished, and unobtrusive on the home screen.

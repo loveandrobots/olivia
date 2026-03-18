@@ -1,7 +1,8 @@
 # Feature Spec: Data Freshness & Gentle Review
 
 ## Status
-- Approved by CEO (D-058, 2026-03-17) — ready for design and build handoff
+- Approved by CEO (D-058, 2026-03-17)
+- **Implemented** (D-059, 2026-03-17). All 20 acceptance criteria pass. 57 tests across domain and API. Commits: e65ca4e, f15cb6a.
 
 ## Summary
 Olivia currently detects staleness only for inbox items (14-day threshold). Every other workflow type — routines, reminders, shared lists, and meal plans — can silently drift from household reality with no detection or prompt. This spec extends staleness detection to all five workflow types, adds a monthly household health check surface, and introduces freshness nudges through the existing H5 nudge infrastructure. The goal: household data stays meaningfully accurate over weeks and months without overburdening the user with check-ins.
