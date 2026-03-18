@@ -1715,6 +1715,7 @@ export class InboxRepository {
 
   clearConversation(conversationId: string): void {
     this.db.transaction(() => {
+      this.db.prepare('DELETE FROM onboarding_sessions WHERE conversation_id = ?').run(conversationId);
       this.db.prepare('DELETE FROM conversation_messages WHERE conversation_id = ?').run(conversationId);
       this.db.prepare('DELETE FROM conversations WHERE id = ?').run(conversationId);
     })();
