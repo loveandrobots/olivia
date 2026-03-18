@@ -17,6 +17,15 @@ Use this structure for future entries:
 
 ## Current Learnings
 
+### L-028: UI components must ship with styles — splitting TSX and CSS across tasks creates unstyled content risk
+- Date: 2026-03-17
+- Area: process / UI delivery
+- Learning: When component TSX and CSS are implemented as separate tasks (or CSS is assumed to be someone else's responsibility), components can ship with BEM class names but zero actual styles. This happened with NudgeCard, NudgeTray, and PushOptInPrompt in OLI-136 — all rendered as unstyled content on the home screen.
+- Why it matters: Unstyled components are immediately user-visible and jarring. Unlike logic bugs that may be subtle, missing CSS is a hard visual regression that erodes trust.
+- Implication: Every spec with a UI component should include a CSS completeness acceptance criterion. Component styling is not a separate concern — it's part of the component being done. The spec template now enforces this (D-060).
+- Source: OLI-136, OLI-138
+- Related docs: `docs/specs/spec-template.md`, D-060
+
 ### L-027: Push notification scheduler architecture is the natural extension point for AI-enhanced nudge timing — timing logic fits inside the existing evaluation loop
 - Date: 2026-03-16
 - Area: H5 architecture / nudge timing

@@ -72,6 +72,7 @@ Keep the spec lean. Use short bullets and plain language. Sections may be omitte
 ## Acceptance Criteria
 - List concrete, testable product outcomes.
 - Each criterion should be specific enough to verify later.
+- **If the feature includes any UI component**: include a criterion that all component class names have corresponding CSS styles and the component renders as visually specified. Unstyled components must not ship.
 
 ## Validation And Testing
 - How will we know this feature is useful in the household?

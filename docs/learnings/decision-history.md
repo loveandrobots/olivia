@@ -18,6 +18,16 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-060: Adopt spec-level CSS completeness checklist to prevent unstyled components from shipping
+- Date: 2026-03-17
+- Area: process / quality / UI delivery
+- Decision: Add a mandatory acceptance criterion to the spec template requiring that all UI components have corresponding CSS styles before shipping. Also add a PR review template with a style completeness check as a lightweight safety net.
+- Rationale: OLI-136 revealed that NudgeCard, NudgeTray, and PushOptInPrompt shipped with BEM class names but zero CSS, causing jarring unstyled content. Root cause: component TSX was implemented in one task and CSS was forgotten. The lightest effective fix is catching this at spec time (before implementation begins) rather than adding heavier tooling like visual regression tests or custom lint rules.
+- Alternatives considered: (1) Visual regression gate via Storybook/screenshot tests — high effort, deferred until component volume justifies it. (2) Custom lint rule flagging class names without matching CSS selectors — aspirational, not worth the build cost now. Both remain viable future additions if the spec checklist proves insufficient.
+- Trade-offs: Manual process depends on spec authors remembering the criterion. Mitigated by it being baked into the template itself.
+- Status: active
+- Related docs: `docs/specs/spec-template.md`, OLI-136, OLI-138, L-028
+
 ### D-059: Phase 2 Data Freshness implementation validated — all 20 acceptance criteria pass
 - Date: 2026-03-17
 - Area: delivery / data freshness / product validation
