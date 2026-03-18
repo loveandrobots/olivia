@@ -3044,6 +3044,44 @@ textarea:focus, input:focus, select:focus {
   margin-top: 2px;
 }
 
+/* ── NOTIFICATION DENIED BANNER ─────────────────────── */
+
+.notif-denied-banner {
+  background: var(--warn-bg, #fff8ed);
+  border: 1.5px solid var(--warn-border, #f59e0b);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+}
+
+[data-theme="dark"] .notif-denied-banner {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.notif-denied-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--warn-text, #b45309);
+  margin-bottom: 6px;
+}
+
+[data-theme="dark"] .notif-denied-title {
+  color: #fbbf24;
+}
+
+.notif-denied-body {
+  font-size: 12px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
+.notif-denied-steps {
+  margin: 6px 0 0 16px;
+  padding: 0;
+  line-height: 1.7;
+}
+
 /* ── REMINDER GROUP HEADERS ────────────────────────── */
 
 .rem-group-header {
