@@ -3103,6 +3103,50 @@ input[type="date"].rem-form-input {
   line-height: 1.7;
 }
 
+.notif-ios-homescreen-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--warn-text, #b45309);
+}
+
+[data-theme="dark"] .notif-ios-homescreen-hint {
+  color: #fbbf24;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .notif-ios-homescreen-hint {
+    color: #fbbf24;
+  }
+}
+
+/* ── iOS HOME SCREEN NOTE ─────────────────────────── */
+
+.notif-ios-note {
+  background: var(--info-bg, #eff6ff);
+  border: 1.5px solid var(--info-border, #3b82f6);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--info-text, #1e40af);
+  line-height: 1.5;
+}
+
+[data-theme="dark"] .notif-ios-note {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.45);
+  color: #93c5fd;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .notif-ios-note {
+    background: rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.45);
+    color: #93c5fd;
+  }
+}
+
 /* ── REMINDER GROUP HEADERS ────────────────────────── */
 
 .rem-group-header {
