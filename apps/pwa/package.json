@@ -27,8 +27,7 @@
     "react": "latest",
     "react-dom": "latest",
     "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1",
-    "vite-plugin-pwa": "latest"
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.2.0",
