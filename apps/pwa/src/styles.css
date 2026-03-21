@@ -2613,8 +2613,9 @@ textarea:focus, input:focus, select:focus {
   transform: translateX(-50%);
   max-width: 430px;
   width: 100%;
-  z-index: 100;
+  z-index: 200;
   padding: 14px 20px;
+  padding-top: calc(14px + env(safe-area-inset-top, 0px));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2622,6 +2623,7 @@ textarea:focus, input:focus, select:focus {
   animation: bannerSlide 0.3s cubic-bezier(0.22,1,0.36,1);
   font-size: 13px;
   font-weight: 600;
+  cursor: pointer;
 }
 
 .confirm-banner-mint {

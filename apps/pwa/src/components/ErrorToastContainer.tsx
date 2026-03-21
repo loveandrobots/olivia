@@ -17,6 +17,10 @@ function ErrorToastItem({ toast }: { toast: ErrorToast }) {
     toast.retry?.();
   }, [toast]);
 
+  const handleDismiss = useCallback(() => {
+    dismissErrorToast(toast.id);
+  }, [toast.id]);
+
   return (
     <ConfirmBanner
       message={toast.message}
@@ -24,6 +28,7 @@ function ErrorToastItem({ toast }: { toast: ErrorToast }) {
       duration={AUTO_DISMISS_MS}
       onAction={toast.retry ? handleRetry : undefined}
       actionLabel={toast.retry ? 'Retry' : undefined}
+      onDismiss={handleDismiss}
     />
   );
 }
