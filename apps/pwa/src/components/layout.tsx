@@ -1,9 +1,11 @@
 import { useEffect, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Keyboard } from '@capacitor/keyboard';
 import { flushOutbox } from '../lib/sync';
+import { abortActiveOperations, resetActiveOperations } from '../lib/app-lifecycle';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -22,6 +24,24 @@ export function AppLayout({ children }: { children: ReactNode }) {
     const handleOnline = () => void syncNow();
     window.addEventListener('online', handleOnline);
     return () => window.removeEventListener('online', handleOnline);
+  }, [queryClient]);
+
+  // Handle Capacitor app lifecycle: flush outbox + invalidate on resume,
+  // abort in-flight streams on background.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const listener = App.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) {
+        resetActiveOperations();
+        void (async () => {
+          try { await flushOutbox(); } catch { /* keep stale state visible */ }
+          void queryClient.invalidateQueries();
+        })();
+      } else {
+        abortActiveOperations();
+      }
+    });
+    return () => { void listener.then((h) => h.remove()); };
   }, [queryClient]);
 
   // Configure the native status bar so the web view extends behind it and

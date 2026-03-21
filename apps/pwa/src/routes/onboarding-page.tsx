@@ -14,6 +14,7 @@ import {
   type OnboardingSession,
   type ChatStreamEvent,
 } from '../lib/api';
+import { getActiveSignal } from '../lib/app-lifecycle';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -195,7 +196,7 @@ export function OnboardingPage() {
     let fullText = '';
     const toolCalls: ChatToolCall[] = [];
 
-    for await (const evt of streamOnboardingMessage(text)) {
+    for await (const evt of streamOnboardingMessage(text, getActiveSignal())) {
       if (evt.event === 'text') {
         fullText += (evt as ChatStreamEvent & { event: 'text' }).data.delta;
         setStreamingText(fullText);

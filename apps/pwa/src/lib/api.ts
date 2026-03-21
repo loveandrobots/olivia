@@ -714,11 +714,12 @@ export type ChatStreamEvent =
   | { event: 'done'; data: { messageId: string; conversationId: string } }
   | { event: 'error'; data: { message: string } };
 
-export async function* streamChatMessage(content: string): AsyncGenerator<ChatStreamEvent> {
+export async function* streamChatMessage(content: string, signal?: AbortSignal): AsyncGenerator<ChatStreamEvent> {
   const response = await fetch(resolveApiUrl('/api/chat/messages'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content })
+    body: JSON.stringify({ content }),
+    signal,
   });
 
   if (!response.ok) {
@@ -807,11 +808,12 @@ export async function fetchOnboardingConversation(limit = 50, before?: string): 
   return request<ChatConversationResponse>(`/api/onboarding/conversation?${params.toString()}`);
 }
 
-export async function* streamOnboardingMessage(content: string): AsyncGenerator<ChatStreamEvent> {
+export async function* streamOnboardingMessage(content: string, signal?: AbortSignal): AsyncGenerator<ChatStreamEvent> {
   const response = await fetch(resolveApiUrl('/api/onboarding/messages'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content })
+    body: JSON.stringify({ content }),
+    signal,
   });
 
   if (!response.ok) {
