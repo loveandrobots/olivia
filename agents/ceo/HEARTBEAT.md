@@ -27,6 +27,7 @@ If `PAPERCLIP_APPROVAL_ID` is set:
 - `GET /api/agents/me/inbox-lite` -- compact inbox, preferred for normal heartbeats.
 - Fall back to `GET /api/companies/{companyId}/issues?assigneeAgentId={your-id}&status=todo,in_progress,blocked` when you need full issue objects.
 - Prioritize: `in_progress` first, then `todo`. Skip `blocked` unless you can unblock it.
+- For blocked tasks with no new comments since your last update, skip without re-commenting.
 - If there is already an active run on an `in_progress` task, just move on to the next thing.
 - If `PAPERCLIP_TASK_ID` is set and assigned to you, prioritize that task.
 
