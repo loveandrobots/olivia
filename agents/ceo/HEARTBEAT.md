@@ -49,7 +49,17 @@ If `PAPERCLIP_APPROVAL_ID` is set:
 2. For durable facts (decisions, team patterns, project context), extract to entity files in `$AGENT_HOME/memory/` using the `para-memory-files` skill.
 3. When working on parent/tracking issues, check subtask status and roll up progress.
 
-## 8. Doc Commit Check
+## 8. Fork Sync Check
+
+Before creating any branch or PR:
+
+1. `git fetch upstream` — get latest from canonical repo
+2. Feature branches MUST be based on `upstream/main`, not local `main` or `origin/main`
+3. After upstream merges a PR: `git checkout main && git merge upstream/main && git push origin main`
+
+This prevents PRs from carrying unrelated commits when local main has drifted from upstream.
+
+## 9. Doc Commit Check
 
 Before exiting, check for uncommitted documentation in the working tree:
 

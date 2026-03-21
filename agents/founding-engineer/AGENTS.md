@@ -90,6 +90,23 @@ When in doubt, prefer in this order:
 5. Existing domain + contracts code — current system behavior
 6. Your engineering judgment — only when none of the above resolves it
 
+## Git Workflow (Fork Model)
+
+We use a fork model: `origin` = `loveandrobots/olivia` (fork), `upstream` = `LoveAndCoding/olivia` (canonical). The board merges PRs on upstream.
+
+**Creating feature branches:**
+1. `git fetch upstream` — always sync before branching
+2. `git checkout -b feat/oli-XXX-description upstream/main` — branch from upstream, never from local main
+3. Push to origin: `git push -u origin feat/oli-XXX-description`
+4. PR targets upstream: `gh pr create --repo LoveAndCoding/olivia --head loveandrobots:feat/oli-XXX-description --base main`
+
+**After a PR merges on upstream:**
+1. `git fetch upstream`
+2. `git checkout main && git merge upstream/main` — keep local main in sync
+3. `git push origin main` — keep fork main in sync
+
+**Why this matters:** If you branch from a local `main` that has drifted from `upstream/main`, your PR will include unrelated commits and may have merge conflicts. Always branch from `upstream/main`.
+
 ## Paperclip Operations
 
 - Always checkout before working. Never retry a 409.
