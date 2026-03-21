@@ -18,6 +18,16 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-062: Release criteria and versioning policy documented
+- Date: 2026-03-21
+- Area: process / release management
+- Decision: Documented a release policy at `docs/release-policy.md` covering release criteria (feature completion, critical bug fix, accumulation threshold), semantic versioning rules (PATCH for fixes, MINOR for features, MAJOR reserved for 1.0.0), branching strategy (no release branches — keep it simple), incremental vs. batched release guidance, and role responsibilities (VP of Product assesses readiness and drafts changelog; Founding Engineer bumps version and opens upstream PR; board merges).
+- Rationale: The team needed a clear, documented policy so release decisions are consistent and the Founding Engineer knows when to prepare upstream PRs without ad-hoc coordination.
+- Alternatives considered: (1) Fixed cadence releases (e.g., weekly) — rejected as premature before M29 household validation produces regular usage feedback. (2) Release branches for hotfixes — rejected as unnecessary for current team size.
+- Trade-offs: Simple process optimized for a small team; may need revision if team grows or release frequency increases.
+- Status: active
+- Related docs: `docs/release-policy.md`, OLI-195, `agents/founding-engineer/AGENTS.md` (git workflow section)
+
 ### D-061: Landscape orientation spec approved — CEO resolved open questions and added no-FOUC criterion
 - Date: 2026-03-21
 - Area: feature spec / layout
