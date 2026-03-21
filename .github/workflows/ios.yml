@@ -113,16 +113,17 @@ jobs:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
         run: |
-          API_KEY_DIR=$RUNNER_TEMP/private_keys
-          mkdir -p $API_KEY_DIR
+          # Write to ~/private_keys/ — one of altool's default search paths.
+          # --apiKeyPath is unreliable on newer Xcode versions.
+          API_KEY_DIR=~/private_keys
+          mkdir -p "$API_KEY_DIR"
           echo -n "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 --decode -o "$API_KEY_DIR/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
 
           xcrun altool --upload-app \
             -f $RUNNER_TEMP/export/App.ipa \
             -t ios \
             --apiKey "$APP_STORE_CONNECT_API_KEY_ID" \
-            --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
-            --apiKeyPath "$API_KEY_DIR"
+            --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
 
       - name: Clean up keychain
         if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
