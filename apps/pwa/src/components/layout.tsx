@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
+import { Keyboard } from '@capacitor/keyboard';
 import { flushOutbox } from '../lib/sync';
 
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -31,9 +32,27 @@ export function AppLayout({ children }: { children: ReactNode }) {
     void StatusBar.setStyle({ style: Style.Light });
   }, []);
 
-  // Track the visual viewport height so the layout shrinks when the virtual
-  // keyboard opens, keeping bottom inputs visible above the keyboard.
+  // Track keyboard height so bottom sheets and inputs stay above the keyboard.
+  // On native Capacitor, use the Keyboard plugin for reliable events.
+  // On web, fall back to visualViewport tracking.
   useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      // Capacitor Keyboard plugin provides exact keyboard height
+      const showListener = Keyboard.addListener('keyboardWillShow', (info) => {
+        document.documentElement.style.setProperty('--keyboard-height', `${info.keyboardHeight}px`);
+      });
+      const hideListener = Keyboard.addListener('keyboardWillHide', () => {
+        document.documentElement.style.setProperty('--keyboard-height', '0px');
+      });
+      // Initialize to 0 — keyboard is not open on mount
+      document.documentElement.style.setProperty('--keyboard-height', '0px');
+      return () => {
+        void showListener.then((h) => h.remove());
+        void hideListener.then((h) => h.remove());
+      };
+    }
+
+    // Web fallback: use visualViewport
     const vv = window.visualViewport;
     if (!vv) return;
     const update = () => {
@@ -48,6 +67,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
       vv.removeEventListener('resize', update);
       vv.removeEventListener('scroll', update);
     };
+  }, []);
+
+  // Set --vvh on native too (used for layout sizing)
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      document.documentElement.style.setProperty('--vvh', `${vv.height}px`);
+    };
+    update();
+    vv.addEventListener('resize', update);
+    return () => vv.removeEventListener('resize', update);
   }, []);
 
   return (
