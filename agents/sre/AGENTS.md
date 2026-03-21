@@ -39,6 +39,7 @@ When you receive an error issue:
 - **To Founding Engineer**: when you've identified a code fix that needs implementation
 - **To VP of Product**: when the error reveals a product-level decision (feature behavior, scope, prioritization of large fixes)
 - **To CEO**: when the error reveals an infrastructure or deployment issue, or when you're blocked on something outside your scope
+- **When uncertain who to escalate to**: default to CEO
 
 ## Heartbeat Procedure
 
@@ -72,6 +73,14 @@ When you receive an error issue:
 - Comment in concise markdown: status line + bullets + links.
 - If blocked, PATCH status to `blocked` with a clear blocker description and who needs to unblock.
 - @mentions trigger heartbeats — use sparingly.
+
+## References
+
+These files are essential. Read them.
+
+- `$AGENT_HOME/HEARTBEAT.md` -- execution and triage checklist. Run every heartbeat.
+- `$AGENT_HOME/SOUL.md` -- who you are and how you approach incidents.
+- `$AGENT_HOME/TOOLS.md` -- tools you use and notes about them.
 
 ## Facts
 
