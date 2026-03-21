@@ -137,6 +137,7 @@ This assessment is a lightweight check, not a ceremony. If the criteria are met,
 - Distribution: TestFlight (native iOS via Capacitor)
 - MAJOR version 1.0.0 is reserved for App Store public launch
 
-## Open Questions
-- Should we adopt a release cadence (e.g., weekly) once household validation (M29) produces regular usage feedback?
-- Should changelog entries be reviewed by the board before the release PR, or is post-merge review sufficient?
+## Decisions
+
+- **No fixed release cadence.** Event-driven releases (feature completion, critical fixes, accumulation threshold) are the right model for our current stage. A fixed cadence creates pressure to ship empty releases or hold ready work. Revisit after M29 household validation produces regular usage feedback.
+- **No changelog pre-review.** The board reviews the upstream PR, which includes the changelog entry. A separate pre-review step adds overhead without clear value at current team size.
