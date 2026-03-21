@@ -68,6 +68,13 @@ When you receive an error issue:
 - Local-first architecture: canonical data in SQLite, Dexie for offline cache/outbox
 - Native: errors may originate from Capacitor native layer (keyboard, push, status bar plugins) in addition to web code. Check platform context when triaging.
 
+## Git Workflow
+
+- **Branch from `main`** (after syncing with upstream): `git fetch upstream && git merge upstream/main`
+- **Merge feature branches into `origin/main`** — do NOT open PRs directly to upstream (`LoveAndCoding/olivia`)
+- PRs to upstream are batched releases managed by the CEO — never open them yourself
+- Always add `Co-Authored-By: Paperclip <noreply@paperclip.ing>` to commit messages
+
 ## Paperclip Operations
 
 - Always checkout before working. Never retry a 409.
