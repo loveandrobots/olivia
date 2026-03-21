@@ -47,6 +47,7 @@ jobs:
 
       # TestFlight upload on push to main
       - name: Install Apple certificate and provisioning profile
+        id: signing
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
@@ -72,6 +73,13 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
 
+          # Extract team ID and profile UUID from provisioning profile for xcodebuild
+          TEAM_ID=$(security cms -D -i $PP_PATH | plutil -extract TeamIdentifier.0 raw -)
+          PP_UUID=$(security cms -D -i $PP_PATH | plutil -extract UUID raw -)
+          echo "team_id=$TEAM_ID" >> $GITHUB_OUTPUT
+          echo "pp_uuid=$PP_UUID" >> $GITHUB_OUTPUT
+          echo "Extracted Team ID: $TEAM_ID, Profile UUID: $PP_UUID"
+
       - name: Archive for distribution
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         working-directory: apps/pwa/ios/App
@@ -81,7 +89,10 @@ jobs:
             -archivePath $RUNNER_TEMP/App.xcarchive \
             -configuration Release \
             -destination 'generic/platform=iOS' \
-            | tail -20
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="${{ steps.signing.outputs.team_id }}" \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE="${{ steps.signing.outputs.pp_uuid }}"
 
       - name: Export IPA
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
@@ -115,7 +126,7 @@ jobs:
           mkdir -p ~/private_keys
           echo -n "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 --decode -o ~/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8
 
-          # Find the exported IPA (name may vary by scheme/product)
+          # Find the exported IPA
           IPA_PATH=$(find $RUNNER_TEMP/export -name "*.ipa" -print -quit)
           if [ -z "$IPA_PATH" ]; then
             echo "ERROR: No IPA found in export directory"
