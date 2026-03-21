@@ -97,7 +97,8 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             DEVELOPMENT_TEAM="${{ steps.signing.outputs.team_id }}" \
             CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE="${{ steps.signing.outputs.pp_uuid }}"
+            PROVISIONING_PROFILE="${{ steps.signing.outputs.pp_uuid }}" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}"
 
       - name: Export IPA
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
