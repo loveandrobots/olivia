@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.olivia.app',
+  appId: 'com.loveandcoding.olivia',
   appName: 'Olivia',
   webDir: 'dist',
   server: {
