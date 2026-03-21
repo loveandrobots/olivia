@@ -15,6 +15,7 @@ import {
   type ChatStreamEvent,
 } from '../lib/api';
 import { getActiveSignal } from '../lib/app-lifecycle';
+import { showErrorToast } from '../lib/error-toast';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -255,8 +256,8 @@ export function OnboardingPage() {
         return updated;
       });
       void queryClient.invalidateQueries({ queryKey: ['onboarding-state'] });
-    } catch {
-      // ignore
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not confirm action');
     }
   }, [queryClient]);
 
@@ -276,8 +277,8 @@ export function OnboardingPage() {
         }
         return updated;
       });
-    } catch {
-      // ignore
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not dismiss action');
     }
   }, []);
 
@@ -302,8 +303,8 @@ export function OnboardingPage() {
         };
         setMessages(prev => [...prev, topicMsg]);
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not advance onboarding');
     }
   }, [queryClient]);
 
@@ -322,8 +323,8 @@ export function OnboardingPage() {
           : `You\u2019re all set! I\u2019ll be here whenever you need help managing things.`,
       };
       setMessages(prev => [...prev, completionMsg]);
-    } catch {
-      // ignore
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not finish onboarding');
     }
   }, [queryClient, session]);
 

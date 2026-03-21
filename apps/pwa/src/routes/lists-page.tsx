@@ -22,6 +22,7 @@ import { ArchiveListSheet } from '../components/lists/ArchiveListSheet';
 import { DeleteListSheet } from '../components/lists/DeleteListSheet';
 import { OverflowMenuSheet } from '../components/lists/OverflowMenuSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
+import { showErrorToast } from '../lib/error-toast';
 
 type ListFilter = 'active' | 'archived';
 
@@ -70,10 +71,14 @@ export function ListsPage() {
 
   const handleCreate = useCallback(async (title: string) => {
     setShowCreateSheet(false);
-    const newList = await createListCommand(role, title);
-    await invalidate();
-    showBanner('List created', 'mint');
-    void navigate({ to: '/lists/$listId', params: { listId: newList.id } });
+    try {
+      const newList = await createListCommand(role, title);
+      await invalidate();
+      showBanner('List created', 'mint');
+      void navigate({ to: '/lists/$listId', params: { listId: newList.id } });
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not create list');
+    }
   }, [role, invalidate, showBanner, navigate]);
 
   const handleEditTitle = useCallback(async (newTitle: string) => {
@@ -84,6 +89,8 @@ export function ListsPage() {
       await updateListTitleCommand(role, editTitleTarget.id, editTitleTarget.version, newTitle);
       await invalidate();
       showBanner('Renamed', 'mint');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not rename list');
     } finally {
       setBusy(false);
     }
@@ -97,6 +104,8 @@ export function ListsPage() {
       await archiveListCommand(role, archiveTarget.id, archiveTarget.version);
       await invalidate();
       showBanner('Archived', 'sky');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not archive list');
     } finally {
       setBusy(false);
     }
@@ -108,6 +117,8 @@ export function ListsPage() {
       await restoreListCommand(role, list.id, list.version);
       await invalidate();
       showBanner('Restored to active lists', 'mint');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not restore list');
     } finally {
       setBusy(false);
     }
@@ -121,6 +132,8 @@ export function ListsPage() {
       await deleteListCommand(role, deleteTarget.id);
       await invalidate();
       showBanner('List deleted', 'sky');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not delete list');
     } finally {
       setBusy(false);
     }

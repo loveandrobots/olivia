@@ -25,6 +25,7 @@ import { EditReminderSheet } from '../components/reminders/EditReminderSheet';
 import { SnoozeSheet } from '../components/reminders/SnoozeSheet';
 import { CancelConfirmSheet } from '../components/reminders/CancelConfirmSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
+import { showErrorToast } from '../lib/error-toast';
 
 export function ReminderDetailPage() {
   const params = useParams({ from: '/reminders/$reminderId' });
@@ -74,6 +75,8 @@ export function ReminderDetailPage() {
       await completeReminderCommand(role, reminder.id, reminder.version);
       await invalidateAndRefresh();
       showBanner('Done', 'mint');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not complete reminder');
     } finally {
       setBusy(false);
     }
@@ -87,6 +90,8 @@ export function ReminderDetailPage() {
       await snoozeReminderCommand(role, reminder.id, reminder.version, isoString);
       await invalidateAndRefresh();
       showBanner(`Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, 'sky');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not snooze reminder');
     } finally {
       setBusy(false);
     }
@@ -99,6 +104,8 @@ export function ReminderDetailPage() {
     try {
       await cancelReminderCommand(role, reminder.id, reminder.version);
       await invalidateAndRefresh();
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not cancel reminder');
     } finally {
       setBusy(false);
     }
@@ -112,6 +119,8 @@ export function ReminderDetailPage() {
       await confirmUpdateReminderCommand(role, reminder.id, reminder.version, change);
       await invalidateAndRefresh();
       showBanner('Updated', 'mint');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not update reminder');
     } finally {
       setBusy(false);
     }

@@ -2634,6 +2634,11 @@ textarea:focus, input:focus, select:focus {
   color: white;
 }
 
+.confirm-banner-rose {
+  background: var(--rose);
+  color: white;
+}
+
 .confirm-banner .banner-undo {
   font-size: 12px;
   font-weight: 700;
@@ -2649,6 +2654,56 @@ textarea:focus, input:focus, select:focus {
 
 .confirm-banner .banner-undo:hover {
   background: rgba(255,255,255,0.35);
+}
+
+/* ── ERROR BOUNDARY ──────────────────────────────── */
+
+.error-boundary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 24px;
+  background: var(--bg);
+}
+
+.error-boundary-content {
+  text-align: center;
+  max-width: 360px;
+}
+
+.error-boundary-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--rose-soft);
+  color: var(--rose);
+  font-size: 24px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.error-boundary-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink-1);
+  margin: 0 0 8px;
+}
+
+.error-boundary-message {
+  font-size: 13px;
+  color: var(--ink-3);
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+.error-boundary-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
 }
 
 /* ── REMINDER HISTORY TIMELINE ─────────────────────── */

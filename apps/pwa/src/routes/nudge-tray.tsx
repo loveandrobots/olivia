@@ -15,6 +15,7 @@ import {
 import { dismissNudge, filterDismissed, pruneStaleNudgeDismissals, filterFreshnessNudgesByThrottle, clientDb } from '../lib/client-db';
 import { confirmFreshness, archiveFreshnessEntity } from '../lib/api';
 import { usePushOptIn } from '../lib/push-opt-in';
+import { showErrorToast } from '../lib/error-toast';
 
 const POLL_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -340,7 +341,8 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
       await queryClient.invalidateQueries({ queryKey: ['routines'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       onRemove(entityId);
-    } catch {
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not complete routine');
       onRemove(entityId);
     }
   }, [nudges, role, queryClient, onRemove]);
@@ -353,7 +355,8 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
       await queryClient.invalidateQueries({ queryKey: ['routines'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       onRemove(entityId);
-    } catch {
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not skip routine');
       onRemove(entityId);
     }
   }, [role, queryClient, onRemove]);
@@ -366,7 +369,8 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
       await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       onRemove(entityId);
-    } catch {
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not complete reminder');
       onRemove(entityId);
     }
   }, [role, queryClient, onRemove]);
@@ -380,7 +384,8 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
       await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       onRemove(entityId);
-    } catch {
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not snooze reminder');
       onRemove(entityId);
     }
   }, [role, queryClient, onRemove]);
@@ -411,7 +416,8 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
       }
       await confirmFreshness(nudge.entitySubType, entityId, role, version);
       onRemove(entityId);
-    } catch {
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not confirm freshness');
       onRemove(entityId);
     }
   }, [nudges, role, onRemove]);
@@ -443,7 +449,8 @@ export function NudgeTray({ role, nudges, onDismiss, onRemove }: NudgeTrayProps)
       }
       await archiveFreshnessEntity(nudge.entitySubType, archiveTarget, role, version);
       onRemove(archiveTarget);
-    } catch {
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not archive');
       onRemove(archiveTarget);
     }
     setArchiveTarget(null);

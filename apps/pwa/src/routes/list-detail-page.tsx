@@ -26,6 +26,7 @@ import { DeleteListSheet } from '../components/lists/DeleteListSheet';
 import { DeleteItemSheet } from '../components/lists/DeleteItemSheet';
 import { OverflowMenuSheet } from '../components/lists/OverflowMenuSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
+import { showErrorToast } from '../lib/error-toast';
 
 export function ListDetailPage() {
   const params = useParams({ from: '/lists/$listId' });
@@ -81,6 +82,8 @@ export function ListDetailPage() {
       await updateListTitleCommand(role, list.id, list.version, newTitle);
       await invalidate();
       showBanner('Renamed', 'mint');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not rename list');
     } finally {
       setBusy(false);
     }
@@ -94,6 +97,8 @@ export function ListDetailPage() {
       await archiveListCommand(role, list.id, list.version);
       await invalidate();
       void navigate({ to: '/lists' });
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not archive list');
     } finally {
       setBusy(false);
     }
@@ -107,6 +112,8 @@ export function ListDetailPage() {
       await deleteListCommand(role, list.id);
       await invalidate();
       void navigate({ to: '/lists' });
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not delete list');
     } finally {
       setBusy(false);
     }
@@ -114,20 +121,32 @@ export function ListDetailPage() {
 
   const handleAddItem = useCallback(async (body: string) => {
     if (!list) return;
-    await addListItemCommand(role, list.id, body);
-    await invalidate();
+    try {
+      await addListItemCommand(role, list.id, body);
+      await invalidate();
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not add item');
+    }
   }, [list, role, invalidate]);
 
   const handleCheckItem = useCallback(async (item: ListItem) => {
     if (!list) return;
-    await checkListItemCommand(role, list.id, item.id, item.version);
-    await invalidate();
+    try {
+      await checkListItemCommand(role, list.id, item.id, item.version);
+      await invalidate();
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not check item');
+    }
   }, [list, role, invalidate]);
 
   const handleUncheckItem = useCallback(async (item: ListItem) => {
     if (!list) return;
-    await uncheckListItemCommand(role, list.id, item.id, item.version);
-    await invalidate();
+    try {
+      await uncheckListItemCommand(role, list.id, item.id, item.version);
+      await invalidate();
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not uncheck item');
+    }
   }, [list, role, invalidate]);
 
   const handleEditItemSave = useCallback(async (newBody: string) => {
@@ -138,6 +157,8 @@ export function ListDetailPage() {
       await updateListItemBodyCommand(role, list.id, editItemTarget.id, editItemTarget.version, newBody);
       await invalidate();
       showBanner('Updated', 'mint');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not update item');
     } finally {
       setBusy(false);
     }
@@ -150,6 +171,8 @@ export function ListDetailPage() {
     try {
       await removeListItemCommand(role, list.id, deleteItemTarget.id);
       await invalidate();
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not remove item');
     } finally {
       setBusy(false);
     }

@@ -12,13 +12,21 @@ if (typeof crypto !== 'undefined' && typeof crypto.randomUUID !== 'function') {
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, MutationCache } from '@tanstack/react-query';
 import { RouterProvider } from '@tanstack/react-router';
 import { RoleProvider } from './lib/role';
+import { showErrorToast } from './lib/error-toast';
 import { router } from './router';
 import './styles.css';
 
-const queryClient = new QueryClient();
+const mutationCache = new MutationCache({
+  onError(error) {
+    const message = (error as Error).message || 'Something went wrong';
+    showErrorToast(message);
+  },
+});
+
+const queryClient = new QueryClient({ mutationCache });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

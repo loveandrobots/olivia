@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 
 type ConfirmBannerProps = {
   message: string;
-  variant: 'mint' | 'sky';
+  variant: 'mint' | 'sky' | 'rose';
   onUndo?: () => void;
+  onAction?: () => void;
+  actionLabel?: string;
   duration?: number;
 };
 
-export function ConfirmBanner({ message, variant, onUndo, duration = 5000 }: ConfirmBannerProps) {
+export function ConfirmBanner({ message, variant, onUndo, onAction, actionLabel, duration = 5000 }: ConfirmBannerProps) {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
@@ -20,6 +22,11 @@ export function ConfirmBanner({ message, variant, onUndo, duration = 5000 }: Con
   return (
     <div className={`confirm-banner confirm-banner-${variant}`}>
       <span>{message}</span>
+      {onAction && actionLabel && (
+        <button type="button" className="banner-undo" onClick={onAction}>
+          {actionLabel}
+        </button>
+      )}
       {onUndo && (
         <button type="button" className="banner-undo" onClick={onUndo}>
           ↩ Undo

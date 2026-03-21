@@ -19,6 +19,7 @@ import { SpouseBanner } from '../components/lists/SpouseBanner';
 import type { NudgeData } from '../types/display';
 import { fetchOnboardingState, startOnboarding, finishOnboarding, fetchHealthCheckState, dismissHealthCheck, type OnboardingState, type HealthCheckState } from '../lib/api';
 import { getHealthCheckProgress } from '../lib/client-db';
+import { showErrorToast } from '../lib/error-toast';
 
 // ─── Status badge helpers ─────────────────────────────────────────────────────
 
@@ -521,21 +522,29 @@ export function HomePage() {
 
   const handleCreateSave = useCallback(async (draft: DraftReminder) => {
     setShowCreateSheet(false);
-    await confirmCreateReminderCommand(role, draft);
-    await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
-    await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
-    setBanner({ message: 'Reminder created', variant: 'mint' });
-    setTimeout(() => setBanner(null), 5000);
+    try {
+      await confirmCreateReminderCommand(role, draft);
+      await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
+      await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
+      setBanner({ message: 'Reminder created', variant: 'mint' });
+      setTimeout(() => setBanner(null), 5000);
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not create reminder');
+    }
   }, [role, queryClient]);
 
   const handleSnoozeSelect = useCallback(async (isoString: string) => {
     if (!snoozeTarget) return;
     setSnoozeTarget(null);
-    await snoozeReminderCommand(role, snoozeTarget.id, snoozeTarget.version, isoString);
-    await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
-    await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
-    setBanner({ message: `Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, variant: 'sky' });
-    setTimeout(() => setBanner(null), 5000);
+    try {
+      await snoozeReminderCommand(role, snoozeTarget.id, snoozeTarget.version, isoString);
+      await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
+      await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
+      setBanner({ message: `Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, variant: 'sky' });
+      setTimeout(() => setBanner(null), 5000);
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not snooze reminder');
+    }
   }, [snoozeTarget, role, queryClient]);
 
   // Max items per workflow section in Today

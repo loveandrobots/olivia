@@ -21,6 +21,7 @@ import { ArchivePlanSheet } from '../components/meals/ArchivePlanSheet';
 import { DeletePlanSheet } from '../components/meals/DeletePlanSheet';
 import { OverflowMenuSheet } from '../components/lists/OverflowMenuSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
+import { showErrorToast } from '../lib/error-toast';
 
 type MealFilter = 'active' | 'archived';
 
@@ -75,6 +76,8 @@ export function MealsPage() {
       await invalidate();
       showBanner('Plan created', 'mint');
       void navigate({ to: '/meals/$planId', params: { planId: plan.id } });
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not create meal plan');
     } finally {
       setBusy(false);
     }
@@ -88,6 +91,8 @@ export function MealsPage() {
       await updateMealPlanTitleCommand(role, editTitleTarget.id, editTitleTarget.version, newTitle);
       await invalidate();
       showBanner('Renamed', 'mint');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not rename meal plan');
     } finally {
       setBusy(false);
     }
@@ -101,6 +106,8 @@ export function MealsPage() {
       await archiveMealPlanCommand(role, archiveTarget.id, archiveTarget.version);
       await invalidate();
       showBanner('Archived', 'sky');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not archive meal plan');
     } finally {
       setBusy(false);
     }
@@ -112,6 +119,8 @@ export function MealsPage() {
       await restoreMealPlanCommand(role, plan.id, plan.version);
       await invalidate();
       showBanner('Restored', 'mint');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not restore meal plan');
     } finally {
       setBusy(false);
     }
@@ -124,6 +133,8 @@ export function MealsPage() {
     try {
       await deleteMealPlanCommand(role, deleteTarget.id);
       await invalidate();
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not delete meal plan');
     } finally {
       setBusy(false);
     }
