@@ -21,24 +21,25 @@ test.describe('List lifecycle', () => {
     // Submit
     await page.getByRole('button', { name: 'Create list' }).click();
 
-    // Verify the list appears
+    // After creation, the app navigates to the list detail page.
+    // Verify we land on the detail page with the add-item input visible.
+    await expect(page.locator('.list-add-input')).toBeVisible({ timeout: 10_000 });
+
+    // Navigate back to the lists index and verify the card appears
+    await page.goto('/lists');
     await expect(page.locator('.list-card-title', { hasText: 'Weekend errands' })).toBeVisible({ timeout: 10_000 });
   });
 
   test('stakeholder can add items to a list and check/uncheck them', async ({ page }) => {
-    // First ensure a list exists by creating one
+    // Create a list — the app navigates to detail page after creation
     await page.goto('/lists');
     await expect(page.locator('.screen-title')).toContainText('Lists', { timeout: 10_000 });
 
     await page.locator('.list-new-btn-label', { hasText: 'New list' }).click();
     await page.getByPlaceholder('Grocery run, Packing list…').fill('Checklist test');
     await page.getByRole('button', { name: 'Create list' }).click();
-    await expect(page.locator('.list-card-title', { hasText: 'Checklist test' })).toBeVisible({ timeout: 10_000 });
 
-    // Navigate to the list detail
-    await page.locator('.list-card-title', { hasText: 'Checklist test' }).click();
-
-    // Add an item
+    // Already on the detail page after creation
     const addInput = page.locator('.list-add-input');
     await expect(addInput).toBeVisible({ timeout: 10_000 });
     await addInput.fill('Buy milk');
@@ -68,13 +69,16 @@ test.describe('List lifecycle', () => {
   });
 
   test('stakeholder can archive a list via overflow menu', async ({ page }) => {
-    // Create a list to archive
+    // Create a list — the app navigates to detail page after creation
     await page.goto('/lists');
     await expect(page.locator('.screen-title')).toContainText('Lists', { timeout: 10_000 });
 
     await page.locator('.list-new-btn-label', { hasText: 'New list' }).click();
     await page.getByPlaceholder('Grocery run, Packing list…').fill('Archive me');
     await page.getByRole('button', { name: 'Create list' }).click();
+
+    // Navigate back to lists index after creation redirects to detail
+    await page.goto('/lists');
     await expect(page.locator('.list-card-title', { hasText: 'Archive me' })).toBeVisible({ timeout: 10_000 });
 
     // Open overflow menu on that card
