@@ -18,6 +18,16 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-063: Shared calendar — board direction on scope and integration approach
+- Date: 2026-03-22
+- Area: feature scoping / calendar
+- Decision: Shared calendar will use native Apple Calendar integration (EventKit) rather than cloud-based sync (Google Calendar). Initial scope is read-only. Phase 1 is an enhanced calendar view of existing Olivia data (multi-week navigation). Phase 2 is native Apple Calendar read-only integration. This is a normal feature request — goes through standard planning/roadmap process, not urgent.
+- Rationale: The household uses Apple Calendar on the same device, so native integration via EventKit is simpler and more private than OAuth-based cloud sync. Read-only aligns with the advisory-only trust model (D-002). Enhanced view first validates the calendar surface before adding external data.
+- Alternatives considered: (1) Google Calendar sync — rejected, household uses Apple. (2) Bidirectional sync — rejected for Phase 1, read-only is safer and sufficient. (3) Immediate prioritization — rejected, board wants normal planning process.
+- Trade-offs: Native-only limits to Apple devices (acceptable given iOS-only distribution). Read-only means Olivia can't create calendar events (acceptable per trust model).
+- Status: active
+- Related docs: OLI-243, D-002 (advisory-only trust model)
+
 ### D-062: Release criteria and versioning policy documented
 - Date: 2026-03-21
 - Area: process / release management

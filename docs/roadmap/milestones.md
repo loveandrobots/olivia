@@ -79,6 +79,7 @@ Required artifacts:
   - **Track B: Broaden the household** — spouse write access, multi-user roles
   - **Track C: Complete H3** — meal planning (spec drafted, primitives proven)
   - **Track D: Increase autonomy** — rule-based automation, push action buttons, Layer 2 LLM timing
+  - **Track E: Deepen the coordination surface** — task steps/sub-tasks (OLI-242, spec drafted), shared calendar via native Apple Calendar integration (OLI-243, D-063)
 - updated roadmap reflecting the chosen direction
 
 Exit criteria:
