@@ -1,5 +1,6 @@
 import { createRootRoute, createRoute, createRouter, Outlet, redirect } from '@tanstack/react-router';
 import { AppLayout } from './components/layout';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { HomePage } from './routes/home-page';
 import { TasksPage } from './routes/tasks-page';
 import { OliviaPage } from './routes/olivia-page';
@@ -24,9 +25,11 @@ import { HealthCheckPage } from './routes/health-check-page';
 
 const rootRoute = createRootRoute({
   component: () => (
-    <AppLayout>
-      <Outlet />
-    </AppLayout>
+    <ErrorBoundary>
+      <AppLayout>
+        <Outlet />
+      </AppLayout>
+    </ErrorBoundary>
   )
 });
 

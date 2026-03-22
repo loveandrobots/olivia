@@ -15,6 +15,7 @@ import {
 import { BottomNav } from '../components/bottom-nav';
 import { BottomSheet } from '../components/reminders/BottomSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
+import { showErrorToast } from '../lib/error-toast';
 
 type FilterTab = 'active' | 'archived';
 
@@ -250,6 +251,8 @@ export function RoutinesPage() {
       await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       showBanner('Marked complete', 'mint');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not complete routine');
     } finally {
       setBusyId(null);
     }
@@ -268,11 +271,15 @@ export function RoutinesPage() {
     const firstDueDateIso = new Date(form.firstDueDate + 'T12:00:00').toISOString();
     const intervalDays = form.recurrenceRule === 'every_n_days' ? parseInt(form.intervalDays, 10) : null;
 
-    await createRoutineCommand(role, form.title.trim(), form.owner, form.recurrenceRule, firstDueDateIso, intervalDays);
-    await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
-    await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
-    setForm({ title: '', owner: 'stakeholder', recurrenceRule: '', intervalDays: '7', firstDueDate: todayIso() });
-    showBanner('Routine created', 'mint');
+    try {
+      await createRoutineCommand(role, form.title.trim(), form.owner, form.recurrenceRule, firstDueDateIso, intervalDays);
+      await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
+      await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
+      setForm({ title: '', owner: 'stakeholder', recurrenceRule: '', intervalDays: '7', firstDueDate: todayIso() });
+      showBanner('Routine created', 'mint');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not create routine');
+    }
   }, [form, role, queryClient, showBanner]);
 
   const isSpouse = role === 'spouse';

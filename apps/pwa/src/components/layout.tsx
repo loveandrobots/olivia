@@ -10,6 +10,7 @@ import { abortActiveOperations, resetActiveOperations } from '../lib/app-lifecyc
 import { checkConnectivityNow } from '../lib/connectivity';
 import { router } from '../router';
 import { OfflineIndicator } from './OfflineIndicator';
+import { ErrorToastContainer } from './ErrorToastContainer';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -132,6 +133,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="ambient ambient-2" aria-hidden="true" />
       <div className="ambient ambient-3" aria-hidden="true" />
       <OfflineIndicator />
+      <ErrorToastContainer />
       {children}
     </div>
   );

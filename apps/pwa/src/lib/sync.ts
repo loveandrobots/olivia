@@ -199,6 +199,7 @@ import {
   fetchNudgesApi,
   skipRoutineOccurrenceApi
 } from './api';
+import { showErrorToast } from './error-toast';
 
 const isOffline = () => !window.navigator.onLine || !isEffectivelyOnline();
 let inFlightFlush: Promise<void> | null = null;
@@ -689,6 +690,7 @@ async function flushOutboxOnce() {
       if (error instanceof ApiError && error.statusCode === 409) {
         const entityName = command.kind.startsWith('reminder_') ? 'reminder' : command.kind.startsWith('list_') || command.kind.startsWith('item_') ? 'list' : command.kind.startsWith('routine_') ? 'routine' : command.kind.startsWith('meal_') ? 'meal plan' : 'item';
         await markOutboxConflict(command.commandId, `Version conflict: refresh this ${entityName} and retry.`);
+        showErrorToast(`Sync conflict: this ${entityName} was changed elsewhere. Refresh and retry.`);
       }
       throw error;
     }

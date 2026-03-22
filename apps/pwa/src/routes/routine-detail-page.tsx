@@ -18,6 +18,7 @@ import {
 import { BottomNav } from '../components/bottom-nav';
 import { BottomSheet } from '../components/reminders/BottomSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
+import { showErrorToast } from '../lib/error-toast';
 
 function formatRecurrenceLabel(rule: RoutineRecurrenceRule, intervalDays?: number | null): string {
   switch (rule) {
@@ -89,6 +90,8 @@ export function RoutineDetailPage() {
       await completeRoutineOccurrenceCommand(role, routine.id, routine.version);
       await invalidateAndRefresh();
       showBanner('Marked complete', 'mint');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not complete routine');
     } finally {
       setBusy(false);
     }
@@ -102,6 +105,8 @@ export function RoutineDetailPage() {
       await pauseRoutineCommand(role, routine.id, routine.version);
       await invalidateAndRefresh();
       showBanner('Routine paused', 'sky');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not pause routine');
     } finally {
       setBusy(false);
     }
@@ -114,6 +119,8 @@ export function RoutineDetailPage() {
       await resumeRoutineCommand(role, routine.id, routine.version);
       await invalidateAndRefresh();
       showBanner('Routine resumed', 'mint');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not resume routine');
     } finally {
       setBusy(false);
     }
@@ -130,6 +137,8 @@ export function RoutineDetailPage() {
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       showBanner('Routine archived', 'sky');
       void navigate({ to: '/routines' });
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not archive routine');
     } finally {
       setBusy(false);
     }
@@ -145,6 +154,8 @@ export function RoutineDetailPage() {
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       showBanner('Routine restored', 'mint');
       void navigate({ to: '/routines' });
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not restore routine');
     } finally {
       setBusy(false);
     }
@@ -160,6 +171,8 @@ export function RoutineDetailPage() {
       await queryClient.invalidateQueries({ queryKey: ['routine-index-archived', role] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       void navigate({ to: '/routines' });
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not delete routine');
     } finally {
       setBusy(false);
     }

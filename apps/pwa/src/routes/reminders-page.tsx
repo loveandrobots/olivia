@@ -17,6 +17,7 @@ import { OliviaMessage } from '../components/reminders/OliviaMessage';
 import { CreateReminderSheet } from '../components/reminders/CreateReminderSheet';
 import { SnoozeSheet } from '../components/reminders/SnoozeSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
+import { showErrorToast } from '../lib/error-toast';
 
 type FilterTab = 'all' | 'due' | 'upcoming' | 'snoozed' | 'done';
 
@@ -110,21 +111,29 @@ export function RemindersPage() {
 
   const handleCreateSave = useCallback(async (draft: DraftReminder) => {
     setShowCreateSheet(false);
-    await confirmCreateReminderCommand(role, draft);
-    await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
-    await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
-    setBanner({ message: 'Reminder created', variant: 'mint' });
-    setTimeout(() => setBanner(null), 5000);
+    try {
+      await confirmCreateReminderCommand(role, draft);
+      await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
+      await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
+      setBanner({ message: 'Reminder created', variant: 'mint' });
+      setTimeout(() => setBanner(null), 5000);
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not create reminder');
+    }
   }, [role, queryClient]);
 
   const handleSnoozeSelect = useCallback(async (isoString: string) => {
     if (!snoozeTarget) return;
     setSnoozeTarget(null);
-    await snoozeReminderCommand(role, snoozeTarget.id, snoozeTarget.version, isoString);
-    await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
-    await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
-    setBanner({ message: `Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, variant: 'sky' });
-    setTimeout(() => setBanner(null), 5000);
+    try {
+      await snoozeReminderCommand(role, snoozeTarget.id, snoozeTarget.version, isoString);
+      await queryClient.invalidateQueries({ queryKey: ['reminder-view'] });
+      await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
+      setBanner({ message: `Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, variant: 'sky' });
+      setTimeout(() => setBanner(null), 5000);
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not snooze reminder');
+    }
   }, [snoozeTarget, role, queryClient]);
 
   const isEmpty = !reminderQuery.isLoading && filteredReminders.length === 0;

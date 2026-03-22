@@ -22,6 +22,7 @@ import { SnoozeSheet } from '../components/reminders/SnoozeSheet';
 import { CancelConfirmSheet } from '../components/reminders/CancelConfirmSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
 import { EditTaskSheet } from '../components/tasks/EditTaskSheet';
+import { showErrorToast } from '../lib/error-toast';
 
 export function ItemDetailPage() {
   const params = useParams({ from: '/items/$itemId' });
@@ -83,6 +84,7 @@ export function ItemDetailPage() {
       showBanner('Updated', 'mint');
     } catch (caughtError) {
       setError((caughtError as Error).message);
+      showErrorToast((caughtError as Error).message || 'Could not update task');
     } finally {
       setBusy(false);
     }
@@ -90,41 +92,61 @@ export function ItemDetailPage() {
 
   const handleCreateReminderSave = useCallback(async (draft: DraftReminder) => {
     setShowCreateReminder(false);
-    await confirmCreateReminderCommand(role, draft);
-    await invalidateReminders();
-    showBanner('Reminder created', 'mint');
+    try {
+      await confirmCreateReminderCommand(role, draft);
+      await invalidateReminders();
+      showBanner('Reminder created', 'mint');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not create reminder');
+    }
   }, [role, invalidateReminders, showBanner]);
 
   const handleCompleteReminder = useCallback(async (reminder: Reminder) => {
-    await completeReminderCommand(role, reminder.id, reminder.version);
-    await invalidateReminders();
-    showBanner('Done', 'mint');
+    try {
+      await completeReminderCommand(role, reminder.id, reminder.version);
+      await invalidateReminders();
+      showBanner('Done', 'mint');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not complete reminder');
+    }
   }, [role, invalidateReminders, showBanner]);
 
   const handleSnoozeSelect = useCallback(async (isoString: string) => {
     if (!snoozeReminder) return;
     const target = snoozeReminder;
     setSnoozeReminder(null);
-    await snoozeReminderCommand(role, target.id, target.version, isoString);
-    await invalidateReminders();
-    showBanner(`Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, 'sky');
+    try {
+      await snoozeReminderCommand(role, target.id, target.version, isoString);
+      await invalidateReminders();
+      showBanner(`Snoozed until ${new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, 'sky');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not snooze reminder');
+    }
   }, [snoozeReminder, role, invalidateReminders, showBanner]);
 
   const handleCancelReminder = useCallback(async () => {
     if (!cancelReminder) return;
     const target = cancelReminder;
     setCancelReminder(null);
-    await cancelReminderCommand(role, target.id, target.version);
-    await invalidateReminders();
+    try {
+      await cancelReminderCommand(role, target.id, target.version);
+      await invalidateReminders();
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not cancel reminder');
+    }
   }, [cancelReminder, role, invalidateReminders]);
 
   const handleEditReminderSave = useCallback(async (change: ReminderUpdateChange) => {
     if (!editReminder) return;
     const target = editReminder;
     setEditReminder(null);
-    await confirmUpdateReminderCommand(role, target.id, target.version, change);
-    await invalidateReminders();
-    showBanner('Updated', 'mint');
+    try {
+      await confirmUpdateReminderCommand(role, target.id, target.version, change);
+      await invalidateReminders();
+      showBanner('Updated', 'mint');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not update reminder');
+    }
   }, [editReminder, role, invalidateReminders, showBanner]);
 
   return (

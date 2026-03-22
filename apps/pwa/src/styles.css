@@ -2613,8 +2613,9 @@ textarea:focus, input:focus, select:focus {
   transform: translateX(-50%);
   max-width: 430px;
   width: 100%;
-  z-index: 100;
+  z-index: 200;
   padding: 14px 20px;
+  padding-top: calc(14px + env(safe-area-inset-top, 0px));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2622,6 +2623,7 @@ textarea:focus, input:focus, select:focus {
   animation: bannerSlide 0.3s cubic-bezier(0.22,1,0.36,1);
   font-size: 13px;
   font-weight: 600;
+  cursor: pointer;
 }
 
 .confirm-banner-mint {
@@ -2631,6 +2633,11 @@ textarea:focus, input:focus, select:focus {
 
 .confirm-banner-sky {
   background: var(--sky);
+  color: white;
+}
+
+.confirm-banner-rose {
+  background: var(--rose);
   color: white;
 }
 
@@ -2649,6 +2656,56 @@ textarea:focus, input:focus, select:focus {
 
 .confirm-banner .banner-undo:hover {
   background: rgba(255,255,255,0.35);
+}
+
+/* ── ERROR BOUNDARY ──────────────────────────────── */
+
+.error-boundary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 24px;
+  background: var(--bg);
+}
+
+.error-boundary-content {
+  text-align: center;
+  max-width: 360px;
+}
+
+.error-boundary-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--rose-soft);
+  color: var(--rose);
+  font-size: 24px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.error-boundary-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink-1);
+  margin: 0 0 8px;
+}
+
+.error-boundary-message {
+  font-size: 13px;
+  color: var(--ink-3);
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+.error-boundary-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
 }
 
 /* ── REMINDER HISTORY TIMELINE ─────────────────────── */
@@ -5542,7 +5599,7 @@ input[type="date"].rem-form-input {
   padding: 8px 16px;
   background: var(--surface-2);
   border-radius: 12px;
-  margin: 8px 16px 0;
+  margin: calc(8px + env(safe-area-inset-top, 0px)) 16px 0;
   animation: fadeUp 0.25s ease-out;
 }
 
@@ -5556,6 +5613,19 @@ input[type="date"].rem-form-input {
 
 .connectivity-banner-dot--warn {
   background: var(--amber, #f59e0b);
+}
+
+/* When the connectivity banner is visible it already accounts for
+   safe-area-inset-top, so strip the duplicate inset from page headers
+   that follow it to avoid extra vertical space. */
+.connectivity-banner ~ * .home-header {
+  padding-top: 16px;
+}
+.connectivity-banner ~ * .screen-header {
+  padding-top: 16px;
+}
+.connectivity-banner ~ * .onb-header {
+  padding-top: 12px;
 }
 
 /* ── LANDSCAPE ORIENTATION SUPPORT ────────────────────── */

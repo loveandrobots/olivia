@@ -22,6 +22,7 @@ import { DeletePlanSheet } from '../components/meals/DeletePlanSheet';
 import { DeleteMealSheet } from '../components/meals/DeleteMealSheet';
 import { OverflowMenuSheet } from '../components/lists/OverflowMenuSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
+import { showErrorToast } from '../lib/error-toast';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -76,6 +77,8 @@ export function MealDetailPage() {
       await updateMealPlanTitleCommand(role, plan.id, plan.version, newTitle);
       await invalidate();
       showBanner('Renamed', 'mint');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not rename meal plan');
     } finally {
       setBusy(false);
     }
@@ -89,6 +92,8 @@ export function MealDetailPage() {
       await archiveMealPlanCommand(role, plan.id, plan.version);
       await invalidate();
       showBanner('Archived', 'sky');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not archive meal plan');
     } finally {
       setBusy(false);
     }
@@ -102,6 +107,8 @@ export function MealDetailPage() {
       await deleteMealPlanCommand(role, plan.id);
       await invalidate();
       void navigate({ to: '/meals' });
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not delete meal plan');
     } finally {
       setBusy(false);
     }
@@ -115,6 +122,8 @@ export function MealDetailPage() {
       await invalidate();
       setNewMealDay(null);
       setNewMealName('');
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not add meal');
     } finally {
       setBusy(false);
     }
@@ -126,6 +135,8 @@ export function MealDetailPage() {
     try {
       await updateMealEntryItemsCommand(role, plan.id, entry.id, entry.version, items);
       await invalidate();
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not update meal items');
     } finally {
       setBusy(false);
     }
@@ -138,6 +149,8 @@ export function MealDetailPage() {
     try {
       await deleteMealEntryCommand(role, plan.id, deleteMealTarget.id);
       await invalidate();
+    } catch (err) {
+      showErrorToast((err as Error).message || 'Could not delete meal');
     } finally {
       setBusy(false);
     }
@@ -151,11 +164,11 @@ export function MealDetailPage() {
       await invalidate();
       void navigate({ to: '/lists/$listId', params: { listId: result.list.id } });
     } catch (err) {
-      showBanner(`Failed: ${(err as Error).message}`, 'sky');
+      showErrorToast((err as Error).message || 'Could not generate grocery list');
     } finally {
       setGenerating(false);
     }
-  }, [plan, role, invalidate, navigate, showBanner]);
+  }, [plan, role, invalidate, navigate]);
 
   const listOverflowActions = useMemo(() => {
     if (!plan) return [];

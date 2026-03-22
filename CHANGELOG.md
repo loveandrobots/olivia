@@ -4,6 +4,17 @@ All notable changes to Olivia are documented here. This changelog is curated for
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-03-22
+
+### Added
+- Error feedback system — when something goes wrong, the app now shows a clear notification instead of failing silently
+- Automated end-to-end tests for onboarding, chat, and settings to catch regressions before they reach your device
+
+### Fixed
+- App icon now shows the Olivia brand icon instead of the default placeholder
+- Connectivity banner no longer overlaps the status bar on newer iPhones
+- Network connections now work correctly on Tailscale private networks
+
 ## [0.3.0] - 2026-03-21
 
 ### Added
