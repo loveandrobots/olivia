@@ -7,11 +7,9 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { randomUUID } from 'node:crypto';
 import { subDays } from 'date-fns';
 import { buildApp } from '../src/app';
 import type { AppConfig } from '../src/config';
-import { DisabledApnsPushProvider } from '../src/push';
 
 const createConfig = (dbPath: string): AppConfig => ({
   port: 0,
