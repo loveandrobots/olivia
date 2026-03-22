@@ -12,14 +12,14 @@ test.describe('Routine lifecycle', () => {
     await page.goto('/routines');
     await expect(page.locator('.screen-title')).toContainText('Routines', { timeout: 10_000 });
 
-    // Open create sheet — use the parent button to avoid ambiguity
-    await page.locator('.add-rem-btn', { hasText: 'New routine…' }).click();
+    // Open create sheet — first() needed because empty-state has a second button
+    await page.locator('.add-rem-btn', { hasText: 'New routine…' }).first().click();
 
     // Fill the form
     await page.getByPlaceholder('e.g. Take out the trash').fill('Water the garden');
     // Owner defaults to stakeholder — leave it
-    // Select recurrence via radio button
-    await page.locator('.recurrence-option-row', { hasText: 'Weekly' }).click();
+    // Select recurrence via radio button (exact label to avoid matching "Weekly on specific days")
+    await page.locator('.recurrence-option-row', { hasText: 'Every week on a day' }).click();
 
     // Set first due date to today
     const today = new Date();
@@ -44,7 +44,7 @@ test.describe('Routine lifecycle', () => {
 
     if (!hasCompletable) {
       // Create one that's due today
-      await page.locator('.add-rem-btn', { hasText: 'New routine…' }).click();
+      await page.locator('.add-rem-btn', { hasText: 'New routine…' }).first().click();
       await page.getByPlaceholder('e.g. Take out the trash').fill('E2E completion test');
       await page.locator('.recurrence-option-row', { hasText: 'Every day' }).click();
       const today = new Date();
@@ -72,7 +72,7 @@ test.describe('Routine lifecycle', () => {
     await page.goto('/routines');
     await expect(page.locator('.screen-title')).toContainText('Routines', { timeout: 10_000 });
 
-    await page.locator('.add-rem-btn', { hasText: 'New routine…' }).click();
+    await page.locator('.add-rem-btn', { hasText: 'New routine…' }).first().click();
     await page.getByPlaceholder('e.g. Take out the trash').fill('Weekly view check');
     await page.locator('.recurrence-option-row', { hasText: 'Every day' }).click();
     const today = new Date();
