@@ -303,6 +303,7 @@ p { margin: 0; }
   position: relative;
   z-index: 1;
   animation: screenIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .screen-scroll {
@@ -455,7 +456,7 @@ p { margin: 0; }
 /* ── HOME SCREEN ────────────────────────────────────── */
 
 .home-header {
-  padding: calc(16px + env(safe-area-inset-top, 0px)) 22px 18px;
+  padding: 16px 22px 18px;
 }
 
 .home-header-row {
@@ -827,7 +828,7 @@ p { margin: 0; }
 /* ── TASKS SCREEN HEADER ────────────────────────────── */
 
 .screen-header {
-  padding: calc(16px + env(safe-area-inset-top, 0px)) 22px 16px;
+  padding: 16px 22px 16px;
 }
 
 .screen-title {
@@ -4672,13 +4673,14 @@ input[type="date"].rem-form-input {
   flex-direction: column;
   height: 100dvh;
   background: var(--bg);
+  padding-top: env(safe-area-inset-top, 0px);
 }
 .onb-header {
   position: sticky;
   top: 0;
   z-index: 10;
   background: var(--bg);
-  padding: calc(12px + env(safe-area-inset-top, 0px)) 22px 16px;
+  padding: 12px 22px 16px;
   border-bottom: 1px solid var(--ink-4);
 }
 .onb-back {
@@ -5616,16 +5618,11 @@ input[type="date"].rem-form-input {
 }
 
 /* When the connectivity banner is visible it already accounts for
-   safe-area-inset-top, so strip the duplicate inset from page headers
-   that follow it to avoid extra vertical space. */
-.connectivity-banner ~ * .home-header {
-  padding-top: 16px;
-}
-.connectivity-banner ~ * .screen-header {
-  padding-top: 16px;
-}
-.connectivity-banner ~ * .onb-header {
-  padding-top: 12px;
+   safe-area-inset-top, so strip the duplicate inset from .screen
+   to avoid extra vertical space. */
+.connectivity-banner ~ .screen,
+.connectivity-banner ~ .onb-page {
+  padding-top: 0;
 }
 
 /* ── LANDSCAPE ORIENTATION SUPPORT ────────────────────── */
