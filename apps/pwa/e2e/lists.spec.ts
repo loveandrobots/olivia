@@ -57,6 +57,10 @@ test.describe('List lifecycle', () => {
     const firstCheckbox = page.locator('[aria-label="Check item"]').first();
     await firstCheckbox.click();
 
+    // Checked items move to a collapsed "Completed" section — expand it
+    await expect(page.locator('.list-completed-header')).toBeVisible({ timeout: 5_000 });
+    await page.locator('.list-completed-header').click();
+
     // Verify it becomes checked (aria-label changes to "Uncheck item")
     await expect(page.locator('[aria-label="Uncheck item"]').first()).toBeVisible({ timeout: 5_000 });
 
@@ -86,13 +90,13 @@ test.describe('List lifecycle', () => {
     await card.locator('[aria-label="List options"]').click();
 
     // Click Archive option in the overflow menu
-    await page.getByRole('button', { name: 'Archive' }).click();
+    await page.locator('.list-overflow-item', { hasText: 'Archive' }).click();
 
     // Confirm archive in the sheet
-    await page.getByRole('button', { name: 'Archive' }).click();
+    await page.locator('.cancel-actions .rem-btn-secondary', { hasText: 'Archive' }).click();
 
-    // Should show "Archived" banner
-    await expect(page.getByText('Archived')).toBeVisible({ timeout: 10_000 });
+    // Should show "Archived" confirmation banner
+    await expect(page.locator('.confirm-banner', { hasText: 'Archived' })).toBeVisible({ timeout: 10_000 });
 
     // The list should no longer appear in the active tab
     await expect(page.locator('.list-card-title', { hasText: 'Archive me' })).not.toBeVisible({ timeout: 5_000 });
