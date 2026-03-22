@@ -4,6 +4,16 @@ All notable changes to Olivia are documented here. This changelog is curated for
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+## [0.4.3] - 2026-03-22
+
+### Added
+- Automated error reporting — the app now detects crashes and network failures behind the scenes so issues can be identified faster
+
+### Fixed
+- Completing a routine no longer fails with an error
+
 ## [0.4.2] - 2026-03-22
 
 ### Fixed

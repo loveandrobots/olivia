@@ -487,7 +487,7 @@ export async function updateRoutine(
 
 export async function completeRoutineOccurrence(role: ActorRole, routineId: string, expectedVersion: number): Promise<CompleteRoutineOccurrenceResponse> {
   return completeRoutineOccurrenceResponseSchema.parse(
-    await request<CompleteRoutineOccurrenceResponse>('/api/routines/complete', {
+    await request<CompleteRoutineOccurrenceResponse>(`/api/routines/${routineId}/complete`, {
       method: 'POST',
       body: JSON.stringify({ actorRole: role, routineId, expectedVersion })
     })
