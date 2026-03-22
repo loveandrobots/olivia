@@ -18,6 +18,26 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-066: M29 complete — household validation gate achieved with 1 week of usage
+- Date: 2026-03-22
+- Area: milestone completion
+- Decision: Close M29 with exit criteria substantially met. The 2-week usage criterion was not met (only ~1 week elapsed), but the remaining criteria are satisfied: 3+ chat observations documented (L-032), 3+ broader product observations documented (L-029, L-030, L-031, L-033), direction decision recorded (D-065), and M30 defined. The signal is clear and specific enough to act on — an additional week would produce more examples of the same friction, not new categories.
+- Rationale: the purpose of M29 was to restore the validation gate that M28 bypassed. That gate's function is to produce actionable usage signal, and we have it. The 2-week criterion was a proxy for "enough signal to act on," not a hard deadline. Holding for another week would delay acting on clear feedback.
+- Alternatives considered: (1) Wait for the full 2-week period — rejected because signal quality is already sufficient and the household is experiencing daily friction. (2) Close with all criteria fully met by waiting — rejected as prioritizing process over signal.
+- Trade-offs: closing early means less data volume, but the feedback themes are consistent and actionable. If new themes emerge in week 2, they can be captured as M30 progresses.
+- Status: active
+- Related docs: `docs/roadmap/milestones.md` (M29), D-065, L-029 through L-033, OLI-245
+
+### D-065: M30 direction — stability and feature depth sprint, no new features
+- Date: 2026-03-22
+- Area: product direction / milestone scoping
+- Decision: M30 will focus on making the existing product surface reliable and complete enough for sustained daily household use. This is a cross-cutting sprint, not a single-track direction from the M29 candidate list. None of the five candidate tracks (A–E) are the right next move — the household's feedback says the existing surface doesn't work well enough to justify building on top of it. Priority order: (1) Reliability — regression prevention, error visibility, time-to-fix. (2) Feature depth — lists completed-item management, reminder date/time picker, routine flexibility. (3) Push notification validation on native. (4) AI chat recalibration — less aggressive, more conversational, advisory-only compliant. (5) In-app feedback mechanism.
+- Rationale: the board's feedback is unambiguous — "the biggest blocker day after day is the friction from issues and regressions" and "all features just don't feel complete enough for daily use." Adding new features on an unreliable, incomplete surface will compound the trust deficit. The right move is to harden what exists until the household can use it daily without workarounds.
+- Alternatives considered: (1) Track A (deepen chat) — board explicitly deprioritized: "trust and automation is maybe a better immediate fix." (2) Track D (increase autonomy) — premature when basics don't work. (3) Track C (complete H3/meal planning) — not where friction is. (4) Track E (coordination surface) — task steps blocked pending inbox validation, shared calendar scoped. (5) Track B (broaden household) — not mentioned as a priority.
+- Trade-offs: no new features in M30 means no visible expansion. Benefit: the existing features should become genuinely useful for daily life, which is the prerequisite for everything else.
+- Status: active
+- Related docs: `docs/roadmap/milestones.md` (M30), L-029 through L-033, A-011, OLI-245
+
 ### D-064: Task steps — CEO resolved 4 open design questions, spec finalized, build deferred to M29
 - Date: 2026-03-22
 - Area: feature spec / task steps
