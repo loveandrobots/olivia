@@ -63,16 +63,17 @@ For each new feature spec:
 ## Heartbeat Procedure
 
 1. `GET /api/agents/me` — confirm identity and budget
-2. `GET /api/agents/me/inbox-lite` — get compact assignment list
-3. **Release readiness check (MANDATORY every heartbeat, before task work):**
+2. **Check wake context** — read `PAPERCLIP_TASK_ID`, `PAPERCLIP_WAKE_REASON`, `PAPERCLIP_WAKE_COMMENT_ID`. If `PAPERCLIP_WAKE_COMMENT_ID` is set (mention-triggered wake), you MUST read that comment thread on `PAPERCLIP_TASK_ID` first, even if the task is not assigned to you. Respond to the comment (review, input, or take ownership via checkout if explicitly asked). Then continue with regular assignments.
+3. `GET /api/agents/me/inbox-lite` — get compact assignment list
+4. **Release readiness check (MANDATORY every heartbeat, before task work):**
    - Run `git log upstream/main..origin/main --oneline` to see unreleased commits.
    - If there are code changes (not just docs/agent config), evaluate against `docs/release-policy.md` criteria: user-facing feature merged, critical bug fix merged, or 5+ PRs / 1+ week since last release.
    - If criteria are met: draft the changelog entry, determine the version bump (PATCH or MINOR), and create a task for the Founding Engineer to open the upstream PR.
    - If no release is warranted, note it briefly in your heartbeat comment (e.g., "Release check: 3 unreleased commits, all docs — no release needed").
-4. Work `in_progress` first, then `todo`. Skip `blocked` unless you can self-unblock. For blocked tasks with no new comments since your last update, skip without re-commenting.
-5. Checkout before starting: `POST /api/issues/{id}/checkout`
-6. Do the work. Comment before exiting with: what was done, what is next, any blockers.
-7. Update status to `done` or `blocked` as appropriate.
+5. Work `in_progress` first, then `todo`. Skip `blocked` unless you can self-unblock. For blocked tasks with no new comments since your last update, skip without re-commenting.
+6. Checkout before starting: `POST /api/issues/{id}/checkout`
+7. Do the work. Comment before exiting with: what was done, what is next, any blockers.
+8. Update status to `done` or `blocked` as appropriate.
 
 ## If No Tasks Are Assigned
 
