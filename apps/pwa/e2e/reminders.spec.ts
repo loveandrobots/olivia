@@ -32,13 +32,20 @@ test.describe('Reminder lifecycle', () => {
   });
 
   test('stakeholder can complete a reminder from the detail page', async ({ page }) => {
-    // Create a reminder due today so we can complete it
+    // Create a reminder with a past date so it appears as "due" or "overdue".
+    // The "Today" chip schedules +1h from now (state: upcoming), so use "+ Custom date"
+    // with a past time instead.
     await page.goto('/reminders');
     await expect(page.locator('.screen-title')).toContainText('Reminders', { timeout: 10_000 });
 
     await page.locator('.add-label', { hasText: 'Add a reminder…' }).click();
     await page.getByPlaceholder('What do you want to remember?').fill('Complete me test');
-    await page.locator('.rem-chip', { hasText: 'Today' }).click();
+
+    // Use custom date with a past time so the reminder is immediately due/overdue
+    const pastDate = new Date(Date.now() - 60 * 60 * 1000).toLocaleString('en-US');
+    page.on('dialog', (dialog) => dialog.accept(pastDate));
+    await page.locator('.rem-chip', { hasText: '+ Custom date' }).click();
+
     await page.getByRole('button', { name: 'Save reminder' }).click();
     await expect(page.getByText('Reminder created')).toBeVisible({ timeout: 10_000 });
 
@@ -48,7 +55,7 @@ test.describe('Reminder lifecycle', () => {
     // Verify we're on the detail page
     await expect(page.locator('.rem-detail-title', { hasText: 'Complete me test' })).toBeVisible({ timeout: 10_000 });
 
-    // Click "Done" button
+    // Click "Done" button (only visible for due/overdue reminders)
     const doneBtn = page.locator('.rem-btn-done', { hasText: /Done/ });
     await expect(doneBtn).toBeVisible({ timeout: 5_000 });
     await doneBtn.click();
@@ -95,10 +102,14 @@ test.describe('Reminder lifecycle', () => {
     await page.goto('/reminders');
     await expect(page.locator('.screen-title')).toContainText('Reminders', { timeout: 10_000 });
 
-    // Create and complete a reminder
+    // Create a reminder with a past date so it's immediately due/overdue
     await page.locator('.add-label', { hasText: 'Add a reminder…' }).click();
     await page.getByPlaceholder('What do you want to remember?').fill('Done filter test');
-    await page.locator('.rem-chip', { hasText: 'Today' }).click();
+
+    const pastDate = new Date(Date.now() - 60 * 60 * 1000).toLocaleString('en-US');
+    page.on('dialog', (dialog) => dialog.accept(pastDate));
+    await page.locator('.rem-chip', { hasText: '+ Custom date' }).click();
+
     await page.getByRole('button', { name: 'Save reminder' }).click();
     await expect(page.getByText('Reminder created')).toBeVisible({ timeout: 10_000 });
 
