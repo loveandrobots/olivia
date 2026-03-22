@@ -3802,6 +3802,44 @@ input[type="date"].rem-form-input {
   line-height: 1.6;
 }
 
+/* ── LIST COMPLETED SECTION ─────────────────────────── */
+
+.list-completed-section {
+  margin-top: 8px;
+  padding-bottom: 8px;
+}
+
+.list-completed-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-3);
+  letter-spacing: 0.02em;
+}
+
+.list-completed-chevron {
+  display: flex;
+  align-items: center;
+  color: var(--ink-3);
+}
+
+.list-completed-label {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.list-completed-items {
+  opacity: 0.7;
+}
+
 /* ── UNIFIED WEEKLY VIEW ────────────────────────────── */
 
 .wv-title {
