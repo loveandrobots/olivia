@@ -60,8 +60,8 @@ test.describe('Reminder lifecycle', () => {
     await expect(doneBtn).toBeVisible({ timeout: 5_000 });
     await doneBtn.click();
 
-    // Should show "Done" banner
-    await expect(page.getByText('Done')).toBeVisible({ timeout: 10_000 });
+    // Should show "Done" confirmation banner
+    await expect(page.locator('.confirm-banner', { hasText: 'Done' })).toBeVisible({ timeout: 10_000 });
 
     // The title should get the done class (strikethrough)
     await expect(page.locator('.rem-detail-title.done')).toBeVisible({ timeout: 5_000 });
@@ -116,8 +116,10 @@ test.describe('Reminder lifecycle', () => {
     // Complete it from detail page
     await page.locator('.rem-title', { hasText: 'Done filter test' }).click();
     await expect(page.locator('.rem-detail-title')).toBeVisible({ timeout: 10_000 });
-    await page.locator('.rem-btn-done', { hasText: /Done/ }).click();
-    await expect(page.getByText('Done')).toBeVisible({ timeout: 10_000 });
+    const doneBtnFilter = page.locator('.rem-btn-done', { hasText: /Done/ });
+    await expect(doneBtnFilter).toBeVisible({ timeout: 5_000 });
+    await doneBtnFilter.click();
+    await expect(page.locator('.confirm-banner', { hasText: 'Done' })).toBeVisible({ timeout: 10_000 });
 
     // Go back to reminders list
     await page.locator('.rem-detail-back').click();
