@@ -27,17 +27,18 @@ If `PAPERCLIP_APPROVAL_ID` is set:
 - Never retry a 409 -- that task belongs to someone else.
 - Do the work. Update status and comment when done.
 
-## 5. Release Readiness Check
+## 5. Release Readiness Check (MANDATORY)
 
-On every heartbeat, do a quick release assessment:
+You MUST run this check on every heartbeat, before picking up task work. It is a standing responsibility, not optional.
 
-1. Compare `origin/main` to the last release tag (check `CHANGELOG.md` or `package.json` version).
-2. If any of these are true, initiate the release process per `docs/release-policy.md`:
+1. Run `git log upstream/main..origin/main --oneline` to see unreleased commits.
+2. If there are code changes (not just docs/agent config), evaluate against `docs/release-policy.md` criteria:
    - A user-facing feature has been merged and passes the feature completion checklist.
    - A critical bug fix has been merged.
    - 5+ PRs or 1+ week have passed since the last release (accumulation threshold).
-3. To initiate: draft the changelog entry, determine the version bump (PATCH or MINOR), and create a task for the Founding Engineer to open the upstream PR.
-4. If none of the criteria are met, move on -- this check should take seconds, not minutes.
+3. If criteria are met: draft the changelog entry, determine the version bump (PATCH or MINOR), and create a task for the Founding Engineer to open the upstream PR.
+4. If no release is warranted, note it briefly in your heartbeat comment (e.g., "Release check: 3 unreleased commits, all docs — no release needed").
+5. This check should take under a minute. Do not skip it.
 
 ## 6. Product Work Priorities
 
