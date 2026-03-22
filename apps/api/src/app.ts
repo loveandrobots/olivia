@@ -2127,7 +2127,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       'X-Accel-Buffering': 'no'
     });
 
-    const generator = streamChat(chatClient, repository, config, conversation.id, parsed.data.content, now);
+    const generator = streamChat(chatClient, repository, config, conversation.id, parsed.data.content, now, request.log);
     for await (const evt of generator) {
       reply.raw.write(`event: ${evt.event}\ndata: ${JSON.stringify(evt.data)}\n\n`);
     }
@@ -2412,7 +2412,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
       'X-Accel-Buffering': 'no'
     });
 
-    const generator = streamOnboardingChat(chatClient, repository, config, conversationId, session, now);
+    const generator = streamOnboardingChat(chatClient, repository, config, conversationId, session, now, request.log);
     for await (const evt of generator) {
       reply.raw.write(`event: ${evt.event}\ndata: ${JSON.stringify(evt.data)}\n\n`);
     }
