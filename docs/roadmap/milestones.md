@@ -49,6 +49,8 @@ Full details for completed milestones are archived in `milestones-archive.md`. C
 | M28 | Household Validation & Phase 3 Scoping | bypassed | Board directed chat as Phase 3 (D-053) |
 | M29 | Post-Chat Household Validation | complete | First-week feedback processed, stability direction chosen (D-065, D-066) |
 | M30 | Stability & Feature Depth | complete | All 7 priority areas shipped (v0.6.0), team scaled 5→8 (D-068) |
+| M31 | Post-M30 Household Feedback & Next Direction | complete | Board feedback collected via OLI-274, multi-user direction chosen |
+| M32 | Multi-User Household | complete | Auth, spouse write access, invitation flow, nav restructure, per-user push — v0.7.0 shipped (2026-03-23) |
 
 ## M28: Household Validation & Phase 3 Scoping
 
@@ -159,7 +161,7 @@ Notes:
 ## M31: Post-M30 Household Feedback & Next Direction
 Objective: collect household feedback on the M30 stability and feature depth improvements, then scope the next build cycle based on that signal.
 
-Status: todo
+Status: complete (2026-03-22)
 
 Context:
 - M30 shipped all 7 priority areas: reliability, lists depth, reminders depth, routines depth, push validation, AI chat recalibration, plus team scaling (5 → 8 agents).
@@ -188,6 +190,66 @@ Exit criteria:
 Notes:
 - Per operating cadence (D-068), this milestone should be fast — its purpose is feedback collection and direction-setting, not building.
 - The team should not be idle during this milestone. Backlog items and tech debt can fill the gap while waiting for board feedback.
+
+## M32: Multi-User Household
+Objective: transform Olivia from a single-operator app into a true multi-user household tool with authentication, identity, and shared write access.
+
+Status: complete (2026-03-23, v0.7.0)
+
+Context:
+- M31 (OLI-274) collected board feedback and identified multi-user as the clear next direction.
+- Board approved: magic link + PIN auth, full spouse write access (no restrictions), designer's call on navigation.
+
+Delivered:
+- **Auth & identity** — magic link + PIN login, user sessions, device management
+- **Spouse write access** — full sharing across all 14 workflow tables, actorRole → userId migration
+- **Invitation flow** — generate invite code, claim, onboard new household members end-to-end
+- **Navigation restructure** — daily hub + More tab, ≤2 taps to reminders/routines/meals
+- **Per-user push notifications** — subscriptions linked to userId instead of device
+- **E2E test coverage** — multi-user flows validated
+- **Integration testing** — full pass, 406+ tests green
+
+Exit criteria met:
+- All 13 subtasks completed
+- v0.7.0 released and merged upstream
+- PR #16 merged
+
+## M33: Post-M32 Household Feedback & Next Direction
+Objective: collect household feedback on the multi-user experience, then scope the next build cycle.
+
+Status: todo
+
+Context:
+- M32 shipped a major structural change — the app now supports multiple authenticated users with shared write access. This is the biggest product surface change since the original MVP.
+- The household can now onboard the spouse as a full participant, not just a viewer.
+- The operating cadence (D-068) requires feedback collection and next-direction scoping before building more.
+
+Board feedback needed:
+1. **Multi-user experience** — Has the spouse been invited? Is the onboarding flow clear? Are both users actively using the app?
+2. **Auth friction** — Is magic link + PIN login working smoothly? Any issues with sessions or device management?
+3. **Shared write access** — Is spouse write access working as expected? Any confusion about who did what?
+4. **Navigation** — Is the daily hub + More tab structure intuitive? Can both users find what they need?
+5. **Push notifications** — Are per-user notifications reaching the right person?
+6. **What hurts most** — What's the single biggest friction point in daily use right now?
+7. **What's next** — What would make the biggest difference in daily household use?
+
+M33 candidate tracks (post-M32):
+- **Track A: Deepen chat** — now with multi-user, chat could be personalized per user
+- **Track D: Increase autonomy** — rule-based automation, push action buttons
+- **Track E: Deepen coordination surface** — task steps (OLI-242), shared calendar (OLI-243)
+- **Track F: In-app feedback** — lightweight friction reporting from within the app
+- **Track G: Multi-user depth** — per-user preferences, notification settings, activity attribution in UI
+
+Exit criteria:
+- Board has provided post-M32 household feedback
+- At least 3 qualitative observations documented as learnings
+- Direction decision recorded
+- M34 milestone defined and ready for execution
+
+Notes:
+- Track B (broaden household) is largely done — spouse write access shipped in M32.
+- Track C (complete H3) is done — meal planning shipped in earlier milestones.
+- The team should not be idle during feedback collection. Backlog grooming, tech debt, and documentation can fill the gap.
 
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:
