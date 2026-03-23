@@ -3,255 +3,143 @@ import { expect, test } from '@playwright/test';
 /**
  * M32 Multi-User Auth E2E Tests
  *
- * Tests the auth & identity API flows end-to-end via the browser.
- * Auth middleware is disabled in dev mode, but the auth endpoints are
- * fully functional and testable.
+ * Uses Playwright's `request` fixture to test auth API flows directly.
+ * Tests run in serial order — setup creates state that subsequent tests depend on.
  */
 
-test.describe('Multi-user auth flows', () => {
-  test('GET /api/auth/status returns initialization state', async ({ page }) => {
-    await page.goto('/');
+test.describe.serial('Multi-user auth flows', () => {
+  let adminToken: string;
+  let adminUserId: string;
 
-    const status = await page.evaluate(async () => {
-      const res = await fetch('/api/auth/status');
-      return res.json();
-    });
+  test('GET /api/auth/status returns initialization state', async ({ request }) => {
+    const res = await request.get('/api/auth/status');
+    expect(res.ok()).toBe(true);
 
-    expect(typeof status.initialized).toBe('boolean');
-    expect(typeof status.requiresSetup).toBe('boolean');
-    // initialized and requiresSetup should be complementary
-    expect(status.initialized).toBe(!status.requiresSetup);
+    const body = await res.json();
+    expect(typeof body.initialized).toBe('boolean');
+    expect(typeof body.requiresSetup).toBe('boolean');
+    expect(body.initialized).toBe(!body.requiresSetup);
   });
 
-  test('account setup creates admin user with session token', async ({ page }) => {
-    await page.goto('/');
+  test('account setup creates admin user with session token', async ({ request }) => {
+    // Ensure fresh state — if already initialized, this test should still exercise the endpoint
+    const statusRes = await request.get('/api/auth/status');
+    const status = await statusRes.json();
 
-    const result = await page.evaluate(async () => {
-      // Check if setup is still available
-      const statusRes = await fetch('/api/auth/status');
-      const status = await statusRes.json();
-
-      if (!status.requiresSetup) {
-        return { skipped: true, reason: 'already initialized' };
-      }
-
-      const res = await fetch('/api/auth/setup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'Lexi', email: 'lexi@test.local' })
-      });
-      return { skipped: false, status: res.status, body: await res.json() };
-    });
-
-    if (result.skipped) {
-      // Already initialized — verify status endpoint reflects that
-      const status = await page.evaluate(async () => {
-        const res = await fetch('/api/auth/status');
-        return res.json();
-      });
-      expect(status.initialized).toBe(true);
+    if (!status.requiresSetup) {
+      // Already initialized — get admin context via household/members (auth disabled in dev)
+      const membersRes = await request.get('/api/household/members');
+      expect(membersRes.ok()).toBe(true);
+      const members = await membersRes.json();
+      const admin = members.members.find((m: { role: string }) => m.role === 'admin');
+      expect(admin).toBeDefined();
+      adminUserId = admin.id;
+      // No token available without fresh setup — create one via magic link flow
+      // For now, store empty token (auth middleware is disabled in dev)
+      adminToken = '';
       return;
     }
 
-    expect(result.status).toBe(200);
-    expect(result.body.user.role).toBe('admin');
-    expect(result.body.sessionToken).toBeDefined();
+    const res = await request.post('/api/auth/setup', {
+      data: { name: 'Lexi', email: `lexi-${Date.now()}@test.local` }
+    });
+    expect(res.status()).toBe(200);
+
+    const body = await res.json();
+    expect(body.user.role).toBe('admin');
+    expect(body.user.householdId).toBe('household');
+    expect(body.sessionToken).toBeDefined();
+
+    adminToken = body.sessionToken;
+    adminUserId = body.user.id;
   });
 
-  test('duplicate setup returns 409 ALREADY_INITIALIZED', async ({ page }) => {
-    await page.goto('/');
-
-    const result = await page.evaluate(async () => {
-      // Ensure system is initialized first
-      const statusRes = await fetch('/api/auth/status');
-      const status = await statusRes.json();
-
-      if (status.requiresSetup) {
-        await fetch('/api/auth/setup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'Lexi', email: 'lexi@test.local' })
-        });
-      }
-
-      // Attempt duplicate setup
-      const res = await fetch('/api/auth/setup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'Duplicate', email: 'dup@test.local' })
-      });
-      return { status: res.status, body: await res.json() };
+  test('duplicate setup returns 409 ALREADY_INITIALIZED', async ({ request }) => {
+    const res = await request.post('/api/auth/setup', {
+      data: { name: 'Duplicate', email: 'dup@test.local' }
     });
 
-    expect(result.status).toBe(409);
-    expect(result.body.error).toBe('ALREADY_INITIALIZED');
+    expect(res.status()).toBe(409);
+    const body = await res.json();
+    expect(body.error).toBe('ALREADY_INITIALIZED');
   });
 
-  test('magic link request always returns success (prevents email enumeration)', async ({ page }) => {
-    await page.goto('/');
-
-    // Request for non-existent email — still returns success
-    const result = await page.evaluate(async () => {
-      const res = await fetch('/api/auth/magic-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'nonexistent@nowhere.test' })
-      });
-      return { status: res.status, body: await res.json() };
+  test('magic link request always returns success (prevents email enumeration)', async ({ request }) => {
+    const res = await request.post('/api/auth/magic-link', {
+      data: { email: 'nonexistent@nowhere.test' }
     });
 
-    expect(result.status).toBe(200);
-    expect(result.body.sent).toBe(true);
-    // Response message should not reveal whether email exists
-    expect(result.body.message).toContain('If that email');
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body.sent).toBe(true);
+    expect(body.message).toContain('If that email');
   });
 
-  test('magic link verify rejects invalid tokens', async ({ page }) => {
-    await page.goto('/');
-
-    const result = await page.evaluate(async () => {
-      const res = await fetch('/api/auth/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: 'bogus-token-12345' })
-      });
-      return { status: res.status, body: await res.json() };
+  test('magic link verify rejects invalid tokens', async ({ request }) => {
+    const res = await request.post('/api/auth/verify', {
+      data: { token: 'bogus-token-12345' }
     });
 
-    expect(result.status).toBe(401);
-    expect(result.body.error).toBe('INVALID_TOKEN');
+    expect(res.status()).toBe(401);
+    const body = await res.json();
+    expect(body.error).toBe('INVALID_TOKEN');
   });
 
-  test('PIN set and verify flow for shared-device user switching', async ({ page }) => {
-    await page.goto('/');
+  test('PIN set and verify flow for shared-device user switching', async ({ request }) => {
+    expect(adminUserId).toBeDefined();
 
-    const result = await page.evaluate(async () => {
-      // Ensure admin exists
-      const statusRes = await fetch('/api/auth/status');
-      const status = await statusRes.json();
-
-      let adminToken: string;
-      let adminUserId: string;
-
-      if (status.requiresSetup) {
-        const setupRes = await fetch('/api/auth/setup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'Lexi', email: 'lexi@test.local' })
-        });
-        const setupBody = await setupRes.json();
-        adminToken = setupBody.sessionToken;
-        adminUserId = setupBody.user.id;
-      } else {
-        // Get existing user via magic link or find existing session
-        // Since auth is disabled in dev, we can directly check members
-        const membersRes = await fetch('/api/household/members');
-        if (membersRes.ok) {
-          const members = await membersRes.json();
-          adminUserId = members.members[0]?.id;
-          adminToken = 'dev-mode';
-        } else {
-          return { skipped: true, reason: 'cannot get admin context' };
-        }
-      }
-
-      // Set PIN
-      const setPinRes = await fetch('/api/auth/pin/set', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${adminToken}`
-        },
-        body: JSON.stringify({ pin: '4321' })
-      });
-
-      if (setPinRes.status !== 200) {
-        return { skipped: true, reason: `set-pin returned ${setPinRes.status}` };
-      }
-
-      // Verify correct PIN
-      const verifyRes = await fetch('/api/auth/pin/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: adminUserId, pin: '4321' })
-      });
-      const verifyBody = await verifyRes.json();
-
-      // Verify wrong PIN is rejected
-      const badPinRes = await fetch('/api/auth/pin/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: adminUserId, pin: '0000' })
-      });
-
-      return {
-        skipped: false,
-        verifyStatus: verifyRes.status,
-        verifyHasToken: !!verifyBody.sessionToken,
-        verifyUserName: verifyBody.user?.name,
-        badPinStatus: badPinRes.status
-      };
+    // Set PIN — fail hard on any non-200 status
+    const setPinRes = await request.post('/api/auth/pin/set', {
+      data: { pin: '4321' },
+      headers: adminToken ? { 'Authorization': `Bearer ${adminToken}` } : {}
     });
+    expect(setPinRes.status()).toBe(200);
 
-    if (result.skipped) {
-      test.skip();
-      return;
-    }
+    // Verify correct PIN — should return a new session
+    const verifyRes = await request.post('/api/auth/pin/verify', {
+      data: { userId: adminUserId, pin: '4321' }
+    });
+    expect(verifyRes.status()).toBe(200);
+    const verifyBody = await verifyRes.json();
+    expect(verifyBody.sessionToken).toBeDefined();
+    expect(verifyBody.user.id).toBe(adminUserId);
 
-    expect(result.verifyStatus).toBe(200);
-    expect(result.verifyHasToken).toBe(true);
-    expect(result.badPinStatus).toBe(401);
+    // Wrong PIN must be rejected
+    const badPinRes = await request.post('/api/auth/pin/verify', {
+      data: { userId: adminUserId, pin: '0000' }
+    });
+    expect(badPinRes.status()).toBe(401);
+    const badBody = await badPinRes.json();
+    expect(badBody.error).toBe('INVALID_PIN');
   });
 
-  test('logout invalidates session token', async ({ page }) => {
-    await page.goto('/');
+  test('logout invalidates session token', async ({ request }) => {
+    // Create a fresh session via PIN verify (we set PIN in previous test)
+    expect(adminUserId).toBeDefined();
 
-    const result = await page.evaluate(async () => {
-      // Setup admin if needed
-      const statusRes = await fetch('/api/auth/status');
-      const status = await statusRes.json();
-
-      let token: string;
-      if (status.requiresSetup) {
-        const setupRes = await fetch('/api/auth/setup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'Lexi', email: 'lexi@test.local' })
-        });
-        token = (await setupRes.json()).sessionToken;
-      } else {
-        return { skipped: true, reason: 'need fresh setup for logout test' };
-      }
-
-      // Verify session works
-      const meRes = await fetch('/api/auth/me', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      // Logout
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      // Session should be invalid now
-      const meRes2 = await fetch('/api/auth/me', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      return {
-        skipped: false,
-        preLogoutStatus: meRes.status,
-        postLogoutStatus: meRes2.status
-      };
+    const verifyRes = await request.post('/api/auth/pin/verify', {
+      data: { userId: adminUserId, pin: '4321' }
     });
+    expect(verifyRes.status()).toBe(200);
+    const { sessionToken } = await verifyRes.json();
+    expect(sessionToken).toBeDefined();
 
-    if (result.skipped) {
-      test.skip();
-      return;
-    }
+    // Session should be valid
+    const meRes = await request.get('/api/auth/me', {
+      headers: { 'Authorization': `Bearer ${sessionToken}` }
+    });
+    expect(meRes.status()).toBe(200);
 
-    expect(result.preLogoutStatus).toBe(200);
-    expect(result.postLogoutStatus).toBe(401);
+    // Logout
+    const logoutRes = await request.post('/api/auth/logout', {
+      headers: { 'Authorization': `Bearer ${sessionToken}` }
+    });
+    expect(logoutRes.ok()).toBe(true);
+
+    // Session should be invalid now
+    const meRes2 = await request.get('/api/auth/me', {
+      headers: { 'Authorization': `Bearer ${sessionToken}` }
+    });
+    expect(meRes2.status()).toBe(401);
   });
 });

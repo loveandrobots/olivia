@@ -7,74 +7,106 @@ import { expect, test } from '@playwright/test';
  * Concurrency: two browser contexts editing simultaneously without corruption.
  */
 
+const BASE_URL = 'http://127.0.0.1:4173';
+
 test.describe('Navigation: ≤2 taps to key features', () => {
   test.beforeEach(async ({ page }) => {
-    // Ensure stakeholder role
     await page.goto('/settings');
     await expect(page.locator('.screen-title').first()).toContainText('Settings', { timeout: 10_000 });
     await page.getByRole('button', { name: 'Lexi' }).click();
   });
 
-  test('home → reminders in ≤2 taps', async ({ page }) => {
+  test('home → reminders in ≤2 taps via UI clicks', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('.screen')).toBeVisible({ timeout: 15_000 });
 
-    // Tap 1: navigate to reminders (via direct URL or nav link)
-    // Check if there's a direct link to reminders from home
-    const remindersLink = page.locator('a[href="/reminders"]').first();
-    const hasDirectLink = await remindersLink.isVisible().catch(() => false);
+    // Count taps needed to reach reminders
+    let taps = 0;
+
+    // Tap 1: check for direct link from home page
+    const directLink = page.locator('a[href="/reminders"]').first();
+    const hasDirectLink = await directLink.isVisible().catch(() => false);
 
     if (hasDirectLink) {
-      // 1 tap: direct link from home
-      await remindersLink.click();
+      await directLink.click();
+      taps = 1;
     } else {
-      // Navigate via URL (reminders is accessible as a top-level route)
-      await page.goto('/reminders');
+      // Tap 1: go to a section that links to reminders (e.g., nudge tray or weekly view)
+      // Check for any clickable element that navigates to reminders
+      const anyRemLink = page.locator('[href="/reminders"], [data-href="/reminders"]').first();
+      const hasAny = await anyRemLink.isVisible().catch(() => false);
+      if (hasAny) {
+        await anyRemLink.click();
+        taps = 1;
+      } else {
+        // No direct link from home — this means the ≤2 tap requirement is not met via UI
+        // Mark as failing to surface this gap
+        expect(hasAny, 'No UI path from home to reminders found — ≤2 tap requirement not met').toBe(true);
+        return;
+      }
     }
 
     await expect(page.locator('.screen-title')).toContainText('Reminders', { timeout: 10_000 });
+    expect(taps).toBeLessThanOrEqual(2);
   });
 
-  test('home → routines in ≤2 taps', async ({ page }) => {
+  test('home → routines in ≤2 taps via UI clicks', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('.screen')).toBeVisible({ timeout: 15_000 });
 
-    // Check for direct link from home
-    const routinesLink = page.locator('a[href="/routines"]').first();
-    const hasDirectLink = await routinesLink.isVisible().catch(() => false);
+    let taps = 0;
+    const directLink = page.locator('a[href="/routines"]').first();
+    const hasDirectLink = await directLink.isVisible().catch(() => false);
 
     if (hasDirectLink) {
-      await routinesLink.click();
+      await directLink.click();
+      taps = 1;
     } else {
-      await page.goto('/routines');
+      const anyLink = page.locator('[href="/routines"], [data-href="/routines"]').first();
+      const hasAny = await anyLink.isVisible().catch(() => false);
+      if (hasAny) {
+        await anyLink.click();
+        taps = 1;
+      } else {
+        expect(hasAny, 'No UI path from home to routines found — ≤2 tap requirement not met').toBe(true);
+        return;
+      }
     }
 
     await expect(page.locator('.screen-title')).toContainText('Routines', { timeout: 10_000 });
+    expect(taps).toBeLessThanOrEqual(2);
   });
 
-  test('home → meals in ≤2 taps', async ({ page }) => {
+  test('home → meals in ≤2 taps via UI clicks', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('.screen')).toBeVisible({ timeout: 15_000 });
 
-    // Check for direct link from home
-    const mealsLink = page.locator('a[href="/meals"]').first();
-    const hasDirectLink = await mealsLink.isVisible().catch(() => false);
+    let taps = 0;
+    const directLink = page.locator('a[href="/meals"]').first();
+    const hasDirectLink = await directLink.isVisible().catch(() => false);
 
     if (hasDirectLink) {
-      await mealsLink.click();
+      await directLink.click();
+      taps = 1;
     } else {
-      await page.goto('/meals');
+      const anyLink = page.locator('[href="/meals"], [data-href="/meals"]').first();
+      const hasAny = await anyLink.isVisible().catch(() => false);
+      if (hasAny) {
+        await anyLink.click();
+        taps = 1;
+      } else {
+        expect(hasAny, 'No UI path from home to meals found — ≤2 tap requirement not met').toBe(true);
+        return;
+      }
     }
 
     await expect(page.locator('.screen-title')).toContainText('Meals', { timeout: 10_000 });
+    expect(taps).toBeLessThanOrEqual(2);
   });
 
   test('bottom nav provides 1-tap access to home, tasks, lists', async ({ page }) => {
-    // Start from tasks page
     await page.goto('/tasks');
     await expect(page.locator('.screen-title')).toContainText('Tasks', { timeout: 10_000 });
-
-    // Bottom nav should be visible
     await expect(page.locator('.bottom-nav')).toBeVisible();
 
     // Tap home
@@ -93,115 +125,138 @@ test.describe('Navigation: ≤2 taps to key features', () => {
 });
 
 test.describe('Concurrency: simultaneous editing', () => {
-  test('two browser contexts can create tasks without data corruption', async ({ browser }) => {
-    // Create two independent browser contexts (simulates two users/tabs)
-    const contextA = await browser.newContext();
-    const contextB = await browser.newContext();
+  test('two browser contexts can create tasks concurrently', async ({ browser }) => {
+    const taskA = `concurrent A ${Date.now()}`;
+    const taskB = `concurrent B ${Date.now()}`;
+
+    // Pass baseURL explicitly to new contexts (B4 fix)
+    const contextA = await browser.newContext({ baseURL: BASE_URL });
+    const contextB = await browser.newContext({ baseURL: BASE_URL });
     const pageA = await contextA.newPage();
     const pageB = await contextB.newPage();
 
     try {
-      // Set up roles: A = stakeholder, B = spouse
-      await pageA.goto('http://127.0.0.1:4173/settings');
+      // Set up roles
+      await pageA.goto('/settings');
       await expect(pageA.locator('.screen-title').first()).toContainText('Settings', { timeout: 10_000 });
       await pageA.getByRole('button', { name: 'Lexi' }).click();
 
-      await pageB.goto('http://127.0.0.1:4173/settings');
+      await pageB.goto('/settings');
       await expect(pageB.locator('.screen-title').first()).toContainText('Settings', { timeout: 10_000 });
       await pageB.getByRole('button', { name: 'Christian' }).click();
 
-      // Both navigate to tasks
-      await pageA.goto('http://127.0.0.1:4173/tasks');
-      await pageB.goto('http://127.0.0.1:4173/tasks');
-      await expect(pageA.locator('.screen-sub')).toContainText('completed', { timeout: 15_000 });
-      await expect(pageB.locator('.screen-sub')).toContainText('completed', { timeout: 15_000 });
+      // Both navigate to tasks concurrently
+      await Promise.all([
+        pageA.goto('/tasks'),
+        pageB.goto('/tasks')
+      ]);
+      await Promise.all([
+        expect(pageA.locator('.screen-sub')).toContainText('completed', { timeout: 15_000 }),
+        expect(pageB.locator('.screen-sub')).toContainText('completed', { timeout: 15_000 })
+      ]);
 
       // Context A creates a task
       await pageA.getByRole('button', { name: 'Add a new task' }).click();
-      await pageA.getByPlaceholder('e.g. Call electrician').fill('concurrent task A');
+      await pageA.getByPlaceholder('e.g. Call electrician').fill(taskA);
       await pageA.getByRole('button', { name: 'Preview' }).click();
       await expect(pageA.getByText('Review before saving')).toBeVisible({ timeout: 10_000 });
-      await pageA.getByRole('button', { name: 'Confirm & save' }).click();
-      await expect(pageA.locator('.tf-name', { hasText: 'concurrent task A' })).toBeVisible({ timeout: 10_000 });
 
-      // Context B reloads and should see A's task
-      await pageB.reload();
-      await expect(pageB.locator('.screen-sub')).toContainText('completed', { timeout: 15_000 });
-      await expect(pageB.locator('.tf-name', { hasText: 'concurrent task A' })).toBeVisible({ timeout: 10_000 });
+      // Context B starts creating a task simultaneously
+      const bAddButton = pageB.getByRole('button', { name: 'Add a new task' });
+      await expect(bAddButton).toBeVisible({ timeout: 5_000 });
+      await bAddButton.click();
+      await pageB.getByPlaceholder('e.g. Call electrician').fill(taskB);
+      await pageB.getByRole('button', { name: 'Preview' }).click();
+      await expect(pageB.getByText('Review before saving')).toBeVisible({ timeout: 10_000 });
 
-      // Context B creates a task (if spouse has write access to tasks)
-      const bCanAdd = await pageB.getByRole('button', { name: 'Add a new task' }).isVisible().catch(() => false);
-      if (bCanAdd) {
-        await pageB.getByRole('button', { name: 'Add a new task' }).click();
-        await pageB.getByPlaceholder('e.g. Call electrician').fill('concurrent task B');
-        await pageB.getByRole('button', { name: 'Preview' }).click();
-        await expect(pageB.getByText('Review before saving')).toBeVisible({ timeout: 10_000 });
-        await pageB.getByRole('button', { name: 'Confirm & save' }).click();
-        await expect(pageB.locator('.tf-name', { hasText: 'concurrent task B' })).toBeVisible({ timeout: 10_000 });
+      // Both confirm simultaneously
+      await Promise.all([
+        pageA.getByRole('button', { name: 'Confirm & save' }).click(),
+        pageB.getByRole('button', { name: 'Confirm & save' }).click()
+      ]);
 
-        // Context A reloads and should see both tasks
-        await pageA.reload();
-        await expect(pageA.locator('.screen-sub')).toContainText('completed', { timeout: 15_000 });
-        await expect(pageA.locator('.tf-name', { hasText: 'concurrent task A' })).toBeVisible({ timeout: 10_000 });
-        await expect(pageA.locator('.tf-name', { hasText: 'concurrent task B' })).toBeVisible({ timeout: 10_000 });
-      }
+      // Both should see their own task
+      await expect(pageA.locator('.tf-name', { hasText: taskA })).toBeVisible({ timeout: 10_000 });
+      await expect(pageB.locator('.tf-name', { hasText: taskB })).toBeVisible({ timeout: 10_000 });
+
+      // After reload, both tasks visible to both contexts
+      await Promise.all([pageA.reload(), pageB.reload()]);
+      await Promise.all([
+        expect(pageA.locator('.screen-sub')).toContainText('completed', { timeout: 15_000 }),
+        expect(pageB.locator('.screen-sub')).toContainText('completed', { timeout: 15_000 })
+      ]);
+
+      await expect(pageA.locator('.tf-name', { hasText: taskA })).toBeVisible({ timeout: 10_000 });
+      await expect(pageA.locator('.tf-name', { hasText: taskB })).toBeVisible({ timeout: 10_000 });
+      await expect(pageB.locator('.tf-name', { hasText: taskA })).toBeVisible({ timeout: 10_000 });
+      await expect(pageB.locator('.tf-name', { hasText: taskB })).toBeVisible({ timeout: 10_000 });
     } finally {
       await contextA.close();
       await contextB.close();
     }
   });
 
-  test('two contexts can manage list items simultaneously', async ({ browser }) => {
-    const contextA = await browser.newContext();
-    const contextB = await browser.newContext();
+  test('two contexts can add list items simultaneously', async ({ browser }) => {
+    const listName = `Concurrent list ${Date.now()}`;
+
+    const contextA = await browser.newContext({ baseURL: BASE_URL });
+    const contextB = await browser.newContext({ baseURL: BASE_URL });
     const pageA = await contextA.newPage();
     const pageB = await contextB.newPage();
 
     try {
-      // Set up stakeholder in both (both viewing same list)
-      await pageA.goto('http://127.0.0.1:4173/settings');
+      // Set up stakeholder in A
+      await pageA.goto('/settings');
       await expect(pageA.locator('.screen-title').first()).toContainText('Settings', { timeout: 10_000 });
       await pageA.getByRole('button', { name: 'Lexi' }).click();
 
       // Context A creates a list
-      await pageA.goto('http://127.0.0.1:4173/lists');
+      await pageA.goto('/lists');
       await expect(pageA.locator('.screen-title')).toContainText('Lists', { timeout: 10_000 });
-
       await pageA.locator('.list-new-btn-label', { hasText: 'New list' }).click();
-      await pageA.getByPlaceholder('Grocery run, Packing list…').fill('Concurrency test list');
+      await pageA.getByPlaceholder('Grocery run, Packing list…').fill(listName);
       await pageA.getByRole('button', { name: 'Create list' }).click();
       await expect(pageA.locator('.list-add-input')).toBeVisible({ timeout: 10_000 });
 
-      // Add item from context A
-      const addInputA = pageA.locator('.list-add-input');
-      await addInputA.fill('Item from context A');
-      await addInputA.press('Enter');
-      await expect(pageA.locator('.list-item-text', { hasText: 'Item from context A' })).toBeVisible({ timeout: 10_000 });
+      // Add item from A
+      await pageA.locator('.list-add-input').fill('Item from A');
+      await pageA.locator('.list-add-input').press('Enter');
+      await expect(pageA.locator('.list-item-text', { hasText: 'Item from A' })).toBeVisible({ timeout: 10_000 });
 
-      // Get the list URL
-      const listUrl = pageA.url();
-
-      // Context B opens the same list
-      await pageB.goto('http://127.0.0.1:4173/settings');
+      // Context B opens the same list (use relative path from full URL)
+      const listPath = new URL(pageA.url()).pathname;
+      await pageB.goto('/settings');
       await expect(pageB.locator('.screen-title').first()).toContainText('Settings', { timeout: 10_000 });
       await pageB.getByRole('button', { name: 'Lexi' }).click();
-      await pageB.goto(listUrl);
+      await pageB.goto(listPath);
       await expect(pageB.locator('.list-add-input')).toBeVisible({ timeout: 10_000 });
+      await expect(pageB.locator('.list-item-text', { hasText: 'Item from A' })).toBeVisible({ timeout: 10_000 });
 
-      // Context B should see the item from A
-      await expect(pageB.locator('.list-item-text', { hasText: 'Item from context A' })).toBeVisible({ timeout: 10_000 });
+      // Both add items simultaneously
+      await Promise.all([
+        (async () => {
+          await pageA.locator('.list-add-input').fill('A second item');
+          await pageA.locator('.list-add-input').press('Enter');
+        })(),
+        (async () => {
+          await pageB.locator('.list-add-input').fill('Item from B');
+          await pageB.locator('.list-add-input').press('Enter');
+        })()
+      ]);
 
-      // Both add items concurrently
-      const addInputB = pageB.locator('.list-add-input');
-      await addInputB.fill('Item from context B');
-      await addInputB.press('Enter');
-      await expect(pageB.locator('.list-item-text', { hasText: 'Item from context B' })).toBeVisible({ timeout: 10_000 });
+      // Refresh both and verify all items present
+      await Promise.all([pageA.reload(), pageB.reload()]);
+      await Promise.all([
+        expect(pageA.locator('.list-add-input')).toBeVisible({ timeout: 10_000 }),
+        expect(pageB.locator('.list-add-input')).toBeVisible({ timeout: 10_000 })
+      ]);
 
-      // Refresh A to see B's item
-      await pageA.reload();
-      await expect(pageA.locator('.list-add-input')).toBeVisible({ timeout: 10_000 });
-      await expect(pageA.locator('.list-item-text', { hasText: 'Item from context A' })).toBeVisible({ timeout: 10_000 });
-      await expect(pageA.locator('.list-item-text', { hasText: 'Item from context B' })).toBeVisible({ timeout: 10_000 });
+      // All items should be visible on both pages
+      for (const p of [pageA, pageB]) {
+        await expect(p.locator('.list-item-text', { hasText: 'Item from A' })).toBeVisible({ timeout: 10_000 });
+        await expect(p.locator('.list-item-text', { hasText: 'A second item' })).toBeVisible({ timeout: 10_000 });
+        await expect(p.locator('.list-item-text', { hasText: 'Item from B' })).toBeVisible({ timeout: 10_000 });
+      }
     } finally {
       await contextA.close();
       await contextB.close();
@@ -213,31 +268,20 @@ test.describe('Single-user regression: no breakage', () => {
   test('home page loads without crash', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('.screen')).toBeVisible({ timeout: 15_000 });
-
-    // Bottom nav should be present
     await expect(page.locator('.bottom-nav')).toBeVisible();
   });
 
   test('settings page renders all sections', async ({ page }) => {
     await page.goto('/settings');
     await expect(page.locator('.screen-title').first()).toContainText('Settings', { timeout: 10_000 });
-
-    // Theme section
     await expect(page.getByText('Theme')).toBeVisible();
-
-    // Active role section
     await expect(page.getByText('Active role')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Lexi' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Christian' })).toBeVisible();
   });
 
-  test('health check endpoint responds', async ({ page }) => {
-    await page.goto('/');
-    const health = await page.evaluate(async () => {
-      const res = await fetch('/api/health');
-      return { status: res.status, ok: res.ok };
-    });
-
-    expect(health.ok).toBe(true);
+  test('health check endpoint responds', async ({ request }) => {
+    const res = await request.get('/api/health');
+    expect(res.ok()).toBe(true);
   });
 });
