@@ -2,10 +2,9 @@ import { expect, test } from '@playwright/test';
 
 test.describe('Reminder lifecycle', () => {
   test.beforeEach(async ({ page }) => {
-    // Ensure stakeholder role
-    await page.goto('/settings');
-    await expect(page.locator('.screen-title').first()).toContainText('Settings', { timeout: 10_000 });
-    await page.getByRole('button', { name: 'Lexi' }).click();
+    // Ensure stakeholder role via localStorage
+    await page.goto('/');
+    await page.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
   });
 
   test('stakeholder can create a reminder with a date chip', async ({ page }) => {
@@ -139,18 +138,15 @@ test.describe('Reminder lifecycle', () => {
   });
 
   test('spouse view is read-only on reminders page', async ({ page }) => {
-    // Switch to spouse
-    await page.goto('/settings');
-    await page.getByRole('button', { name: 'Christian' }).click();
-
+    // Switch to spouse via localStorage
+    await page.evaluate(() => localStorage.setItem('olivia-role', 'spouse'));
     await page.goto('/reminders');
     await expect(page.locator('.screen-title')).toContainText('Reminders', { timeout: 10_000 });
 
     // No "Add a reminder" button for spouse
     await expect(page.locator('.add-label', { hasText: 'Add a reminder…' })).toHaveCount(0);
 
-    // Switch back to stakeholder
-    await page.goto('/settings');
-    await page.getByRole('button', { name: 'Lexi' }).click();
+    // Restore stakeholder role
+    await page.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
   });
 });

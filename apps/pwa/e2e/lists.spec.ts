@@ -2,10 +2,9 @@ import { expect, test } from '@playwright/test';
 
 test.describe('List lifecycle', () => {
   test.beforeEach(async ({ page }) => {
-    // Ensure stakeholder role
-    await page.goto('/settings');
-    await expect(page.locator('.screen-title').first()).toContainText('Settings', { timeout: 10_000 });
-    await page.getByRole('button', { name: 'Lexi' }).click();
+    // Ensure stakeholder role via localStorage
+    await page.goto('/');
+    await page.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
   });
 
   test('stakeholder can create a list', async ({ page }) => {
@@ -107,18 +106,15 @@ test.describe('List lifecycle', () => {
   });
 
   test('spouse view is read-only on lists page', async ({ page }) => {
-    // Switch to spouse
-    await page.goto('/settings');
-    await page.getByRole('button', { name: 'Christian' }).click();
-
+    // Switch to spouse via localStorage
+    await page.evaluate(() => localStorage.setItem('olivia-role', 'spouse'));
     await page.goto('/lists');
     await expect(page.locator('.screen-title')).toContainText('Lists', { timeout: 10_000 });
 
     // No "New list" button for spouse
     await expect(page.locator('.list-new-btn-label')).toHaveCount(0);
 
-    // Switch back to stakeholder
-    await page.goto('/settings');
-    await page.getByRole('button', { name: 'Lexi' }).click();
+    // Restore stakeholder role
+    await page.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
   });
 });

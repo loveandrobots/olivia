@@ -2,10 +2,9 @@ import { expect, test } from '@playwright/test';
 
 test.describe('Routine lifecycle', () => {
   test.beforeEach(async ({ page }) => {
-    // Ensure stakeholder role
-    await page.goto('/settings');
-    await expect(page.locator('.screen-title').first()).toContainText('Settings', { timeout: 10_000 });
-    await page.getByRole('button', { name: 'Lexi' }).click();
+    // Ensure stakeholder role via localStorage
+    await page.goto('/');
+    await page.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
   });
 
   test('stakeholder can create a routine with weekly recurrence', async ({ page }) => {
@@ -89,10 +88,8 @@ test.describe('Routine lifecycle', () => {
   });
 
   test('spouse view is read-only on routines page', async ({ page }) => {
-    // Switch to spouse
-    await page.goto('/settings');
-    await page.getByRole('button', { name: 'Christian' }).click();
-
+    // Switch to spouse via localStorage
+    await page.evaluate(() => localStorage.setItem('olivia-role', 'spouse'));
     await page.goto('/routines');
     await expect(page.locator('.screen-title')).toContainText('Routines', { timeout: 10_000 });
 
@@ -102,8 +99,7 @@ test.describe('Routine lifecycle', () => {
     // No completion checkboxes
     await expect(page.locator('.task-checkbox')).toHaveCount(0);
 
-    // Switch back to stakeholder
-    await page.goto('/settings');
-    await page.getByRole('button', { name: 'Lexi' }).click();
+    // Restore stakeholder role
+    await page.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
   });
 });

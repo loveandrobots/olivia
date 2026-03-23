@@ -23,9 +23,9 @@ test('stakeholder can add a task via the tasks page', async ({ page }) => {
 });
 
 test('spouse view stays read-only', async ({ page }) => {
-  // Switch to spouse role via settings
-  await page.goto('/settings');
-  await page.getByRole('button', { name: 'Christian' }).click();
+  // Set spouse role via localStorage
+  await page.goto('/');
+  await page.evaluate(() => localStorage.setItem('olivia-role', 'spouse'));
 
   // Navigate to tasks page — should not show add button
   await page.goto('/tasks');
@@ -34,12 +34,15 @@ test('spouse view stays read-only', async ({ page }) => {
 
   // Spouse sees a read-only notice
   await expect(page.getByText('read-only')).toBeVisible();
+
+  // Restore stakeholder role
+  await page.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
 });
 
 test('stakeholder can queue a task offline and it syncs on reconnect', async ({ page, context }) => {
   // Ensure stakeholder role
-  await page.goto('/settings');
-  await page.getByRole('button', { name: 'Lexi' }).click();
+  await page.goto('/');
+  await page.evaluate(() => localStorage.setItem('olivia-role', 'stakeholder'));
 
   // Navigate to tasks page and wait for it to load
   await page.goto('/tasks');
