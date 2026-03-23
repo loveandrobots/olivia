@@ -1,6 +1,7 @@
-import { createRootRoute, createRoute, createRouter, Outlet, redirect } from '@tanstack/react-router';
+import { createRootRoute, createRoute, createRouter, Outlet, redirect, useRouterState } from '@tanstack/react-router';
 import { AppLayout } from './components/layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { useAuth } from './lib/auth';
 import { HomePage } from './routes/home-page';
 import { TasksPage } from './routes/tasks-page';
 import { OliviaPage } from './routes/olivia-page';
@@ -24,14 +25,58 @@ import { OnboardingPage } from './routes/onboarding-page';
 import { HealthCheckPage } from './routes/health-check-page';
 import { AuthPage } from './routes/auth-page';
 
-const rootRoute = createRootRoute({
-  component: () => (
+// Auth-aware root component: redirects to /auth when unauthenticated,
+// and renders auth page without AppLayout.
+function RootComponent() {
+  const { state } = useAuth();
+  const location = useRouterState({ select: (s) => s.location });
+  const isAuthRoute = location.pathname === '/auth';
+
+  // While loading auth state, show nothing to avoid flash
+  if (state.status === 'loading') {
+    return null;
+  }
+
+  // Unauthenticated or uninitialized: show auth page (no AppLayout)
+  if (state.status === 'unauthenticated' || state.status === 'uninitialized') {
+    if (isAuthRoute) {
+      return (
+        <ErrorBoundary>
+          <Outlet />
+        </ErrorBoundary>
+      );
+    }
+    // Redirect to auth — render auth page inline to avoid router loop
+    return (
+      <ErrorBoundary>
+        <AuthPage />
+      </ErrorBoundary>
+    );
+  }
+
+  // Authenticated user on /auth should go home
+  if (isAuthRoute) {
+    return (
+      <ErrorBoundary>
+        <AppLayout>
+          <HomePage />
+        </AppLayout>
+      </ErrorBoundary>
+    );
+  }
+
+  // Normal authenticated flow with AppLayout
+  return (
     <ErrorBoundary>
       <AppLayout>
         <Outlet />
       </AppLayout>
     </ErrorBoundary>
-  )
+  );
+}
+
+const rootRoute = createRootRoute({
+  component: RootComponent,
 });
 
 // ── Primary five-tab routes ───────────────────────────────────────────────────

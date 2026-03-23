@@ -15,7 +15,7 @@ import { NudgeTray, useNudges } from './nudge-tray';
 import { CreateReminderSheet } from '../components/reminders/CreateReminderSheet';
 import { SnoozeSheet } from '../components/reminders/SnoozeSheet';
 import { ConfirmBanner } from '../components/reminders/ConfirmBanner';
-import { SpouseBanner } from '../components/lists/SpouseBanner';
+import { CollaborativeBanner } from '../components/auth/CollaborativeBanner';
 import { formatSnoozeUntil } from '../lib/reminder-helpers';
 import type { NudgeData } from '../types/display';
 import { fetchOnboardingState, startOnboarding, finishOnboarding, fetchHealthCheckState, dismissHealthCheck, type OnboardingState, type HealthCheckState } from '../lib/api';
@@ -575,11 +575,9 @@ export function HomePage() {
         <div className="greeting"><em>{displayName}.</em></div>
         <div className="greeting-sub">{subtitleText}</div>
 
-        {role === 'spouse' && (
-          <div style={{ marginTop: 12 }}>
-            <SpouseBanner />
-          </div>
-        )}
+        <div style={{ marginTop: 12 }}>
+          <CollaborativeBanner />
+        </div>
       </header>
 
       <div className="screen-scroll" ref={scrollAreaRef}>
