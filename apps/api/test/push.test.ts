@@ -9,6 +9,24 @@ import { evaluateNudgePushRule } from '../src/jobs';
 import type { PushProvider, NotificationPayload, PushSubscriptionPayload } from '../src/push';
 import { isApnsSubscriptionPayload, DisabledApnsPushProvider } from '../src/push';
 import { InboxRepository } from '../src/repository';
+import type { NotificationSubscription } from '@olivia/contracts';
+
+const DEFAULT_TEST_USER_ID = 'a0000000-0000-4000-8000-000000000001';
+
+/** Helper: save a web push subscription via the unified notification_subscriptions table. */
+function saveWebPushSubscription(
+  repository: InboxRepository,
+  endpoint: string,
+  p256dh: string,
+  auth: string,
+  userId?: string
+): NotificationSubscription {
+  return repository.saveNotificationSubscription(
+    userId ?? DEFAULT_TEST_USER_ID,
+    endpoint,
+    { endpoint, keys: { p256dh, auth } }
+  );
+}
 
 const createConfig = (dbPath: string): AppConfig => ({
   port: 0,
@@ -184,7 +202,7 @@ describe('evaluateNudgePushRule', () => {
 
   it('returns early when no active nudges exist', async () => {
     const push = createMockPush();
-    repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
+    saveWebPushSubscription(repository,'https://push.example.com/sub', 'key', 'auth');
     await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger());
     expect(push.sends).toHaveLength(0);
   });
@@ -193,7 +211,7 @@ describe('evaluateNudgePushRule', () => {
     const push = createMockPush();
     const now = new Date('2026-03-15T10:00:00Z');
     insertOverdueRoutine(db, 'r1', 'Take out trash', '2026-03-14T08:00:00Z');
-    repository.savePushSubscription('https://push.example.com/sub', 'p256dh-val', 'auth-val');
+    saveWebPushSubscription(repository,'https://push.example.com/sub', 'p256dh-val', 'auth-val');
 
     await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
     expect(push.sends).toHaveLength(1);
@@ -205,7 +223,7 @@ describe('evaluateNudgePushRule', () => {
     const push = createMockPush();
     const now = new Date('2026-03-15T10:00:00Z');
     insertOverdueRoutine(db, 'r1', 'Take out trash', '2026-03-14T08:00:00Z');
-    repository.savePushSubscription('https://push.example.com/sub', 'p256dh-val', 'auth-val');
+    saveWebPushSubscription(repository,'https://push.example.com/sub', 'p256dh-val', 'auth-val');
 
     await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
     expect(push.sends).toHaveLength(1);
@@ -220,7 +238,7 @@ describe('evaluateNudgePushRule', () => {
     const push = createMockPush();
     const now = new Date('2026-03-15T10:00:00Z');
     insertOverdueRoutine(db, 'r1', 'Take out trash', '2026-03-14T08:00:00Z');
-    repository.savePushSubscription('https://push.example.com/sub', 'p256dh-val', 'auth-val');
+    saveWebPushSubscription(repository,'https://push.example.com/sub', 'p256dh-val', 'auth-val');
 
     await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
     expect(push.sends).toHaveLength(1);
@@ -235,18 +253,18 @@ describe('evaluateNudgePushRule', () => {
     const push = create410Push();
     const now = new Date('2026-03-15T10:00:00Z');
     insertOverdueRoutine(db, 'r1', 'Take out trash', '2026-03-14T08:00:00Z');
-    repository.savePushSubscription('https://push.example.com/sub', 'p256dh-val', 'auth-val');
+    saveWebPushSubscription(repository,'https://push.example.com/sub', 'p256dh-val', 'auth-val');
 
-    expect(repository.listPushSubscriptions()).toHaveLength(1);
+    expect(repository.listAllNotificationSubscriptions()).toHaveLength(1);
     await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
-    expect(repository.listPushSubscriptions()).toHaveLength(0);
+    expect(repository.listAllNotificationSubscriptions()).toHaveLength(0);
   });
 
   it('purges stale log entries older than 48h', async () => {
     const push = createMockPush();
     const now = new Date('2026-03-15T10:00:00Z');
     insertOverdueRoutine(db, 'r1', 'Take out trash', '2026-03-14T08:00:00Z');
-    const sub = repository.savePushSubscription('https://push.example.com/sub', 'p256dh-val', 'auth-val');
+    const sub = saveWebPushSubscription(repository,'https://push.example.com/sub', 'p256dh-val', 'auth-val');
 
     // Record a log entry 72 hours ago
     const oldTime = new Date(now.getTime() - 72 * 60 * 60 * 1000);
@@ -310,7 +328,7 @@ describe('completion window push timing', () => {
       '2026-03-11T20:30:00Z', '2026-03-12T21:00:00Z',
       '2026-03-06T21:00:00Z', '2026-03-05T22:00:00Z',
     ]);
-    repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
+    saveWebPushSubscription(repository,'https://push.example.com/sub', 'key', 'auth');
 
     await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
     expect(push.sends).toHaveLength(0);
@@ -326,7 +344,7 @@ describe('completion window push timing', () => {
       '2026-03-11T20:30:00Z', '2026-03-12T21:00:00Z',
       '2026-03-06T21:00:00Z', '2026-03-05T22:00:00Z',
     ]);
-    repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
+    saveWebPushSubscription(repository,'https://push.example.com/sub', 'key', 'auth');
 
     await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
     expect(push.sends).toHaveLength(1);
@@ -339,7 +357,7 @@ describe('completion window push timing', () => {
     insertCompletedOccurrences(db, 'r1', [
       '2026-03-07T20:00:00Z', '2026-03-08T20:30:00Z', // only 2 completions
     ]);
-    repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
+    saveWebPushSubscription(repository,'https://push.example.com/sub', 'key', 'auth');
 
     await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
     expect(push.sends).toHaveLength(1);
@@ -353,7 +371,7 @@ describe('completion window push timing', () => {
       INSERT INTO reminders (id, title, assignee_user_id, recurrence_cadence, scheduled_at, created_at, updated_at, version)
       VALUES ('rem1', 'Call dentist', NULL, 'none', ?, datetime('now'), datetime('now'), 1)
     `).run(new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString());
-    repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
+    saveWebPushSubscription(repository,'https://push.example.com/sub', 'key', 'auth');
 
     await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
     expect(push.sends).toHaveLength(1);
@@ -370,7 +388,7 @@ describe('completion window push timing', () => {
       '2026-03-08T20:30:00Z', '2026-03-09T21:00:00Z',
       '2026-03-03T21:00:00Z', '2026-03-02T22:00:00Z',
     ]);
-    repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
+    saveWebPushSubscription(repository,'https://push.example.com/sub', 'key', 'auth');
 
     await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
     expect(push.sends).toHaveLength(1);
@@ -386,7 +404,7 @@ describe('completion window push timing', () => {
       '2026-03-11T20:30:00Z', '2026-03-12T21:00:00Z',
       '2026-03-06T21:00:00Z', '2026-03-05T22:00:00Z',
     ]);
-    repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
+    saveWebPushSubscription(repository,'https://push.example.com/sub', 'key', 'auth');
 
     await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
     const logCount = (db.prepare('SELECT COUNT(*) as cnt FROM push_notification_log').get() as { cnt: number }).cnt;
@@ -402,7 +420,7 @@ describe('completion window push timing', () => {
       '2026-03-11T20:30:00Z', '2026-03-12T21:00:00Z',
       '2026-03-06T21:00:00Z', '2026-03-05T22:00:00Z',
     ]);
-    repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
+    saveWebPushSubscription(repository,'https://push.example.com/sub', 'key', 'auth');
 
     // First cycle: 10am → held
     await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), new Date('2026-03-15T10:00:00Z'));
@@ -415,6 +433,9 @@ describe('completion window push timing', () => {
 });
 
 // ─── Per-User Push Targeting (OLI-286) ──────────────────────────────────────
+
+const USER_1_ID = 'a1111111-1111-4111-8111-111111111111';
+const USER_2_ID = 'a2222222-2222-4222-8222-222222222222';
 
 function insertUser(db: ReturnType<typeof createDatabase>, id: string, email: string, role = 'admin') {
   const now = new Date().toISOString();
@@ -451,37 +472,37 @@ describe('per-user push targeting', () => {
   });
 
   it('saves push subscription with userId', () => {
-    insertUser(db, 'user-1', 'alice@test.com');
-    const sub = repository.savePushSubscription('https://push.example.com/sub1', 'key', 'auth', 'user-1');
-    expect(sub.user_id).toBe('user-1');
+    insertUser(db, USER_1_ID, 'alice@test.com');
+    const sub = saveWebPushSubscription(repository,'https://push.example.com/sub1', 'key', 'auth', USER_1_ID);
+    expect(sub.userId).toBe(USER_1_ID);
   });
 
-  it('listPushSubscriptionsForUser returns only that user subscriptions', () => {
-    insertUser(db, 'user-1', 'alice@test.com');
-    insertUser(db, 'user-2', 'bob@test.com', 'member');
-    repository.savePushSubscription('https://push.example.com/alice', 'key1', 'auth1', 'user-1');
-    repository.savePushSubscription('https://push.example.com/bob', 'key2', 'auth2', 'user-2');
+  it('listNotificationSubscriptions returns only that user subscriptions', () => {
+    insertUser(db, USER_1_ID, 'alice@test.com');
+    insertUser(db, USER_2_ID, 'bob@test.com', 'member');
+    saveWebPushSubscription(repository,'https://push.example.com/alice', 'key1', 'auth1', USER_1_ID);
+    saveWebPushSubscription(repository,'https://push.example.com/bob', 'key2', 'auth2', USER_2_ID);
 
-    const aliceSubs = repository.listPushSubscriptionsForUser('user-1');
+    const aliceSubs = repository.listNotificationSubscriptions(USER_1_ID);
     expect(aliceSubs).toHaveLength(1);
     expect(aliceSubs[0].endpoint).toBe('https://push.example.com/alice');
 
-    const allSubs = repository.listPushSubscriptions();
+    const allSubs = repository.listAllNotificationSubscriptions();
     expect(allSubs).toHaveLength(2);
   });
 
   it('reminder nudge targets only the creator user subscriptions', async () => {
     const push = createMockPush();
     const now = new Date('2026-03-15T10:00:00Z');
-    insertUser(db, 'user-1', 'alice@test.com');
-    insertUser(db, 'user-2', 'bob@test.com', 'member');
+    insertUser(db, USER_1_ID, 'alice@test.com');
+    insertUser(db, USER_2_ID, 'bob@test.com', 'member');
 
     // Alice's reminder, approaching in 2 hours
-    insertReminder(db, 'rem1', 'Call dentist', new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString(), 'user-1');
+    insertReminder(db, 'rem1', 'Call dentist', new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString(), USER_1_ID);
 
     // Both users have push subscriptions
-    repository.savePushSubscription('https://push.example.com/alice', 'key1', 'auth1', 'user-1');
-    repository.savePushSubscription('https://push.example.com/bob', 'key2', 'auth2', 'user-2');
+    saveWebPushSubscription(repository,'https://push.example.com/alice', 'key1', 'auth1', USER_1_ID);
+    saveWebPushSubscription(repository,'https://push.example.com/bob', 'key2', 'auth2', USER_2_ID);
 
     await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
 
@@ -493,13 +514,13 @@ describe('per-user push targeting', () => {
   it('routine nudge broadcasts to all user subscriptions', async () => {
     const push = createMockPush();
     const now = new Date('2026-03-15T10:00:00Z');
-    insertUser(db, 'user-1', 'alice@test.com');
-    insertUser(db, 'user-2', 'bob@test.com', 'member');
+    insertUser(db, USER_1_ID, 'alice@test.com');
+    insertUser(db, USER_2_ID, 'bob@test.com', 'member');
 
     insertOverdueRoutine(db, 'r1', 'Take out trash', '2026-03-14T08:00:00Z');
 
-    repository.savePushSubscription('https://push.example.com/alice', 'key1', 'auth1', 'user-1');
-    repository.savePushSubscription('https://push.example.com/bob', 'key2', 'auth2', 'user-2');
+    saveWebPushSubscription(repository,'https://push.example.com/alice', 'key1', 'auth1', USER_1_ID);
+    saveWebPushSubscription(repository,'https://push.example.com/bob', 'key2', 'auth2', USER_2_ID);
 
     await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
 
@@ -510,14 +531,14 @@ describe('per-user push targeting', () => {
   it('reminder nudge falls back to all subscriptions when creator has none', async () => {
     const push = createMockPush();
     const now = new Date('2026-03-15T10:00:00Z');
-    insertUser(db, 'user-1', 'alice@test.com');
-    insertUser(db, 'user-2', 'bob@test.com', 'member');
+    insertUser(db, USER_1_ID, 'alice@test.com');
+    insertUser(db, USER_2_ID, 'bob@test.com', 'member');
 
     // Alice's reminder, but Alice has no push subscription
-    insertReminder(db, 'rem1', 'Call dentist', new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString(), 'user-1');
+    insertReminder(db, 'rem1', 'Call dentist', new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString(), USER_1_ID);
 
     // Only Bob has a push subscription
-    repository.savePushSubscription('https://push.example.com/bob', 'key2', 'auth2', 'user-2');
+    saveWebPushSubscription(repository,'https://push.example.com/bob', 'key2', 'auth2', USER_2_ID);
 
     await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
 
@@ -533,8 +554,8 @@ describe('per-user push targeting', () => {
     // Reminder with no created_by_user_id (legacy data)
     insertReminder(db, 'rem1', 'Call dentist', new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString());
 
-    repository.savePushSubscription('https://push.example.com/sub1', 'key1', 'auth1');
-    repository.savePushSubscription('https://push.example.com/sub2', 'key2', 'auth2');
+    saveWebPushSubscription(repository,'https://push.example.com/sub1', 'key1', 'auth1');
+    saveWebPushSubscription(repository,'https://push.example.com/sub2', 'key2', 'auth2');
 
     await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
 
@@ -645,7 +666,7 @@ describe('GET /api/push-notifications/upcoming', () => {
   it('returns recently-sent item with recently_sent status', async () => {
     insertOverdueRoutine(db, 'r1', 'Take out trash', '2026-03-14T08:00:00Z');
     const repository = new InboxRepository(db);
-    const sub = repository.savePushSubscription('https://push.example.com/sub', 'key', 'auth');
+    const sub = saveWebPushSubscription(repository,'https://push.example.com/sub', 'key', 'auth');
     repository.recordPushNotificationLog(sub.id, 'routine', 'r1', new Date());
 
     const res = await app.inject({ method: 'GET', url: '/api/push-notifications/upcoming' });

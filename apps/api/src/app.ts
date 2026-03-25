@@ -2007,7 +2007,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     notificationsEnabled: config.notificationsEnabled
   }));
 
-  // ─── Push Subscriptions (H5 nudge push) ─────────────────────────────────────
+  // ─── Push Subscriptions (unified into notification_subscriptions) ────────────
 
   app.get('/api/push-subscriptions/vapid-public-key', async () => ({
     vapidPublicKey: config.vapidPublicKey ?? null,
@@ -2028,8 +2028,10 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     }
     const { endpoint, keys } = parsed.data;
     const userId = resolveUserId(request);
-    const record = repository.savePushSubscription(endpoint, keys.p256dh, keys.auth, userId);
-    return reply.status(201).send({ id: record.id, endpoint: record.endpoint });
+    // Store as web push payload in the unified notification_subscriptions table
+    const payload = { endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth } };
+    const subscription = repository.saveNotificationSubscription(userId ?? 'anonymous', endpoint, payload);
+    return reply.status(201).send({ id: subscription.id, endpoint: subscription.endpoint });
   });
 
   app.delete('/api/push-subscriptions', async (request, reply) => {
@@ -2037,7 +2039,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     if (!endpoint) {
       return reply.status(400).send({ code: 'BAD_REQUEST', message: 'endpoint query param required' });
     }
-    repository.deletePushSubscription(endpoint);
+    repository.deleteNotificationSubscriptionByEndpoint(endpoint);
     return reply.status(204).send();
   });
 
@@ -2050,8 +2052,8 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
 
     // Find subscriptions for this user (or all if no userId)
     const subscriptions = userId
-      ? repository.listPushSubscriptionsForUser(userId)
-      : repository.listPushSubscriptions();
+      ? repository.listNotificationSubscriptions(userId)
+      : repository.listAllNotificationSubscriptions();
 
     if (subscriptions.length === 0) {
       return reply.status(400).send({
@@ -2087,34 +2089,23 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     let sentCount = 0;
     for (const sub of subscriptions) {
       try {
-        if (push.isConfigured()) {
-          await push.send(
-            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh_key, auth: sub.auth_key } },
-            notification
-          );
+        const payload = sub.payload as Record<string, unknown>;
+        if (isApnsSubscriptionPayload(payload)) {
+          if (!apns.isConfigured()) continue;
+          await apns.send(payload.token, notification);
+          sentCount++;
+        } else if (isPushSubscriptionPayload(payload)) {
+          if (!push.isConfigured()) continue;
+          await push.send(payload, notification);
           sentCount++;
         }
       } catch (error) {
         const statusCode = (error as { statusCode?: number }).statusCode;
         if (statusCode === 410) {
-          repository.deletePushSubscription(sub.endpoint);
+          repository.deleteNotificationSubscriptionByEndpoint(sub.endpoint);
           request.log.info({ subscriptionId: sub.id }, 'test push: 410 Gone — subscription removed');
         } else {
           request.log.warn({ subscriptionId: sub.id, error }, 'test push delivery failed');
-        }
-      }
-    }
-
-    // Also send via APNs if configured
-    if (apns.isConfigured()) {
-      const notifSubs = repository.listAllNotificationSubscriptions();
-      const apnsSubs = notifSubs.filter((s) => isApnsSubscriptionPayload(s.payload as Record<string, unknown>));
-      for (const sub of apnsSubs) {
-        try {
-          await apns.send((sub.payload as { token: string }).token, notification);
-          sentCount++;
-        } catch (error) {
-          request.log.warn({ subscriptionId: sub.id, error }, 'test APNs delivery failed');
         }
       }
     }
@@ -2134,7 +2125,7 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     const DEDUP_WINDOW_MS = 2 * 60 * 60 * 1000;
 
     const nudges = sortNudgesByPriority(repository.getNudgePayloads(now));
-    const allSubscriptions = repository.listPushSubscriptions();
+    const allSubscriptions = repository.listAllNotificationSubscriptions();
 
     const items = nudges.map((nudge) => {
       // Check if recently sent to any subscription
