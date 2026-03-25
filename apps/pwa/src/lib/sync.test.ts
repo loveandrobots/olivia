@@ -127,6 +127,17 @@ vi.mock('./client-db', async () => {
   };
 });
 
+vi.mock('./connectivity', () => ({
+  isEffectivelyOnline: () => globalThis.window?.navigator?.onLine ?? true,
+  startConnectivityMonitor: vi.fn(),
+  stopConnectivityMonitor: vi.fn(),
+  checkConnectivityNow: vi.fn(),
+  subscribeConnectivity: vi.fn(() => () => {}),
+  getConnectivitySnapshot: vi.fn(() => ({ browserOnline: true, apiReachable: true })),
+  getLastPingDiagnostic: vi.fn(() => ({ url: '', status: 'ok', timestamp: '' })),
+  runDiagnosticProbe: vi.fn()
+}));
+
 vi.mock('./api', () => {
   class ApiError extends Error {
     constructor(message: string, public readonly statusCode: number, public readonly payload: unknown) {
