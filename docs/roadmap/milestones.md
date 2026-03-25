@@ -255,13 +255,13 @@ Notes:
 ## M34: Reliability & Push — Make Multi-User Actually Work
 Objective: diagnose and fix the reliability issues preventing the household from using multi-user features, get push notifications working end-to-end for real users, and add diagnostic tooling so reliability gaps are visible before the next feedback round.
 
-Status: in_progress (code complete, awaiting household validation)
+Status: complete (partial — rolled into M35)
 
-Progress (2026-03-25):
-- iOS push registration fix shipped (PR #29) — `PushNotifications.register()` now called when permission already granted
-- Dynamic user assignment migration shipped (PR #18, OLI-297) — 45 files, +797/-494
-- Test failures from migration fixed (OLI-307) — 484 tests passing, 0 failing
-- v0.7.2 release PR #90 open, awaiting board merge
+Outcome (2026-03-25):
+- Shipped: reliability fixes, service worker, test notification button, back-arrow fix, iOS push fix, dynamic user assignment migration, E2E test expansion, agent instruction consolidation
+- Released: v0.7.1 and v0.7.2 to upstream
+- **Not resolved**: push notifications still failing, household section empty in production. Root cause identified: dual identity system (auth vs localStorage role) creates competing code paths. Every fix addresses one path but breaks the other.
+- Board escalation (2026-03-25): directed immediate full refactor. M34 reliability work rolled into M35 which addresses the root architectural cause.
 - Agent instruction consolidation completed (OLI-308) — reduced instruction surface ~50%
 - **Blocked on**: board merging PR #90, deploying to household, and confirming exit criteria
 
@@ -317,7 +317,7 @@ Notes:
 ## M35: Identity Refactor & Automation Foundation
 Objective: eliminate the legacy role-based identity model (`actorRole`/`stakeholder`/`spouse`) in favor of userId-based identity across every layer, then build the first automation capabilities on the clean foundation.
 
-Status: todo
+Status: in_progress
 
 Context:
 - M34 shipped reliability fixes and dynamic user assignment (PR #18), but the refactor was partial — only the database assignment column and UI pickers were changed.
