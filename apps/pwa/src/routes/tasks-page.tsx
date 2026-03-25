@@ -43,7 +43,7 @@ export function TasksPage() {
 
   const inboxQuery = useQuery({
     queryKey: ['inbox-view', role, 'active'],
-    queryFn: () => loadInboxView(role, 'active'),
+    queryFn: () => loadInboxView('active'),
   });
 
   const { openTasks, doneTasks, openCount, doneCount } = useMemo(() => {
@@ -76,7 +76,7 @@ export function TasksPage() {
   }, [inboxQuery.data]);
 
   const handlePreviewTask = async (inputText: string): Promise<AddTaskPreview | null> => {
-    const res = await previewCreateCommand(role, inputText);
+    const res = await previewCreateCommand(inputText);
     return {
       title: res.parsedItem.title,
       ownerDisplay: resolveUserName(res.parsedItem.assigneeUserId, members),
@@ -86,8 +86,8 @@ export function TasksPage() {
   };
 
   const handleConfirmTask = async (preview: AddTaskPreview): Promise<void> => {
-    const full = await previewCreateCommand(role, undefined, { title: preview.title });
-    await confirmCreateCommand(role, full.parsedItem, preview.draftId);
+    const full = await previewCreateCommand(undefined, { title: preview.title });
+    await confirmCreateCommand(full.parsedItem, preview.draftId);
     await queryClient.invalidateQueries({ queryKey: ['inbox-view'] });
     await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
   };

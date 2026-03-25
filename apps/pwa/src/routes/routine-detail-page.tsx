@@ -64,7 +64,7 @@ export function RoutineDetailPage() {
 
   const detailQuery = useQuery({
     queryKey: ['routine-detail', role, params.routineId],
-    queryFn: () => loadRoutineDetail(role, params.routineId),
+    queryFn: () => loadRoutineDetail(params.routineId),
   });
 
   const routine = detailQuery.data?.routine;
@@ -93,7 +93,7 @@ export function RoutineDetailPage() {
     if (!routine || busy) return;
     setBusy(true);
     try {
-      await completeRoutineOccurrenceCommand(role, routine.id, routine.version);
+      await completeRoutineOccurrenceCommand(routine.id, routine.version);
       await invalidateAndRefresh();
       showBanner(isAdHoc ? 'Marked as done' : 'Marked complete', 'mint');
     } catch (err) {
@@ -108,7 +108,7 @@ export function RoutineDetailPage() {
     setShowPauseSheet(false);
     setBusy(true);
     try {
-      await pauseRoutineCommand(role, routine.id, routine.version);
+      await pauseRoutineCommand(routine.id, routine.version);
       await invalidateAndRefresh();
       showBanner('Routine paused', 'sky');
     } catch (err) {
@@ -122,7 +122,7 @@ export function RoutineDetailPage() {
     if (!routine || busy) return;
     setBusy(true);
     try {
-      await resumeRoutineCommand(role, routine.id, routine.version);
+      await resumeRoutineCommand(routine.id, routine.version);
       await invalidateAndRefresh();
       showBanner('Routine resumed', 'mint');
     } catch (err) {
@@ -137,7 +137,7 @@ export function RoutineDetailPage() {
     setShowArchiveSheet(false);
     setBusy(true);
     try {
-      await archiveRoutineCommand(role, routine.id, routine.version);
+      await archiveRoutineCommand(routine.id, routine.version);
       await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
       await queryClient.invalidateQueries({ queryKey: ['routine-index-archived', role] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
@@ -154,7 +154,7 @@ export function RoutineDetailPage() {
     if (!routine || busy) return;
     setBusy(true);
     try {
-      await restoreRoutineCommand(role, routine.id, routine.version);
+      await restoreRoutineCommand(routine.id, routine.version);
       await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
       await queryClient.invalidateQueries({ queryKey: ['routine-index-archived', role] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
@@ -172,7 +172,7 @@ export function RoutineDetailPage() {
     setShowDeleteSheet(false);
     setBusy(true);
     try {
-      await deleteRoutineCommand(role, routine.id);
+      await deleteRoutineCommand(routine.id);
       await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
       await queryClient.invalidateQueries({ queryKey: ['routine-index-archived', role] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });

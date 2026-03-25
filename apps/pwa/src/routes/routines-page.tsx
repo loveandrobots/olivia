@@ -239,13 +239,13 @@ export function RoutinesPage() {
 
   const activeQuery = useQuery({
     queryKey: ['routine-index-active', role],
-    queryFn: () => loadActiveRoutineIndex(role),
+    queryFn: () => loadActiveRoutineIndex(),
     enabled: activeTab === 'active',
   });
 
   const archivedQuery = useQuery({
     queryKey: ['routine-index-archived', role],
-    queryFn: () => loadArchivedRoutineIndex(role),
+    queryFn: () => loadArchivedRoutineIndex(),
     enabled: activeTab === 'archived',
   });
 
@@ -295,7 +295,7 @@ export function RoutinesPage() {
     if (busyId) return;
     setBusyId(routine.id);
     try {
-      await completeRoutineOccurrenceCommand(role, routine.id, routine.version);
+      await completeRoutineOccurrenceCommand(routine.id, routine.version);
       await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       showBanner(routine.recurrenceRule === 'ad_hoc' ? 'Marked as done' : 'Marked complete', 'mint');
@@ -337,7 +337,7 @@ export function RoutinesPage() {
     }
 
     try {
-      await createRoutineCommand(role, form.title.trim(), form.assigneeUserId, form.recurrenceRule, firstDueDate, intervalDays, weekdays, intervalWeeks);
+      await createRoutineCommand(form.title.trim(), form.assigneeUserId, form.recurrenceRule, firstDueDate, intervalDays, weekdays, intervalWeeks);
       await queryClient.invalidateQueries({ queryKey: ['routine-index-active', role] });
       await queryClient.invalidateQueries({ queryKey: ['weekly-view'] });
       setForm({ title: '', assigneeUserId: currentUser?.id ?? null, recurrenceRule: '', intervalDays: '7', intervalWeeks: 2, weekdays: [], firstDueDate: todayIso() });
