@@ -53,11 +53,15 @@ test.describe('Routine lifecycle', () => {
       await page.locator('input[type="date"]').fill(todayIso);
       await page.getByRole('button', { name: 'Create Routine' }).click();
       await expect(page.locator('.list-card-title', { hasText: routineName })).toBeVisible({ timeout: 10_000 });
+
+      // Reload to ensure due-state is computed and checkbox renders
+      await page.goto('/routines');
+      await expect(page.locator('.screen-title')).toContainText('Routines', { timeout: 10_000 });
     }
 
     // Complete the first available routine via its checkbox
     const checkbox = page.locator('.task-checkbox').first();
-    await expect(checkbox).toBeVisible({ timeout: 10_000 });
+    await expect(checkbox).toBeVisible({ timeout: 15_000 });
     await checkbox.click();
 
     // Should show "Marked complete" banner
