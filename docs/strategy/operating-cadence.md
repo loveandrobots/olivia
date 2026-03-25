@@ -80,32 +80,32 @@ VP Product maintains a spec pipeline 1 sprint ahead:
 
 Updated by CEO at milestone transitions and when significant signal arrives.
 
-### Current State (as of M34 near-close, 2026-03-25)
+### Current State (as of M35 close, 2026-03-25)
 
 **Where we are:**
-- M34 (Reliability & Push) code complete — v0.7.2 release PR #90 open, awaiting board merge and household validation
-- M34 shipped: 4 reliability fixes, service worker for web push, test notification button, iOS push registration fix, dynamic user assignment migration, agent instruction consolidation
+- M35 (Identity Refactor) complete — actorRole eliminated from the entire stack, userId-based identity everywhere
+- Push pipeline unified (one subscription table, polymorphic dispatch)
+- Track D (automation) and Track F (feedback) specs approved (D-071, D-072), ready for implementation
 - Team: 8 agents (CEO, VP Product, Tech Lead, Founding Engineer, Senior Engineer, QA Engineer, Designer, SRE)
-- Budget: ~32% monthly spend
-- Release: v0.7.1 live upstream, v0.7.2 pending
-- Key debt identified: `actorRole`/stakeholder/spouse identity model still embedded across all layers (contracts, API, frontend, tests)
+- Note: Tech Lead, SRE, QA experienced persistent error states during M35. Founding Engineer and Senior Engineer delivered the engineering work.
+- Budget: ~35% monthly spend
+- Release: v0.7.2 live upstream. M35 refactor changes need a version bump and release.
 
 **Where we're going:**
-- **H1: M34 close** — board merges PR #90, deploys, household validates push + multi-user. Then M34 closes.
-- **H2: M35 (Identity Refactor & Automation Foundation)** — eliminate actorRole identity model (prerequisite for multi-tenancy), then build Track D (automation) and Track F (in-app feedback). Scoped and defined in milestones.md.
-- **H3: Strategic** — multi-tenancy support, deeper automation (Layer 2 LLM timing), coordination surface expansion (task steps, shared calendar)
+- **H1: M36 (Automation & Feedback Build)** — implement Track F (in-app feedback, lower-risk) then Track D (automation foundation, higher-impact). Both specs approved.
+- **H2: M37 (Post-M36 Household Feedback)** — validate both features with household usage. Standard feedback gate.
+- **H3: Strategic** — multi-tenancy (identity refactor complete, next barrier is household isolation), deeper automation (AI-suggested rules, Layer 2 LLM timing), coordination surface expansion (task steps, shared calendar)
 
 **What could change it:**
-- If household validation surfaces new reliability issues, M34 may need additional fixes before closing
-- Board may reprioritize Track D/F vs. actorRole refactor based on urgency
-- Multi-tenancy timeline may accelerate the identity refactor priority
+- iOS/Capacitor push action button API support may affect Track D scope (open question in spec)
+- Agent health issues may require continued reassignment of engineering work
+- Board may direct a different priority before M36 activates
 
 **Backlog (top deferred items):**
-1. actorRole elimination — board-directed, M35 P1, prerequisite for multi-tenancy
-2. Track D: Rule-based automation — board's top feature request, M35 P2
-3. Track F: In-app feedback mechanism — board's secondary request, M35 P3
-4. Task steps / sub-tasks (OLI-242, spec drafted) — deferred pending stable daily use
-5. Shared calendar integration (OLI-243, D-063) — deferred
+1. Task steps / sub-tasks (OLI-242, spec drafted) — deferred pending stable daily use
+2. Shared calendar integration (OLI-243, D-063) — deferred
+3. AI-suggested automation rules — Phase 2 after household validates manual rules
+4. Multi-tenancy — identity barrier removed, next is household isolation
 5. Track G: Multi-user depth (per-user preferences, activity attribution) — unlocked after M34 stabilizes multi-user
 
 ## Decisions

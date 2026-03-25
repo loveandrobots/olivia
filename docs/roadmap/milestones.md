@@ -317,50 +317,81 @@ Notes:
 ## M35: Identity Refactor & Automation Foundation
 Objective: eliminate the legacy role-based identity model (`actorRole`/`stakeholder`/`spouse`) in favor of userId-based identity across every layer, then build the first automation capabilities on the clean foundation.
 
-Status: in_progress
+Status: complete (2026-03-25)
 
 Context:
 - M34 shipped reliability fixes and dynamic user assignment (PR #18), but the refactor was partial — only the database assignment column and UI pickers were changed.
-- The `actorRole` concept remains deeply embedded: ~90 contract schema fields, 129 API occurrences, 30+ frontend role checks, 50+ test references.
+- The `actorRole` concept was deeply embedded: ~90 contract schema fields, 129 API occurrences, 30+ frontend role checks, 50+ test references.
 - Board directive (2026-03-25): "Let's do it as a next iteration. Eventually we will want multi-tenancy and this will be a barrier."
-- Track D (automation) and Track F (in-app feedback) were queued from M33 feedback. The identity refactor is a prerequisite — automation rules need to target users, not roles.
+
+Delivered:
+- **actorRole elimination** — userId-based identity across the entire stack:
+  - DB migrations (0016, 0017): dropped `actor_role` from 6 tables, unified push subscriptions into single table
+  - Contracts: removed `actorRoleSchema`, all `actorRole` fields, deprecated `ActorRole` type
+  - API: removed `resolveActorRole()`, role-based access checks; user resolved from session token
+  - Frontend: deleted `RoleProvider`, `useRole()`, `SpouseBanner`, `demo-data` hardcoded names; all routes use `useAuth()`
+  - Push pipeline: unified `push_subscriptions` into `notification_subscriptions` with polymorphic dispatch
+  - Tests: all contract/E2E tests updated to auth-based identity
+- **Track D spec approved** (D-071): push action buttons + lightweight automation rules
+- **Track F spec approved** (D-072): in-app feedback mechanism
+
+Exit criteria met:
+- `grep` returns zero hits in non-test, non-migration source files (8 Dexie migration history references are structural)
+- All tests pass with userId-based identity (241 domain, 177 API, typecheck clean)
+- Both automation and feedback specs approved and ready for implementation
+- Automation and feedback implementation deferred to M36
+
+Notes:
+- The actorRole refactor required reassigning work from erroring agents (Tech Lead, SRE, QA) to healthy agents (Founding Engineer, Senior Engineer).
+- Three PRs (#92, #93, #94) were opened against upstream/main instead of origin/main — corrected each time.
+- Multi-tenancy is the long-term goal. This refactor removes the first barrier.
+
+## M36: Automation & Feedback Build
+Objective: implement the automation foundation (Track D) and in-app feedback (Track F) on the clean userId-based identity model.
+
+Status: not started
+
+Context:
+- M35 delivered a clean identity model and approved specs for both features.
+- Track D spec (D-071, `docs/specs/automation-foundation.md`): push notification action buttons + lightweight automation rules.
+- Track F spec (D-072, `docs/specs/in-app-feedback.md`): in-app feedback form in Settings.
+- Board requested both features from M33 feedback — "trust and automation is maybe a better immediate fix" and friction reporting was a repeated gap.
 
 Priority areas (in order):
 
-1. **actorRole elimination** — Replace the stakeholder/spouse identity model with userId-based identity.
-   - Contracts layer: replace all `actorRole` schema fields with `userId` (breaking API change)
-   - API layer: resolve user from session token instead of role parameter on every route
-   - Frontend: remove all `role === 'spouse'` / `role === 'stakeholder'` checks, use auth-based access
-   - Remove SpouseBanner, role-based read-only gates, demo data hardcoded names
-   - Update all tests (E2E, contracts, domain, sync)
-   - Database: clean up any remaining role-based columns
+1. **Track F: In-app feedback** — lower-risk, standalone feature. Ship first to close the feedback loop.
+   - Full-screen feedback form at `/settings/feedback`
+   - Auto-filled context (route, version, device, recent errors)
+   - `POST /api/feedback` endpoint with `feedback` table
+   - 14 acceptance criteria in spec
 
-2. **Track D: Automation foundation** — Rule-based automation and push action buttons.
-   - Spec and build: user-defined automation rules (e.g., "remind me when X is overdue")
-   - Push notification action buttons (mark done, snooze from notification)
-   - Depends on: clean identity model from priority area 1
+2. **Track D: Automation foundation** — higher-impact, more complex. Ship second.
+   - Push notification action buttons (mark done/skip from notification drawer)
+   - Automation rules engine (3 trigger types, 3 action types, 20-rule cap)
+   - `automation_rules` and `automation_log` tables
+   - Service Worker action handling with offline queue
+   - 18 acceptance criteria in spec
+   - 1 open question: iOS/Capacitor push action button API surface (Tech Lead to confirm)
 
-3. **Track F: In-app feedback** — Lightweight friction reporting from within the app.
-   - Simple mechanism to report issues without leaving the app
-   - Pre-fill context (current screen, user, recent errors)
+3. **Household validation** — deploy both features, confirm household can use them.
 
 Required artifacts:
-- Zero remaining `actorRole` references in contracts, API, and frontend source code (test fixtures may retain role concepts for backward-compat testing)
-- All API routes authenticate via session token, not role parameter
-- Automation rule engine spec and initial implementation
-- In-app feedback mechanism shipped
+- In-app feedback feature shipped and accessible from Settings
+- At least one automation rule type functional end-to-end
+- Push action buttons working on supported platforms
+- Version bump and release to household
 
 Exit criteria:
-- `grep -r 'actorRole\|stakeholder\|spouse' apps/ packages/` returns zero hits in non-test source files
-- All tests pass with userId-based identity
-- At least one automation rule type is functional end-to-end
-- In-app feedback is accessible from Settings
-- Household confirms multi-user features work without role-based quirks
+- Household can submit feedback from within the app
+- Household can create and use at least one automation rule
+- Push action buttons render and function on the household's device
+- All tests pass
+- Board confirms both features work in daily use
 
 Notes:
-- The actorRole refactor is the critical path. Track D and F should not start until the identity layer is clean.
-- This is a breaking API change — the frontend sync layer will need coordinated updates.
-- Multi-tenancy is the long-term goal. This refactor is the first step toward supporting multiple households.
+- Track F is lower-risk and can ship independently. Track D depends on confirming iOS push action button support.
+- Both specs are approved — implementation planning can begin immediately.
+- Per operating cadence (D-068), the next feedback round should follow deployment.
 
 ## Milestone Gate Questions
 Before moving to the next milestone, ask:

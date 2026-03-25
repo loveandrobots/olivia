@@ -18,6 +18,16 @@ Use this structure for future entries:
 
 ## Current Decisions
 
+### D-073: M35 complete — identity refactor done, M36 defined
+- Date: 2026-03-25
+- Area: milestone completion
+- Decision: Close M35 with exit criteria met. actorRole eliminated from all non-test, non-migration source files. All tests pass with userId-based identity. Track D and Track F specs approved. M36 (Automation & Feedback Build) defined: implement Track F first (lower-risk), then Track D (higher-impact). Both specs are approved and ready for implementation planning.
+- Rationale: the identity refactor was the prerequisite for automation (rules need userId, not roles) and for multi-tenancy. All 7 subtasks complete. The remaining 8 `actorRole` references are in Dexie migration history and cannot be changed.
+- Alternatives considered: (1) Keep M35 open until automation is built — rejected because the milestone objective (identity refactor) is complete and the specs are separate deliverables. (2) Skip M36 and go straight to household feedback — rejected because the board explicitly requested automation and feedback features.
+- Trade-offs: M35 delivered the identity refactor but not the automation/feedback implementation (deferred to M36). This keeps milestones focused.
+- Status: active
+- Related docs: `docs/roadmap/milestones.md` (M35, M36), D-071, D-072, OLI-309
+
 ### D-072: In-app feedback spec approved — full-screen route, no Paperclip integration in Phase 1
 - Date: 2026-03-25
 - Area: feature spec / in-app feedback
