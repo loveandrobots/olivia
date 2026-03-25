@@ -348,7 +348,7 @@ export function RoutinesPage() {
     }
   }, [form, role, queryClient, showBanner]);
 
-  const isReadOnly = currentUser?.role === 'member';
+  const isReadOnly = currentUser?.role === 'member' || role === 'spouse';
   const isLoading = currentQuery.isLoading;
   const isError = currentQuery.isError;
 
