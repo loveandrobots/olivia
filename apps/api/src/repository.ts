@@ -63,16 +63,6 @@ export type NotificationDeliveryRecord = {
   deliveredAt: string;
 };
 
-export type PushSubscriptionRecord = {
-  id: string;
-  household_id: string;
-  endpoint: string;
-  p256dh_key: string;
-  auth_key: string;
-  user_id: string | null;
-  created_at: string;
-  updated_at: string;
-};
 
 const parseJsonColumn = (value: unknown): unknown => (value ? JSON.parse(String(value)) : null);
 
@@ -1672,38 +1662,8 @@ export class InboxRepository {
     return rows.map((r) => r.completed_at);
   }
 
-  // ─── Push Subscriptions (H5 nudge push) ──────────────────────────────────────
-
-  savePushSubscription(endpoint: string, p256dh: string, auth: string, userId?: string): PushSubscriptionRecord {
-    const now = new Date().toISOString();
-    const existing = this.db.prepare('SELECT id FROM push_subscriptions WHERE endpoint = ?').get(endpoint) as { id: string } | undefined;
-    const id = existing?.id ?? randomUUID();
-
-    this.db.prepare(`
-      INSERT INTO push_subscriptions (id, household_id, endpoint, p256dh_key, auth_key, user_id, created_at, updated_at)
-      VALUES (?, 'household', ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(endpoint) DO UPDATE SET
-        p256dh_key = excluded.p256dh_key,
-        auth_key = excluded.auth_key,
-        user_id = excluded.user_id,
-        updated_at = excluded.updated_at
-    `).run(id, endpoint, p256dh, auth, userId ?? null, now, now);
-
-    return this.db.prepare('SELECT * FROM push_subscriptions WHERE id = ?').get(id) as PushSubscriptionRecord;
-  }
-
-  deletePushSubscription(endpoint: string): void {
-    this.db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').run(endpoint);
-  }
-
-  listPushSubscriptions(): PushSubscriptionRecord[] {
-    return this.db.prepare("SELECT * FROM push_subscriptions WHERE household_id = 'household'").all() as PushSubscriptionRecord[];
-  }
-
-  listPushSubscriptionsForUser(userId: string): PushSubscriptionRecord[] {
-    return this.db.prepare(
-      "SELECT * FROM push_subscriptions WHERE household_id = 'household' AND user_id = ?"
-    ).all(userId) as PushSubscriptionRecord[];
+  deleteNotificationSubscriptionByEndpoint(endpoint: string): void {
+    this.db.prepare('DELETE FROM notification_subscriptions WHERE endpoint = ?').run(endpoint);
   }
 
   getReminderCreatorUserId(reminderId: string): string | null {

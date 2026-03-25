@@ -397,77 +397,56 @@ export async function evaluateNudgePushRule(
     return;
   }
 
-  // ─── Deliver to Web Push subscriptions ─────────────────────────────────────
-  if (push.isConfigured()) {
-    const allSubscriptions = repository.listPushSubscriptions();
+  // Unified subscription delivery — one table, dispatch by payload type
+  const allSubscriptions = repository.listAllNotificationSubscriptions();
 
-    for (const nudge of nudges) {
-      if (shouldHoldNudge(nudge, repository, config, logger, now)) continue;
+  for (const nudge of nudges) {
+    if (shouldHoldNudge(nudge, repository, config, logger, now)) continue;
 
-      // Per-user targeting: reminder nudges go to the creator's subscriptions only;
-      // household-wide nudges (routines, planning rituals, freshness) go to all.
-      let targetSubscriptions = allSubscriptions;
-      if (nudge.entityType === 'reminder') {
-        const creatorUserId = repository.getReminderCreatorUserId(nudge.entityId);
-        if (creatorUserId) {
-          const userSubs = repository.listPushSubscriptionsForUser(creatorUserId);
-          if (userSubs.length > 0) {
-            targetSubscriptions = userSubs;
-          }
-          // Fall back to all subscriptions if creator has no subscriptions
+    // Per-user targeting: reminder nudges go to the creator's subscriptions only;
+    // household-wide nudges (routines, planning rituals, freshness) go to all.
+    let targetSubscriptions = allSubscriptions;
+    if (nudge.entityType === 'reminder') {
+      const creatorUserId = repository.getReminderCreatorUserId(nudge.entityId);
+      if (creatorUserId) {
+        const userSubs = repository.listNotificationSubscriptions(creatorUserId);
+        if (userSubs.length > 0) {
+          targetSubscriptions = userSubs;
         }
-      }
-
-      const notification = buildNudgeNotification(nudge, config.pwaOrigin);
-
-      for (const subscription of targetSubscriptions) {
-        const alreadySent = repository.hasPushNotificationLog(
-          subscription.id, nudge.entityType, nudge.entityId, DEDUP_WINDOW_MS, now
-        );
-        if (alreadySent) continue;
-
-        try {
-          await push.send(
-            { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh_key, auth: subscription.auth_key } },
-            notification
-          );
-          repository.recordPushNotificationLog(subscription.id, nudge.entityType, nudge.entityId, now);
-          logger.info({ subscriptionId: subscription.id, entityType: nudge.entityType, entityId: nudge.entityId }, 'nudge push delivered');
-        } catch (error) {
-          const statusCode = (error as { statusCode?: number }).statusCode;
-          if (statusCode === 410) {
-            repository.deletePushSubscription(subscription.endpoint);
-            logger.info({ subscriptionId: subscription.id }, 'nudge push: 410 Gone — subscription removed');
-            break;
-          }
-          logger.warn({ subscriptionId: subscription.id, entityId: nudge.entityId, error }, 'nudge push delivery failed (non-fatal)');
-        }
+        // Fall back to all subscriptions if creator has no subscriptions
       }
     }
-  }
 
-  // ─── Deliver to APNs subscriptions (native iOS) ────────────────────────────
-  if (apns.isConfigured()) {
-    const notifSubs = repository.listAllNotificationSubscriptions();
-    const apnsSubs = notifSubs.filter((s) => isApnsSubscriptionPayload(s.payload as Record<string, unknown>));
+    const notification = buildNudgeNotification(nudge, config.pwaOrigin);
 
-    for (const subscription of apnsSubs) {
-      const token = (subscription.payload as Record<string, unknown>).token as string;
-      for (const nudge of nudges) {
-        const alreadySent = repository.hasPushNotificationLog(
-          subscription.id, nudge.entityType, nudge.entityId, DEDUP_WINDOW_MS, now
-        );
-        if (alreadySent) continue;
-        if (shouldHoldNudge(nudge, repository, config, logger, now)) continue;
+    for (const subscription of targetSubscriptions) {
+      const alreadySent = repository.hasPushNotificationLog(
+        subscription.id, nudge.entityType, nudge.entityId, DEDUP_WINDOW_MS, now
+      );
+      if (alreadySent) continue;
 
-        const notification = buildNudgeNotification(nudge, config.pwaOrigin);
-        try {
-          await apns.send(token, notification);
-          repository.recordPushNotificationLog(subscription.id, nudge.entityType, nudge.entityId, now);
-          logger.info({ subscriptionId: subscription.id, entityType: nudge.entityType, entityId: nudge.entityId }, 'nudge push delivered (APNs)');
-        } catch (error) {
-          logger.warn({ subscriptionId: subscription.id, entityId: nudge.entityId, error }, 'nudge APNs delivery failed (non-fatal)');
+      try {
+        const payload = subscription.payload as Record<string, unknown>;
+        if (isApnsSubscriptionPayload(payload)) {
+          if (!apns.isConfigured()) continue;
+          await apns.send(payload.token, notification);
+        } else if (isPushSubscriptionPayload(payload)) {
+          if (!push.isConfigured()) continue;
+          await push.send(payload, notification);
+        } else {
+          logger.warn({ subscriptionId: subscription.id }, 'nudge push: unknown payload type; skipping');
+          continue;
         }
+        repository.recordPushNotificationLog(subscription.id, nudge.entityType, nudge.entityId, now);
+        logger.info({ subscriptionId: subscription.id, entityType: nudge.entityType, entityId: nudge.entityId }, 'nudge push delivered');
+      } catch (error) {
+        const statusCode = (error as { statusCode?: number }).statusCode;
+        if (statusCode === 410) {
+          repository.deleteNotificationSubscriptionByEndpoint(subscription.endpoint);
+          logger.info({ subscriptionId: subscription.id }, 'nudge push: 410 Gone — subscription removed');
+          break;
+        }
+        logger.warn({ subscriptionId: subscription.id, entityId: nudge.entityId, error }, 'nudge push delivery failed (non-fatal)');
       }
     }
   }
