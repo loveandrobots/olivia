@@ -2173,6 +2173,81 @@ export async function buildApp({ config }: BuildAppOptions): Promise<FastifyInst
     return { items };
   });
 
+  // ─── Push Action Endpoints (OLI-319) ────────────────────────────────────────
+  // Versionless endpoints for Service Worker notification action buttons.
+  // These fetch current entity state internally and use the same domain functions
+  // as the in-app action buttons. 409 = entity already acted on (no-op).
+
+  app.post('/api/push-actions/routine-complete', async (request, reply) => {
+    const body = z.object({ routineId: z.string().uuid() }).safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ code: 'BAD_REQUEST', message: body.error.message });
+    const userId = resolveUserId(request);
+
+    const now = new Date();
+    const routine = repository.getRoutine(body.data.routineId);
+    if (!routine) return reply.status(404).send({ code: 'NOT_FOUND', message: 'Routine not found.' });
+
+    const { updatedRoutine, occurrence } = completeRoutineOccurrence(routine, userId ?? null, now);
+    const saved = repository.completeRoutineOccurrence(updatedRoutine, occurrence, routine.version);
+    if (!saved) return reply.status(409).send({ code: 'VERSION_CONFLICT', message: 'Routine was already updated.' });
+
+    request.log.info({ routineId: body.data.routineId, source: 'push-action' }, 'routine completed via push action');
+    return reply.send({ ok: true });
+  });
+
+  app.post('/api/push-actions/routine-skip', async (request, reply) => {
+    const body = z.object({ routineId: z.string().uuid() }).safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ code: 'BAD_REQUEST', message: body.error.message });
+    const userId = resolveUserId(request);
+
+    const now = new Date();
+    const routine = repository.getRoutine(body.data.routineId);
+    if (!routine) return reply.status(404).send({ code: 'NOT_FOUND', message: 'Routine not found.' });
+
+    const { updatedRoutine, occurrence } = skipRoutineOccurrence(routine, userId ?? null, now);
+    const saved = repository.completeRoutineOccurrence(updatedRoutine, occurrence, routine.version);
+    if (!saved) return reply.status(409).send({ code: 'VERSION_CONFLICT', message: 'Routine was already updated.' });
+
+    request.log.info({ routineId: body.data.routineId, source: 'push-action' }, 'routine skipped via push action');
+    return reply.send({ ok: true });
+  });
+
+  app.post('/api/push-actions/reminder-done', async (request, reply) => {
+    const body = z.object({ reminderId: z.string().uuid() }).safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ code: 'BAD_REQUEST', message: body.error.message });
+    const userId = resolveUserId(request);
+
+    const reminder = repository.getReminder(body.data.reminderId);
+    if (!reminder) return reply.status(404).send({ code: 'NOT_FOUND', message: 'Reminder not found.' });
+
+    const mutation = completeReminderOccurrence(reminder, new Date(), repository.listReminderTimeline(body.data.reminderId));
+    const attributedTimeline = mutation.timelineEntries.map((e) => ({ ...e, userId }));
+    const saved = repository.updateReminder(mutation.reminder, attributedTimeline, reminder.version);
+    if (!saved) return reply.status(409).send({ code: 'VERSION_CONFLICT', message: 'Reminder was already updated.' });
+
+    request.log.info({ reminderId: body.data.reminderId, source: 'push-action' }, 'reminder completed via push action');
+    return reply.send({ ok: true });
+  });
+
+  app.post('/api/push-actions/reminder-snooze', async (request, reply) => {
+    const body = z.object({ reminderId: z.string().uuid() }).safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ code: 'BAD_REQUEST', message: body.error.message });
+    const userId = resolveUserId(request);
+
+    const reminder = repository.getReminder(body.data.reminderId);
+    if (!reminder) return reply.status(404).send({ code: 'NOT_FOUND', message: 'Reminder not found.' });
+
+    // Default snooze: 1 hour from now
+    const snoozedUntil = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const mutation = snoozeReminder(reminder, snoozedUntil, new Date(), repository.listReminderTimeline(body.data.reminderId));
+    const attributedTimeline = mutation.timelineEntries.map((e) => ({ ...e, userId }));
+    const saved = repository.updateReminder(mutation.reminder, attributedTimeline, reminder.version);
+    if (!saved) return reply.status(409).send({ code: 'VERSION_CONFLICT', message: 'Reminder was already updated.' });
+
+    request.log.info({ reminderId: body.data.reminderId, source: 'push-action' }, 'reminder snoozed via push action');
+    return reply.send({ ok: true });
+  });
+
   // ─── Chat Routes (OLI-100) ──────────────────────────────────────────────────
 
   const anthropicApiKey = config.anthropicApiKey ?? process.env.ANTHROPIC_API_KEY;
