@@ -336,12 +336,29 @@ function buildNudgeNotification(nudge: Nudge, pwaOrigin: string): NotificationPa
     body = `${nudge.entityName} — reminder approaching`;
   }
 
-  return {
+  const payload: NotificationPayload = {
     title: 'Olivia household nudge',
     body,
     url: `${pwaOrigin}/`,
     tag: `nudge-${nudge.entityType}-${nudge.entityId}`,
+    entityId: nudge.entityId,
+    entityType: nudge.entityType,
   };
+
+  // Add action buttons for routine and reminder nudges (not planning rituals)
+  if (nudge.entityType === 'routine') {
+    payload.actions = [
+      { action: 'mark_done', title: 'Mark done' },
+      { action: 'skip', title: 'Skip' },
+    ];
+  } else if (nudge.entityType === 'reminder') {
+    payload.actions = [
+      { action: 'done', title: 'Done' },
+      { action: 'snooze', title: 'Snooze' },
+    ];
+  }
+
+  return payload;
 }
 
 export function shouldHoldNudge(

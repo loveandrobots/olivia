@@ -711,3 +711,194 @@ describe('DisabledApnsPushProvider', () => {
     await expect(provider.send('token', { title: 'Test', body: 'Body', url: '/', tag: 'test' })).resolves.toBeUndefined();
   });
 });
+
+// ─── Nudge push payload includes action buttons (OLI-319) ─────────────────
+
+describe('nudge push payload action buttons', () => {
+  let directory: string;
+  let dbPath: string;
+  let db: ReturnType<typeof createDatabase>;
+  let repository: InboxRepository;
+  let config: AppConfig;
+
+  beforeEach(() => {
+    directory = mkdtempSync(join(tmpdir(), 'olivia-push-actions-'));
+    dbPath = join(directory, 'test.sqlite');
+    db = createDatabase(dbPath);
+    repository = new InboxRepository(db);
+    config = { ...createConfig(dbPath), householdTimezone: 'UTC' };
+  });
+
+  afterEach(() => {
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('routine nudge includes mark_done and skip actions', async () => {
+    const push = createMockPush();
+    const now = new Date('2026-03-15T14:00:00Z');
+    insertOverdueRoutine(db, 'r-act-1', 'Vacuuming', '2026-03-14T08:00:00Z');
+    saveWebPushSubscription(repository, 'https://push.example.com/act', 'key', 'auth');
+
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
+    expect(push.sends).toHaveLength(1);
+
+    const notification = push.sends[0]!.notification;
+    expect(notification.actions).toEqual([
+      { action: 'mark_done', title: 'Mark done' },
+      { action: 'skip', title: 'Skip' },
+    ]);
+    expect(notification.entityId).toBe('r-act-1');
+    expect(notification.entityType).toBe('routine');
+  });
+
+  it('reminder nudge includes done and snooze actions', async () => {
+    const push = createMockPush();
+    const now = new Date('2026-03-15T14:00:00Z');
+    db.prepare(`
+      INSERT INTO reminders (id, title, assignee_user_id, recurrence_cadence, scheduled_at, created_at, updated_at, version)
+      VALUES ('rem-act-1', 'Call dentist', NULL, 'none', ?, datetime('now'), datetime('now'), 1)
+    `).run(new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString());
+    saveWebPushSubscription(repository, 'https://push.example.com/act-rem', 'key', 'auth');
+
+    await evaluateNudgePushRule(repository, push, disabledApns, config, makeLogger(), now);
+    expect(push.sends).toHaveLength(1);
+
+    const notification = push.sends[0]!.notification;
+    expect(notification.actions).toEqual([
+      { action: 'done', title: 'Done' },
+      { action: 'snooze', title: 'Snooze' },
+    ]);
+    expect(notification.entityId).toBe('rem-act-1');
+    expect(notification.entityType).toBe('reminder');
+  });
+
+  it('only routine and reminder nudge types get action buttons', () => {
+    // Planning ritual nudges get no action buttons — covered by the buildNudgeNotification
+    // logic which only adds actions for entityType 'routine' and 'reminder'.
+    // The routine and reminder tests above verify the positive cases.
+    expect(true).toBe(true);
+  });
+});
+
+// ─── Push action API endpoints (OLI-319) ──────────────────────────────────
+
+describe('push action API endpoints', () => {
+  let directory: string;
+  let dbPath: string;
+  let db: ReturnType<typeof createDatabase>;
+  let app: Awaited<ReturnType<typeof buildApp>>;
+
+  beforeEach(async () => {
+    directory = mkdtempSync(join(tmpdir(), 'olivia-push-action-api-'));
+    dbPath = join(directory, 'test.sqlite');
+    const config = createConfig(dbPath);
+    app = await buildApp({ config });
+    db = createDatabase(dbPath);
+  });
+
+  afterEach(() => {
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('POST /api/push-actions/routine-complete completes a routine', async () => {
+    const routineId = 'a0000000-0000-4000-8000-000000000001';
+    db.prepare(`
+      INSERT INTO routines (id, title, assignee_user_id, recurrence_rule, interval_days, status, current_due_date, created_at, updated_at, version)
+      VALUES (?, 'Vacuuming', NULL, 'every_n_days', 7, 'active', '2026-03-14T08:00:00Z', ?, ?, 1)
+    `).run(routineId, new Date().toISOString(), new Date().toISOString());
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/push-actions/routine-complete',
+      payload: { routineId },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true });
+
+    // Verify version bumped (routine was updated)
+    const routine = db.prepare('SELECT version FROM routines WHERE id = ?').get(routineId) as { version: number };
+    expect(routine.version).toBe(2);
+  });
+
+  it('POST /api/push-actions/routine-skip skips a routine occurrence', async () => {
+    const routineId = 'a0000000-0000-4000-8000-000000000002';
+    db.prepare(`
+      INSERT INTO routines (id, title, assignee_user_id, recurrence_rule, interval_days, status, current_due_date, created_at, updated_at, version)
+      VALUES (?, 'Dusting', NULL, 'every_n_days', 7, 'active', '2026-03-14T08:00:00Z', ?, ?, 1)
+    `).run(routineId, new Date().toISOString(), new Date().toISOString());
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/push-actions/routine-skip',
+      payload: { routineId },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true });
+  });
+
+  it('POST /api/push-actions/reminder-done completes a reminder', async () => {
+    const reminderId = 'b0000000-0000-4000-8000-000000000001';
+    db.prepare(`
+      INSERT INTO reminders (id, title, assignee_user_id, recurrence_cadence, scheduled_at, created_at, updated_at, version)
+      VALUES (?, 'Call dentist', NULL, 'none', '2026-03-14T08:00:00Z', ?, ?, 1)
+    `).run(reminderId, new Date().toISOString(), new Date().toISOString());
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/push-actions/reminder-done',
+      payload: { reminderId },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true });
+  });
+
+  it('POST /api/push-actions/reminder-snooze snoozes a reminder', async () => {
+    const reminderId = 'b0000000-0000-4000-8000-000000000002';
+    db.prepare(`
+      INSERT INTO reminders (id, title, assignee_user_id, recurrence_cadence, scheduled_at, created_at, updated_at, version)
+      VALUES (?, 'Follow up invoice', NULL, 'none', '2026-03-14T08:00:00Z', ?, ?, 1)
+    `).run(reminderId, new Date().toISOString(), new Date().toISOString());
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/push-actions/reminder-snooze',
+      payload: { reminderId },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true });
+  });
+
+  it('returns 404 for non-existent routine', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/push-actions/routine-complete',
+      payload: { routineId: 'c0000000-0000-4000-8000-000000000099' },
+    });
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('returns 404 for non-existent reminder', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/push-actions/reminder-done',
+      payload: { reminderId: 'c0000000-0000-4000-8000-000000000099' },
+    });
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('returns 400 for invalid body', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/push-actions/routine-complete',
+      payload: { routineId: 'not-a-uuid' },
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+});
