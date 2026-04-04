@@ -6,8 +6,8 @@ alwaysApply: true
 # Olivia Source-Of-Truth Rules
 
 - Treat `docs/` as the authoritative source of truth.
-- If `AGENTS.md`, `skills/`, `.cursor/rules/`, chat context, or another artifact conflicts with `docs/`, follow `docs/`.
-- Read the docs relevant to the task instead of defaulting to a full-project reread. For workflow-specific guidance, use the orientation tiers in `AGENTS.md`. For comprehensive context recovery, use `skills/olivia-orient.md`.
+- If `.cursor/rules/`, chat context, or another artifact conflicts with `docs/`, follow `docs/`.
+- Read the docs relevant to the task instead of defaulting to a full-project reread. For comprehensive context recovery, use `/olivia-orient`.
 - Prefer the documented source-of-truth hierarchy:
   1. vision and ethos
   2. roadmap and milestones

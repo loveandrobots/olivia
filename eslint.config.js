@@ -15,7 +15,6 @@ export default [
       'test-results/**',
       'node_modules/**',
       'docs/**',
-      'skills/**',
       '.claude/**'
     ]
   },
