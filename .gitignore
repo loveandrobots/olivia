@@ -16,3 +16,5 @@ apps/pwa/ios/App/App/public
 apps/pwa/ios/App/Pods
 apps/pwa/ios/App/DerivedData
 apps/pwa/ios/capacitor-cordova-ios-plugins
+
+_forge/*
