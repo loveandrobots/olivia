@@ -5,8 +5,13 @@ set -euo pipefail
 # Verifies the spec artifact exists and contains required sections.
 # Called by Forge after the spec stage completes.
 
-TASK_ID="${1:?Usage: post-spec.sh <task_id>}"
-SPEC_FILE="_forge/specs/task-${TASK_ID}-spec.md"
+TASK_ID="${FORGE_TASK_ID:?FORGE_TASK_ID env var not set}"
+SPEC_FILE="${FORGE_SPEC_PATH:-_forge/specs/${TASK_ID}.md}"
+# If forge set a .json path but the file doesn't exist, try .md fallback
+if [[ "$SPEC_FILE" == *.json && ! -f "$SPEC_FILE" ]]; then
+  MD_FALLBACK="${SPEC_FILE%.json}.md"
+  [[ -f "$MD_FALLBACK" ]] && SPEC_FILE="$MD_FALLBACK"
+fi
 
 if [[ ! -f "$SPEC_FILE" ]]; then
   echo "FAIL: Spec file not found: $SPEC_FILE"

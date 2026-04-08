@@ -10,8 +10,8 @@ set -euo pipefail
 # Positive reviews that mention "tests pass" were triggering false
 # failures on whole-file grep for "PASS" in the Forge project.
 
-TASK_ID="${1:?Usage: post-review.sh <task_id>}"
-REVIEW_FILE="_forge/reviews/task-${TASK_ID}-review.md"
+TASK_ID="${FORGE_TASK_ID:?FORGE_TASK_ID env var not set}"
+REVIEW_FILE="${FORGE_REVIEW_PATH:-_forge/reviews/${TASK_ID}.md}"
 
 if [[ ! -f "$REVIEW_FILE" ]]; then
   echo "FAIL: Review file not found: $REVIEW_FILE"

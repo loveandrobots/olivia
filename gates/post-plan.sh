@@ -6,9 +6,17 @@ set -euo pipefail
 # and includes an acceptance criteria mapping back to the spec.
 # Called by Forge after the plan stage completes.
 
-TASK_ID="${1:?Usage: post-plan.sh <task_id>}"
-PLAN_FILE="_forge/plans/task-${TASK_ID}-plan.md"
-SPEC_FILE="_forge/specs/task-${TASK_ID}-spec.md"
+TASK_ID="${FORGE_TASK_ID:?FORGE_TASK_ID env var not set}"
+PLAN_FILE="${FORGE_PLAN_PATH:-_forge/plans/${TASK_ID}.md}"
+if [[ "$PLAN_FILE" == *.json && ! -f "$PLAN_FILE" ]]; then
+  MD_FALLBACK="${PLAN_FILE%.json}.md"
+  [[ -f "$MD_FALLBACK" ]] && PLAN_FILE="$MD_FALLBACK"
+fi
+SPEC_FILE="${FORGE_SPEC_PATH:-_forge/specs/${TASK_ID}.md}"
+if [[ "$SPEC_FILE" == *.json && ! -f "$SPEC_FILE" ]]; then
+  MD_FALLBACK="${SPEC_FILE%.json}.md"
+  [[ -f "$MD_FALLBACK" ]] && SPEC_FILE="$MD_FALLBACK"
+fi
 
 if [[ ! -f "$PLAN_FILE" ]]; then
   echo "FAIL: Plan file not found: $PLAN_FILE"

@@ -6,7 +6,6 @@ set -euo pipefail
 # Checks: typecheck, lint, tests, brand compliance, dependency direction.
 # Called by Forge after the implement stage completes.
 
-TASK_ID="${1:?Usage: post-implement.sh <task_id>}"
 FAILURES=()
 
 # ---------- Tooling checks ----------
