@@ -1,40 +1,44 @@
-#!/usr/bin/env bash
+#!/bin/bash
+# Gate: post-spec
+# Validates that a spec artifact was produced as valid structured JSON.
+#
+# Requires: jq (system dependency)
+#
+# Environment variables (set by Forge gate runner):
+#   FORGE_TASK_ID      — the task identifier
+#   FORGE_REPO_PATH    — path to the project repository
+#   FORGE_STAGE        — current stage name
+#   FORGE_ATTEMPT      — attempt number
+#   FORGE_BRANCH       — feature branch name
+#   FORGE_SPEC_PATH    — path to the spec file
+
 set -euo pipefail
 
-# post-spec.sh — Olivia
-# Verifies the spec artifact exists and contains required sections.
-# Called by Forge after the spec stage completes.
+SPEC_FILE="${FORGE_REPO_PATH}/_forge/specs/${FORGE_TASK_ID}.json"
 
-TASK_ID="${FORGE_TASK_ID:?FORGE_TASK_ID env var not set}"
-SPEC_FILE="${FORGE_SPEC_PATH:-_forge/specs/${TASK_ID}.md}"
-# If forge set a .json path but the file doesn't exist, try .md fallback
-if [[ "$SPEC_FILE" == *.json && ! -f "$SPEC_FILE" ]]; then
-  MD_FALLBACK="${SPEC_FILE%.json}.md"
-  [[ -f "$MD_FALLBACK" ]] && SPEC_FILE="$MD_FALLBACK"
+# Check spec file exists
+if [ ! -f "$SPEC_FILE" ]; then
+    echo "FAIL: Spec file not found: $SPEC_FILE" >&2
+    exit 1
 fi
 
-if [[ ! -f "$SPEC_FILE" ]]; then
-  echo "FAIL: Spec file not found: $SPEC_FILE"
-  exit 1
+# Validate JSON
+if ! jq empty "$SPEC_FILE" 2>/dev/null; then
+    echo "FAIL: Spec file is not valid JSON: $SPEC_FILE" >&2
+    exit 1
 fi
 
-MISSING=()
-
-# Required sections — every spec must have these
-for section in "## Problem" "## Acceptance Criteria" "## Scope"; do
-  if ! grep -qi "^${section}" "$SPEC_FILE"; then
-    MISSING+=("$section")
-  fi
-done
-
-if [[ ${#MISSING[@]} -gt 0 ]]; then
-  echo "FAIL: Spec missing required sections:"
-  for s in "${MISSING[@]}"; do
-    echo "  - $s"
-  done
-  exit 1
+# Check overview is non-empty
+if ! jq -e '.overview | length > 0' "$SPEC_FILE" >/dev/null 2>&1; then
+    echo "FAIL: Spec 'overview' field is empty or missing" >&2
+    exit 1
 fi
 
-echo "PASS: Spec file exists with all required sections."
+# Check acceptance_criteria has at least one item
+if ! jq -e '.acceptance_criteria | length > 0' "$SPEC_FILE" >/dev/null 2>&1; then
+    echo "FAIL: Spec 'acceptance_criteria' array is empty or missing" >&2
+    exit 1
+fi
+
+echo "post-spec gate passed"
 exit 0
-
