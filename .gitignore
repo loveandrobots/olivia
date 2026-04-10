@@ -18,3 +18,4 @@ apps/pwa/ios/App/DerivedData
 apps/pwa/ios/capacitor-cordova-ios-plugins
 
 _forge/*
+.claude/worktrees/
